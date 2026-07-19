@@ -4,12 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { useState } from 'react';
 
-// Import conditionnel pour les devtools (uniquement en développement)
-const ReactQueryDevtools =
-  typeof window !== 'undefined' && process.env.NODE_ENV === 'development'
-    ? require('@tanstack/react-query-devtools').ReactQueryDevtools
-    : () => null;
-
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -33,7 +27,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
       >
         {children}
       </ThemeProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
 }
