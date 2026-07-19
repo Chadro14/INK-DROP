@@ -4,8 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { useState } from 'react';
 
+// Import conditionnel pour les devtools (uniquement en développement)
 const ReactQueryDevtools =
-  process.env.NODE_ENV === 'development'
+  typeof window !== 'undefined' && process.env.NODE_ENV === 'development'
     ? require('@tanstack/react-query-devtools').ReactQueryDevtools
     : () => null;
 
