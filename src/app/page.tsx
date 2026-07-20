@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { 
@@ -41,7 +40,7 @@ type Creator = {
 };
 
 // ============================================
-// SVG ICONS PERSONNALISÉS
+// SVG ICONS
 // ============================================
 const IconManga = () => (
   <svg className="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -49,14 +48,6 @@ const IconManga = () => (
     <line x1="6" y1="8" x2="18" y2="8" />
     <line x1="6" y1="12" x2="18" y2="12" />
     <line x1="6" y1="16" x2="14" y2="16" />
-  </svg>
-);
-
-const IconAfrica = () => (
-  <svg className="w-6 h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M4 12a8 8 0 0 0 16 0" />
-    <path d="M12 2a8 8 0 0 0 0 20" />
   </svg>
 );
 
