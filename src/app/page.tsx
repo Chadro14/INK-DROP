@@ -2,9 +2,19 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { Heart, Eye, Search, Filter, X } from "lucide-react";
+import { Heart, Eye, Clock, Star, Users, BookOpen, TrendingUp, Award, Search, X } from "lucide-react";
+
+// ============================================
+// SVG ICONS
+// ============================================
+const IconLogo = () => (
+  <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <rect x="2" y="2" width="20" height="20" rx="4" />
+    <path d="M8 8h8v8H8z" />
+    <circle cx="12" cy="12" r="2" />
+  </svg>
+);
 
 const IconManga = () => (
   <svg className="w-8 h-8 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -15,273 +25,270 @@ const IconManga = () => (
   </svg>
 );
 
-export default function DiscoverContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+const IconTrophy = () => (
+  <svg className="w-5 h-5 text-yellow-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M6 9H4a2 2 0 0 1-2-2V5h4v4Z" />
+    <path d="M18 9h2a2 2 0 0 0 2-2V5h-4v4Z" />
+    <path d="M6 15h12v2a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4v-2Z" />
+    <path d="M12 3v12" />
+  </svg>
+);
 
-  const [mangas, setMangas] = useState<any[]>([]);
+type Manga = {
+  id: string;
+  title: string;
+  coverUrl: string;
+  author: { username: string };
+  likesCount: number;
+  viewsCount: number;
+  genre: string[];
+  createdAt: string;
+};
+
+type Creator = {
+  id: string;
+  username: string;
+  avatarUrl: string;
+  isCertified: boolean;
+  _count: { mangas: number; followers: number };
+};
+
+export default function Home() {
+  const [mangas, setMangas] = useState<Manga[]>([]);
+  const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalPages, setTotalPages] = useState(1);
-  const [page, setPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
-
-  const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [genre, setGenre] = useState(searchParams.get("genre") || "");
-  const [status, setStatus] = useState(searchParams.get("status") || "");
-  const [sort, setSort] = useState(searchParams.get("sort") || "recent");
-
-  const genres = ["Action", "Romance", "Horreur", "Sci-Fi", "Mystère", "Aventure", "Comédie"];
-  const statuses = ["ONGOING", "COMPLETED", "HIATUS"];
-  const sortOptions = [
-    { value: "recent", label: "Plus récents" },
-    { value: "popular", label: "Les plus populaires" },
-    { value: "likes", label: "Les plus aimés" },
-  ];
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    const fetchMangas = async () => {
-      setLoading(true);
+    const fetchData = async () => {
       try {
-        const params = new URLSearchParams({
-          page: String(page),
-          limit: "20",
-          ...(search && { search }),
-          ...(genre && { genre }),
-          ...(status && { status }),
-          ...(sort && { sort }),
-        });
-
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/mangas?${params}`
-        );
-        const data = await res.json();
-        setMangas(data.data || []);
-        setTotalPages(data.meta?.totalPages || 1);
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://ink-backend.vercel.app";
+        const [mangasRes, creatorsRes] = await Promise.all([
+          fetch(`${baseUrl}/mangas/top?limit=6`),
+          fetch(`${baseUrl}/users/top-creators?limit=5`),
+        ]);
+        const mangasData = await mangasRes.json();
+        const creatorsData = await creatorsRes.json();
+        setMangas(mangasData.data || []);
+        setCreators(creatorsData.data || []);
       } catch (error) {
         console.error("Erreur:", error);
       } finally {
         setLoading(false);
       }
     };
+    fetchData();
+  }, []);
 
-    fetchMangas();
-  }, [page, search, genre, status, sort]);
-
-  const applyFilters = () => {
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    if (genre) params.set("genre", genre);
-    if (status) params.set("status", status);
-    if (sort) params.set("sort", sort);
-    router.push(`/discover?${params}`);
-    setShowFilters(false);
-    setPage(1);
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      window.location.href = `/discover?search=${encodeURIComponent(searchQuery)}`;
+    }
   };
 
-  const clearFilters = () => {
-    setSearch("");
-    setGenre("");
-    setStatus("");
-    setSort("recent");
-    router.push("/discover");
-    setPage(1);
-    setShowFilters(false);
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-ink-bg">
+        <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
 
-      {/* HEADER */}
+      {/* ===== HEADER ===== */}
       <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
-        <div className="flex items-center justify-end max-w-lg mx-auto gap-3">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="text-ink-muted hover:text-white transition-colors"
-          >
-            <Filter className="w-5 h-5" />
-          </button>
-          <Link href="/" className="text-ink-muted hover:text-white transition-colors">
-            <Search className="w-5 h-5" />
+        <div className="flex items-center justify-between max-w-lg mx-auto">
+          <Link href="/" className="flex items-center gap-2">
+            <IconLogo />
+            <span className="text-lg font-bold text-white">
+              INK<span className="text-accent">DROP</span>
+            </span>
           </Link>
-        </div>
-      </header>
-
-      {/* FILTRES */}
-      {showFilters && (
-        <div className="fixed inset-0 z-50 bg-ink-bg/95 backdrop-blur-sm animate-fade-in">
-          <div className="max-w-lg mx-auto px-4 py-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-white">Filtres</h2>
-              <button onClick={() => setShowFilters(false)} className="text-ink-muted hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="mb-4">
-              <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Recherche</label>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Titre du manga..."
-                className="w-full mt-1 px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none transition-colors"
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Genre</label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {genres.map((g) => (
-                  <button
-                    key={g}
-                    onClick={() => setGenre(g === genre ? "" : g)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      genre === g
-                        ? "bg-accent text-white"
-                        : "bg-ink-card border border-ink-border text-ink-muted hover:text-white"
-                    }`}
-                  >
-                    {g}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-4">
-              <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Statut</label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {statuses.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setStatus(s === status ? "" : s)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      status === s
-                        ? "bg-accent text-white"
-                        : "bg-ink-card border border-ink-border text-ink-muted hover:text-white"
-                    }`}
-                  >
-                    {s.toLowerCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Trier par</label>
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                className="w-full mt-1 px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-white focus:border-accent outline-none transition-colors"
-              >
-                {sortOptions.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={applyFilters}
-                className="flex-1 py-3 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors"
-              >
-                Appliquer
-              </button>
-              <button
-                onClick={clearFilters}
-                className="px-6 py-3 rounded-lg bg-ink-card border border-ink-border text-ink-muted font-semibold hover:text-white transition-colors"
-              >
-                Réinitialiser
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* RÉSULTATS */}
-      <main className="flex-1 px-4 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-white">Découvrir</h1>
-          <span className="text-ink-muted text-sm">{mangas.length} résultats</span>
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="aspect-[2/3] bg-ink-card rounded-xl animate-pulse" />
-            ))}
-          </div>
-        ) : mangas.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <IconManga />
-            <p className="text-ink-muted mt-4">Aucun manga trouvé</p>
+          <div className="flex items-center gap-3">
             <button
-              onClick={clearFilters}
-              className="mt-4 px-6 py-2 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors"
+              onClick={() => setShowSearch(!showSearch)}
+              className="text-ink-muted hover:text-white transition-colors"
             >
-              Réinitialiser les filtres
+              <Search className="w-5 h-5" />
             </button>
           </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              {mangas.map((manga) => (
-                <Link
-                  key={manga.id}
-                  href={`/manga/${manga.id}`}
-                  className="bg-ink-card border border-ink-border rounded-xl overflow-hidden hover:border-accent transition-all active:scale-[0.97]"
-                >
-                  <div className="aspect-[2/3] bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center relative">
-                    <IconManga />
-                    <div className="absolute top-2 left-2 flex gap-1">
-                      {manga.genre?.slice(0, 2).map((g: string) => (
-                        <span key={g} className="text-[8px] font-medium px-1.5 py-0.5 rounded bg-black/50 text-white backdrop-blur-sm">
-                          {g}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="p-2">
-                    <h3 className="text-sm font-semibold truncate text-white">{manga.title}</h3>
-                    <p className="text-ink-muted text-[10px] truncate">{manga.author?.username || "Inconnu"}</p>
-                    <div className="flex items-center gap-3 mt-0.5 text-ink-muted text-[10px]">
-                      <span className="flex items-center gap-0.5">
-                        <Heart className="w-3 h-3 text-accent" /> {manga.likesCount || 0}
-                      </span>
-                      <span className="flex items-center gap-0.5">
-                        <Eye className="w-3 h-3 text-accent" /> {manga.viewsCount || 0}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+        </div>
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-6">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-accent transition-colors text-white"
-                >
-                  Précédent
-                </button>
-                <span className="text-ink-muted text-sm px-4">
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-accent transition-colors text-white"
-                >
-                  Suivant
+        {showSearch && (
+          <form onSubmit={handleSearch} className="mt-3 flex items-center gap-2 animate-fade-in">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher un manga..."
+              className="flex-1 px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none transition-colors"
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors"
+            >
+              OK
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSearch(false);
+                setSearchQuery("");
+              }}
+              className="text-ink-muted hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </form>
+        )}
+      </header>
+
+      {/* ===== TAGLINE ===== */}
+      <div className="text-center px-4 py-4 border-b border-ink-border">
+        <p className="text-ink-muted text-sm font-medium flex items-center justify-center gap-2">
+          <TrendingUp className="w-4 h-4 text-accent" />
+          La première plateforme manga payée en <span className="text-accent">mobile money</span>
+        </p>
+      </div>
+
+      {/* ===== CRÉATEURS À SUIVRE ===== */}
+      <section className="px-4 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-ink-muted text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5 text-accent" />
+            Créateurs à suivre
+          </h3>
+          <Link href="/discover" className="text-accent text-xs font-medium hover:underline">
+            Voir tout
+          </Link>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+          {creators.map((creator) => (
+            <Link
+              key={creator.id}
+              href={`/creator/${creator.username}`}
+              className="flex flex-col items-center gap-1 flex-shrink-0 group"
+            >
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center text-white font-bold text-lg border-2 border-transparent group-hover:border-accent transition-all relative">
+                {creator.username?.charAt(0).toUpperCase() || "?"}
+                {creator.isCertified && (
+                  <span className="absolute -top-0.5 -right-0.5">
+                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                  </span>
+                )}
+              </div>
+              <span className="text-ink-muted text-[10px] truncate max-w-14 text-center">
+                {creator.username || "Inconnu"}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== DERNIERS CHAPITRES ===== */}
+      <section className="px-4 py-2">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-ink-muted text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+            <BookOpen className="w-3.5 h-3.5 text-accent" />
+            Derniers chapitres
+          </h3>
+          <Link href="/discover" className="text-accent text-xs font-medium hover:underline">
+            Voir tout
+          </Link>
+        </div>
+        <div className="space-y-3">
+          {mangas.slice(0, 3).map((manga) => (
+            <Link
+              key={manga.id}
+              href={`/manga/${manga.id}`}
+              className="block bg-ink-card border border-ink-border rounded-xl p-3 hover:border-accent transition-all active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-20 rounded-lg bg-gradient-to-br from-accent/20 to-accent-dark/20 flex-shrink-0 flex items-center justify-center">
+                  <IconManga />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold truncate text-white">{manga.title || "Sans titre"}</h4>
+                  <p className="text-ink-muted text-xs truncate">par {manga.author?.username || "Inconnu"}</p>
+                  <div className="flex items-center gap-3 mt-1 text-ink-muted text-[10px]">
+                    <span className="flex items-center gap-0.5">
+                      <Heart className="w-3 h-3 text-accent" /> {manga.likesCount || 0}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <Eye className="w-3 h-3 text-accent" /> {manga.viewsCount || 0}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <Clock className="w-3 h-3 text-accent" /> 2h
+                    </span>
+                  </div>
+                </div>
+                <button className="px-3 py-1 rounded-full bg-accent/10 text-accent text-[10px] font-semibold hover:bg-accent/20 transition-colors">
+                  Lire
                 </button>
               </div>
-            )}
-          </>
-        )}
-      </main>
+            </Link>
+          ))}
+        </div>
+      </section>
 
+      {/* ===== TOP MANGA ===== */}
+      <section className="px-4 py-4 pb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-ink-muted text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+            <Award className="w-3.5 h-3.5 text-accent" />
+            Top du mois
+          </h3>
+          <Link href="/discover" className="text-accent text-xs font-medium hover:underline">
+            Voir tout
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {mangas.slice(0, 4).map((manga, index) => (
+            <Link
+              key={manga.id}
+              href={`/manga/${manga.id}`}
+              className="bg-ink-card border border-ink-border rounded-xl overflow-hidden hover:border-accent transition-all active:scale-[0.97]"
+            >
+              <div className="aspect-[2/3] bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center relative">
+                <IconManga />
+                {index === 0 && (
+                  <span className="absolute top-2 left-2 flex items-center gap-0.5 text-xs font-bold bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded-full">
+                    <IconTrophy /> 1
+                  </span>
+                )}
+                {index === 1 && (
+                  <span className="absolute top-2 left-2 text-xs font-bold bg-gray-400/20 text-gray-400 px-2 py-0.5 rounded-full">
+                    2
+                  </span>
+                )}
+                {index === 2 && (
+                  <span className="absolute top-2 left-2 text-xs font-bold bg-orange-400/20 text-orange-400 px-2 py-0.5 rounded-full">
+                    3
+                  </span>
+                )}
+              </div>
+              <div className="p-2">
+                <h4 className="text-sm font-semibold truncate text-white">{manga.title || "Sans titre"}</h4>
+                <p className="text-ink-muted text-[10px] truncate">{manga.author?.username || "Inconnu"}</p>
+                <div className="flex items-center gap-2 mt-0.5 text-ink-muted text-[10px]">
+                  <span className="flex items-center gap-0.5">
+                    <Heart className="w-3 h-3 text-accent" /> {manga.likesCount || 0}
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== BOTTOM NAVIGATION ===== */}
       <BottomNav />
+
     </div>
   );
 }
