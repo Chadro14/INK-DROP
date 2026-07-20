@@ -6,7 +6,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { Heart, Eye, Clock, Star, Users, BookOpen, TrendingUp, Award, Search, Bell } from "lucide-react";
 
 // ============================================
-// SVG ICONS PERSONNALISÉS (100% SVG)
+// SVG ICONS PERSONNALISÉS
 // ============================================
 const IconLogo = () => (
   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
