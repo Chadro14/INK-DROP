@@ -1,199 +1,154 @@
-// src/app/page.tsx
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import Header from '@/components/layout/header'
-import MangaCard, { type Manga } from '@/components/manga/manga-card'
-import apiClient from '@/lib/api/client'
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { 
+  TrendingUp, 
+  Wallet, 
+  Users, 
+  Film,
+  Award,
+  Globe
+} from 'lucide-react';
 
-export default function HomePage() {
-  const [mangas, setMangas] = useState<Manga[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    loadMangas()
-  }, [])
-
-  const loadMangas = async () => {
-    try {
-      setLoading(true)
-      // Données mock en attendant le vrai backend
-      const mockMangas: Manga[] = [
-        {
-          id: '1',
-          title: 'Le Dernier Samouraï',
-          slug: 'le-dernier-samourai',
-          totalLikes: 12400,
-          isHot: true,
-          creator: { username: 'kenji_art', displayName: 'Kenji Matsuda', isVerified: true },
-        },
-        {
-          id: '2',
-          title: 'Lune de Sang',
-          slug: 'lune-de-sang',
-          totalLikes: 9800,
-          isNew: true,
-          creator: { username: 'mystique_drc', displayName: 'Luna Mystic' },
-        },
-        {
-          id: '3',
-          title: 'Neo Kinshasa',
-          slug: 'neo-kinshasa',
-          totalLikes: 8200,
-          creator: { username: 'sci_fi_cd', displayName: 'NEO' },
-        },
-        {
-          id: '4',
-          title: 'Cœurs Brisés',
-          slug: 'coeurs-brisés',
-          totalLikes: 7500,
-          creator: { username: 'romance_cd', displayName: 'Amour DRC' },
-        },
-        {
-          id: '5',
-          title: 'Les Esprits de Goma',
-          slug: 'esprits-de-goma',
-          totalLikes: 6100,
-          isNew: true,
-          creator: { username: 'goma_studio', displayName: 'Goma Studio' },
-        },
-        {
-          id: '6',
-          title: 'Éclair Noir',
-          slug: 'eclair-noir',
-          totalLikes: 5900,
-          isHot: true,
-          creator: { username: 'kenji_art', displayName: 'Kenji Matsuda', isVerified: true },
-        },
-      ]
-      setMangas(mockMangas)
-      setError(null)
-    } catch (err) {
-      setError('Impossible de charger les mangas')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
+export default function Home() {
   return (
-    <main className="min-h-screen bg-ink-bg">
-      <Header />
+    <div className="flex flex-col min-h-screen">
+      
+      {/* ===== HERO ===== */}
+      <section className="relative py-20 md:py-32 text-center overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-accent/5 to-transparent pointer-events-none" />
+        <div className="relative z-10 max-w-4xl mx-auto px-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent/30 bg-accent/10 text-accent text-sm font-medium mb-6 animate-pulse">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-accent" />
+            </span>
+            Beta ouverte — Rejoignez-nous
+          </div>
 
-      {/* HERO */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-12 text-center">
-        <span className="inline-block bg-accent/10 text-accent text-xs font-semibold px-3 py-1.5 rounded-full border border-accent/30 mb-6">
-          Nouveau — Beta RDC ouverte
-        </span>
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold leading-tight mb-6">
+            Lis. <span className="text-accent">Crée.</span> Inspire.
+          </h1>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+            La plateforme manga où les créateurs du monde entier partagent leurs histoires et sont rémunérés équitablement.
+          </p>
 
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-[1.1] mb-4 gradient-text">
-          Lis. Kiff. Soutiens
-          <br />
-          tes dessinateurs.
-        </h1>
-
-        <p className="text-base sm:text-lg text-ink-muted max-w-xl mx-auto mb-8">
-          La première plateforme manga où chaque dessinateur congolais, ivoirien, sénégalais...
-          est payé en mobile money en quelques secondes.
-        </p>
-
-        <div className="flex flex-wrap gap-3 justify-center">
-          <Link
-            href="/discover"
-            className="gradient-accent text-white font-semibold px-6 py-3 rounded-lg hover:opacity-90 transition"
-          >
-            Commencer à lire
-          </Link>
-          <Link
-            href="/creator/upload"
-            className="border border-ink-border text-white font-semibold px-6 py-3 rounded-lg hover:border-accent hover:text-accent transition"
-          >
-            Publier mon manga
-          </Link>
+          <div className="flex flex-wrap gap-4 justify-center">
+            <Button asChild size="lg" className="bg-gradient-to-r from-accent to-accent-dark hover:shadow-lg hover:shadow-accent/25 transition-all">
+              <Link href="/discover">Commencer à lire</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/creator/upload">Publier mon manga</Link>
+            </Button>
+          </div>
         </div>
       </section>
 
-      {/* TRENDING */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Tendance cette semaine</h2>
-          <Link href="/discover" className="text-accent text-sm font-medium hover:underline">
-            Voir tout →
-          </Link>
-        </div>
-
-        {loading && (
-          <div className="text-center text-ink-muted py-12">Chargement des mangas...</div>
-        )}
-
-        {error && (
-          <div className="bg-error/10 border border-error/30 text-error px-4 py-3 rounded-lg text-sm">
-            {error}
+      {/* ===== TRENDING ===== */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <TrendingUp className="h-6 w-6 text-accent" />
+              Tendance cette semaine
+            </h2>
+            <Link href="/discover" className="text-accent hover:underline text-sm font-medium">
+              Voir tout →
+            </Link>
           </div>
-        )}
 
-        {!loading && !error && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {mangas.map((manga) => (
-              <MangaCard key={manga.id} manga={manga} />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div
+                key={i}
+                className="group bg-card rounded-xl overflow-hidden border border-border hover:border-accent transition-all hover:-translate-y-1 hover:shadow-lg"
+              >
+                <div className="aspect-[2/3] bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center text-4xl">
+                  <span className="opacity-50">📖</span>
+                </div>
+                <div className="p-3">
+                  <h3 className="font-semibold text-sm truncate group-hover:text-accent transition-colors">
+                    Manga {i}
+                  </h3>
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span className="px-2 py-0.5 rounded-full bg-accent/10 text-accent text-[10px] font-medium">
+                      Action
+                    </span>
+                    <span>❤️ {Math.floor(Math.random() * 10 + 1)}k</span>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
-        )}
-      </section>
-
-      {/* FEATURES */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-        <h2 className="text-2xl font-bold mb-6">Pourquoi INKDROP ?</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[
-            {
-              icon: (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="5" y="2" width="14" height="20" rx="2" />
-                  <line x1="12" y1="18" x2="12" y2="18" />
-                </svg>
-              ),
-              title: 'Paiement mobile money',
-              desc: 'M-Pesa, Airtel, Orange, MTN — débloque un chapitre en quelques secondes.',
-            },
-            {
-              icon: (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
-                  <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
-                </svg>
-              ),
-              title: '70% pour les créateurs',
-              desc: 'Les dessinateurs reçoivent l\'argent directement sur leur mobile money.',
-            },
-            {
-              icon: (
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polygon points="23 7 16 12 23 17 23 7" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" />
-                </svg>
-              ),
-              title: 'Programme Movie Box',
-              desc: 'Les meilleurs mangas sont pitchés aux studios d\'animation.',
-            },
-          ].map((feature, i) => (
-            <div key={i} className="bg-ink-card border border-ink-border rounded-xl p-6">
-              <div className="w-12 h-12 rounded-xl bg-accent/15 text-accent flex items-center justify-center mb-4">
-                {feature.icon}
-              </div>
-              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-              <p className="text-sm text-ink-muted">{feature.desc}</p>
-            </div>
-          ))}
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-ink-border mt-16 py-8 text-center text-sm text-ink-muted">
-        © 2025 INKDROP — Fait avec passion à Kinshasa
-      </footer>
-    </main>
-  )
+      {/* ===== FEATURES ===== */}
+      <section className="py-16 bg-card/50">
+        <div className="max-w-7xl mx-auto px-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
+            Pourquoi <span className="text-accent">INKDROP</span> ?
+          </h2>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="bg-card border border-border rounded-xl p-6 text-center hover:border-accent transition-all hover:-translate-y-1">
+              <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                <Wallet className="h-7 w-7 text-accent" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">Paiements rapides</h3>
+              <p className="text-muted-foreground text-sm">
+                Recevez vos revenus instantanément, partout dans le monde.
+              </p>
+            </div>
+
+            <div className="bg-card border border-border rounded-xl p-6 text-center hover:border-accent transition-all hover:-translate-y-1">
+              <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                <Users className="h-7 w-7 text-accent" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">70% pour les créateurs</h3>
+              <p className="text-muted-foreground text-sm">
+                La plus grande part des revenus revient directement aux artistes.
+              </p>
+            </div>
+
+            <div className="bg-card border border-border rounded-xl p-6 text-center hover:border-accent transition-all hover:-translate-y-1">
+              <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                <Film className="h-7 w-7 text-accent" />
+              </div>
+              <h3 className="font-semibold text-lg mb-2">InkStream</h3>
+              <p className="text-muted-foreground text-sm">
+                Regardez des animes et soutenez vos créateurs préférés.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== STATS ===== */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            <div>
+              <p className="text-3xl font-bold text-accent">12k+</p>
+              <p className="text-muted-foreground text-sm">Mangas publiés</p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-accent">3k+</p>
+              <p className="text-muted-foreground text-sm">Créateurs actifs</p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-accent">1.8M</p>
+              <p className="text-muted-foreground text-sm">Pages lues</p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-accent">🌍</p>
+              <p className="text-muted-foreground text-sm">Pays représentés</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  );
 }
