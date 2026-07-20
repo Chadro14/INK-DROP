@@ -4,11 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { Heart, Eye, Search, Filter, X, ChevronLeft } from "lucide-react";
+import { Heart, Eye, Search, Filter, X } from "lucide-react";
 
-// ============================================
-// SVG ICON
-// ============================================
 const IconManga = () => (
   <svg className="w-8 h-8 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -18,9 +15,6 @@ const IconManga = () => (
   </svg>
 );
 
-// ============================================
-// PAGE
-// ============================================
 export default function DiscoverPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -31,7 +25,6 @@ export default function DiscoverPage() {
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Filtres
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [genre, setGenre] = useState(searchParams.get("genre") || "");
   const [status, setStatus] = useState(searchParams.get("status") || "");
@@ -45,9 +38,6 @@ export default function DiscoverPage() {
     { value: "likes", label: "Les plus aimés" },
   ];
 
-  // ============================================
-  // FETCH MANGA
-  // ============================================
   useEffect(() => {
     const fetchMangas = async () => {
       setLoading(true);
@@ -77,9 +67,6 @@ export default function DiscoverPage() {
     fetchMangas();
   }, [page, search, genre, status, sort]);
 
-  // ============================================
-  // APPLIQUER FILTRES
-  // ============================================
   const applyFilters = () => {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
@@ -104,34 +91,22 @@ export default function DiscoverPage() {
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
 
-      {/* ===== HEADER ===== */}
+      {/* ===== HEADER SANS LOGO ===== */}
       <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Link href="/" className="flex items-center gap-2">
-            <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="2" y="2" width="20" height="20" rx="4" />
-              <path d="M8 8h8v8H8z" />
-              <circle cx="12" cy="12" r="2" />
-            </svg>
-            <span className="text-lg font-bold text-white">
-              INK<span className="text-accent">DROP</span>
-            </span>
+        <div className="flex items-center justify-end max-w-lg mx-auto gap-3">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="text-ink-muted hover:text-white transition-colors"
+          >
+            <Filter className="w-5 h-5" />
+          </button>
+          <Link href="/" className="text-ink-muted hover:text-white transition-colors">
+            <Search className="w-5 h-5" />
           </Link>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="text-ink-muted hover:text-white transition-colors"
-            >
-              <Filter className="w-5 h-5" />
-            </button>
-            <Link href="/" className="text-ink-muted hover:text-white transition-colors">
-              <Search className="w-5 h-5" />
-            </Link>
-          </div>
         </div>
       </header>
 
-      {/* ===== FILTRES (overlay) ===== */}
+      {/* ===== FILTRES ===== */}
       {showFilters && (
         <div className="fixed inset-0 z-50 bg-ink-bg/95 backdrop-blur-sm animate-fade-in">
           <div className="max-w-lg mx-auto px-4 py-6">
@@ -142,7 +117,6 @@ export default function DiscoverPage() {
               </button>
             </div>
 
-            {/* Recherche */}
             <div className="mb-4">
               <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Recherche</label>
               <input
@@ -154,7 +128,6 @@ export default function DiscoverPage() {
               />
             </div>
 
-            {/* Genre */}
             <div className="mb-4">
               <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Genre</label>
               <div className="flex flex-wrap gap-2 mt-1">
@@ -174,7 +147,6 @@ export default function DiscoverPage() {
               </div>
             </div>
 
-            {/* Statut */}
             <div className="mb-4">
               <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Statut</label>
               <div className="flex flex-wrap gap-2 mt-1">
@@ -194,7 +166,6 @@ export default function DiscoverPage() {
               </div>
             </div>
 
-            {/* Tri */}
             <div className="mb-6">
               <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Trier par</label>
               <select
@@ -285,7 +256,6 @@ export default function DiscoverPage() {
               ))}
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-6">
                 <button
@@ -311,9 +281,7 @@ export default function DiscoverPage() {
         )}
       </main>
 
-      {/* ===== BOTTOM NAVIGATION ===== */}
       <BottomNav />
-
     </div>
   );
 }
