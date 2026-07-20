@@ -6,7 +6,7 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { Heart, Eye, Clock, Star, Users, BookOpen, TrendingUp, Award, Search, Bell } from "lucide-react";
 
 // ============================================
-// SVG ICONS PERSONNALISÉS
+// SVG ICONS
 // ============================================
 const IconLogo = () => (
   <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -103,15 +103,15 @@ export default function Home() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center text-white font-bold text-sm">
               <IconLogo />
             </div>
-            <span className="text-lg font-bold">
+            <span className="text-lg font-bold text-white">
               INK<span className="text-accent">DROP</span>
             </span>
           </Link>
           <div className="flex items-center gap-3">
-            <button className="text-ink-muted hover:text-ink-text transition-colors">
+            <button className="text-ink-muted hover:text-white transition-colors">
               <Search className="w-5 h-5" />
             </button>
-            <button className="text-ink-muted hover:text-ink-text transition-colors relative">
+            <button className="text-ink-muted hover:text-white transition-colors relative">
               <Bell className="w-5 h-5" />
               <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-[10px] text-white flex items-center justify-center font-bold">
                 3
@@ -133,7 +133,7 @@ export default function Home() {
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-ink-muted text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5" />
+            <Users className="w-3.5 h-3.5 text-accent" />
             Créateurs à suivre
           </h3>
           <Link href="/discover" className="text-accent text-xs font-medium hover:underline">
@@ -147,7 +147,7 @@ export default function Home() {
               href={`/creator/${creator.username}`}
               className="flex flex-col items-center gap-1 flex-shrink-0 group"
             >
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center text-ink-text font-bold text-lg border-2 border-transparent group-hover:border-accent transition-all relative">
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center text-white font-bold text-lg border-2 border-transparent group-hover:border-accent transition-all relative">
                 {creator.username?.charAt(0).toUpperCase() || "?"}
                 {creator.isCertified && (
                   <span className="absolute -top-0.5 -right-0.5">
@@ -167,7 +167,7 @@ export default function Home() {
       <section className="px-4 py-2">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-ink-muted text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
-            <BookOpen className="w-3.5 h-3.5" />
+            <BookOpen className="w-3.5 h-3.5 text-accent" />
             Derniers chapitres
           </h3>
           <Link href="/discover" className="text-accent text-xs font-medium hover:underline">
@@ -186,17 +186,17 @@ export default function Home() {
                   <IconManga />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-sm font-semibold truncate">{manga.title || "Sans titre"}</h4>
+                  <h4 className="text-sm font-semibold truncate text-white">{manga.title || "Sans titre"}</h4>
                   <p className="text-ink-muted text-xs truncate">par {manga.author?.username || "Inconnu"}</p>
                   <div className="flex items-center gap-3 mt-1 text-ink-muted text-[10px]">
                     <span className="flex items-center gap-0.5">
-                      <Heart className="w-3 h-3" /> {manga.likesCount || 0}
+                      <Heart className="w-3 h-3 text-accent" /> {manga.likesCount || 0}
                     </span>
                     <span className="flex items-center gap-0.5">
-                      <Eye className="w-3 h-3" /> {manga.viewsCount || 0}
+                      <Eye className="w-3 h-3 text-accent" /> {manga.viewsCount || 0}
                     </span>
                     <span className="flex items-center gap-0.5">
-                      <Clock className="w-3 h-3" /> 2h
+                      <Clock className="w-3 h-3 text-accent" /> 2h
                     </span>
                   </div>
                 </div>
@@ -213,7 +213,7 @@ export default function Home() {
       <section className="px-4 py-4 pb-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-ink-muted text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
-            <Award className="w-3.5 h-3.5" />
+            <Award className="w-3.5 h-3.5 text-accent" />
             Top du mois
           </h3>
           <Link href="/discover" className="text-accent text-xs font-medium hover:underline">
@@ -246,11 +246,11 @@ export default function Home() {
                 )}
               </div>
               <div className="p-2">
-                <h4 className="text-sm font-semibold truncate">{manga.title || "Sans titre"}</h4>
+                <h4 className="text-sm font-semibold truncate text-white">{manga.title || "Sans titre"}</h4>
                 <p className="text-ink-muted text-[10px] truncate">{manga.author?.username || "Inconnu"}</p>
                 <div className="flex items-center gap-2 mt-0.5 text-ink-muted text-[10px]">
                   <span className="flex items-center gap-0.5">
-                    <Heart className="w-3 h-3" /> {manga.likesCount || 0}
+                    <Heart className="w-3 h-3 text-accent" /> {manga.likesCount || 0}
                   </span>
                 </div>
               </div>
