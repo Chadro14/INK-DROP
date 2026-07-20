@@ -13,9 +13,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ============================================
-  // CONNEXION
-  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -37,9 +34,7 @@ export default function LoginPage() {
         throw new Error(data.message || "Email ou mot de passe incorrect");
       }
 
-      // Stocker le token
       localStorage.setItem("token", data.token);
-      // Rediriger vers la page d'accueil
       router.push("/");
     } catch (err: any) {
       setError(err.message);
@@ -50,8 +45,6 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-ink-bg">
-
-      {/* HEADER */}
       <header className="border-b border-ink-border px-4 py-4">
         <div className="max-w-lg mx-auto">
           <Link href="/" className="flex items-center gap-2">
@@ -67,7 +60,6 @@ export default function LoginPage() {
         </div>
       </header>
 
-      {/* FORMULAIRE */}
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
@@ -84,11 +76,8 @@ export default function LoginPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
             <div>
-              <label className="block text-ink-muted text-sm font-medium mb-1">
-                Email
-              </label>
+              <label className="block text-ink-muted text-sm font-medium mb-1">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-muted" />
                 <input
@@ -102,11 +91,8 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Mot de passe */}
             <div>
-              <label className="block text-ink-muted text-sm font-medium mb-1">
-                Mot de passe
-              </label>
+              <label className="block text-ink-muted text-sm font-medium mb-1">Mot de passe</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-muted" />
                 <input
