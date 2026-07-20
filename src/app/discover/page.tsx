@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Heart, Eye, Search, Filter, X } from "lucide-react";
 
@@ -16,14 +16,14 @@ const IconManga = () => (
 );
 
 export default function DiscoverPage() {
-  const searchParams = useSearchParams();
+  const router = useRouter();
   const [mangas, setMangas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
-  const [genre, setGenre] = useState(searchParams.get("genre") || "");
-  const [status, setStatus] = useState(searchParams.get("status") || "");
-  const [sort, setSort] = useState(searchParams.get("sort") || "recent");
+  const [genre, setGenre] = useState("");
+  const [status, setStatus] = useState("");
+  const [sort, setSort] = useState("recent");
 
   const genres = ["Action", "Romance", "Horreur", "Sci-Fi", "Mystère", "Aventure", "Comédie"];
   const statuses = ["ONGOING", "COMPLETED", "HIATUS"];
@@ -72,7 +72,7 @@ export default function DiscoverPage() {
     if (genre) params.set("genre", genre);
     if (status) params.set("status", status);
     if (sort) params.set("sort", sort);
-    window.location.href = `/discover?${params}`;
+    router.push(`/discover?${params}`);
     setShowFilters(false);
   };
 
@@ -81,7 +81,7 @@ export default function DiscoverPage() {
     setGenre("");
     setStatus("");
     setSort("recent");
-    window.location.href = "/discover";
+    router.push("/discover");
     setShowFilters(false);
   };
 
@@ -96,7 +96,7 @@ export default function DiscoverPage() {
       if (genre) params.set("genre", genre);
       if (status) params.set("status", status);
       if (sort) params.set("sort", sort);
-      window.location.href = `/discover?${params}`;
+      router.push(`/discover?${params}`);
     }
   };
 
