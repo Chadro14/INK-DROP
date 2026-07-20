@@ -11,14 +11,14 @@ const config: Config = {
     extend: {
       colors: {
         // ============================================
-        // INKDROP COLORS — BLEU/BLANC
+        // INKDROP — BLEU/BLANC
         // ============================================
         ink: {
-          bg: '#0A1628',          // Bleu très foncé
-          card: '#0F213A',         // Bleu foncé
-          border: '#1A3A5C',       // Bleu moyen
+          bg: '#0A1628',          // Bleu très foncé (fond)
+          card: '#0F213A',         // Bleu foncé (cartes)
+          border: '#1A3A5C',       // Bleu moyen (bordures)
           text: '#FFFFFF',         // Blanc
-          muted: '#8CB4E8',        // Bleu clair
+          muted: '#8CB4E8',        // Bleu clair (texte secondaire)
         },
         accent: {
           DEFAULT: '#3B82F6',      // Bleu vif
