@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { BottomNav } from '@/components/layout/bottom-nav';
-import { Heart, Eye, Search, Filter, X } from 'lucide-react';
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+import { BottomNav } from "@/components/layout/bottom-nav";
+import { Heart, Eye, Search, Filter, X, ChevronLeft } from "lucide-react";
 
 // ============================================
 // TYPES
@@ -46,17 +46,17 @@ export default function DiscoverPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   // Filtres
-  const [search, setSearch] = useState(searchParams.get('search') || '');
-  const [genre, setGenre] = useState(searchParams.get('genre') || '');
-  const [status, setStatus] = useState(searchParams.get('status') || '');
-  const [sort, setSort] = useState(searchParams.get('sort') || 'recent');
+  const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [genre, setGenre] = useState(searchParams.get("genre") || "");
+  const [status, setStatus] = useState(searchParams.get("status") || "");
+  const [sort, setSort] = useState(searchParams.get("sort") || "recent");
 
-  const genres = ['Action', 'Romance', 'Horreur', 'Sci-Fi', 'Mystère', 'Aventure', 'Comédie'];
-  const statuses = ['ONGOING', 'COMPLETED', 'HIATUS'];
+  const genres = ["Action", "Romance", "Horreur", "Sci-Fi", "Mystère", "Aventure", "Comédie"];
+  const statuses = ["ONGOING", "COMPLETED", "HIATUS"];
   const sortOptions = [
-    { value: 'recent', label: 'Plus récents' },
-    { value: 'popular', label: 'Les plus populaires' },
-    { value: 'likes', label: 'Les plus aimés' },
+    { value: "recent", label: "Plus récents" },
+    { value: "popular", label: "Les plus populaires" },
+    { value: "likes", label: "Les plus aimés" },
   ];
 
   // ============================================
@@ -68,7 +68,7 @@ export default function DiscoverPage() {
       try {
         const params = new URLSearchParams({
           page: String(page),
-          limit: '20',
+          limit: "20",
           ...(search && { search }),
           ...(genre && { genre }),
           ...(status && { status }),
@@ -82,7 +82,7 @@ export default function DiscoverPage() {
         setMangas(data.data || []);
         setTotalPages(data.meta?.totalPages || 1);
       } catch (error) {
-        console.error('Erreur:', error);
+        console.error("Erreur:", error);
       } finally {
         setLoading(false);
       }
@@ -96,21 +96,21 @@ export default function DiscoverPage() {
   // ============================================
   const applyFilters = () => {
     const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (genre) params.set('genre', genre);
-    if (status) params.set('status', status);
-    if (sort) params.set('sort', sort);
+    if (search) params.set("search", search);
+    if (genre) params.set("genre", genre);
+    if (status) params.set("status", status);
+    if (sort) params.set("sort", sort);
     router.push(`/discover?${params}`);
     setShowFilters(false);
     setPage(1);
   };
 
   const clearFilters = () => {
-    setSearch('');
-    setGenre('');
-    setStatus('');
-    setSort('recent');
-    router.push('/discover');
+    setSearch("");
+    setGenre("");
+    setStatus("");
+    setSort("recent");
+    router.push("/discover");
     setPage(1);
     setShowFilters(false);
   };
@@ -173,11 +173,11 @@ export default function DiscoverPage() {
                 {genres.map((g) => (
                   <button
                     key={g}
-                    onClick={() => setGenre(g === genre ? '' : g)}
+                    onClick={() => setGenre(g === genre ? "" : g)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       genre === g
-                        ? 'bg-accent text-white'
-                        : 'bg-ink-card border border-ink-border text-ink-muted hover:text-ink-text'
+                        ? "bg-accent text-white"
+                        : "bg-ink-card border border-ink-border text-ink-muted hover:text-ink-text"
                     }`}
                   >
                     {g}
@@ -193,11 +193,11 @@ export default function DiscoverPage() {
                 {statuses.map((s) => (
                   <button
                     key={s}
-                    onClick={() => setStatus(s === status ? '' : s)}
+                    onClick={() => setStatus(s === status ? "" : s)}
                     className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       status === s
-                        ? 'bg-accent text-white'
-                        : 'bg-ink-card border border-ink-border text-ink-muted hover:text-ink-text'
+                        ? "bg-accent text-white"
+                        : "bg-ink-card border border-ink-border text-ink-muted hover:text-ink-text"
                     }`}
                   >
                     {s.toLowerCase()}
@@ -283,7 +283,7 @@ export default function DiscoverPage() {
                   </div>
                   <div className="p-2">
                     <h3 className="text-sm font-semibold truncate">{manga.title}</h3>
-                    <p className="text-ink-muted text-[10px] truncate">{manga.author?.username || 'Inconnu'}</p>
+                    <p className="text-ink-muted text-[10px] truncate">{manga.author?.username || "Inconnu"}</p>
                     <div className="flex items-center gap-3 mt-0.5 text-ink-muted text-[10px]">
                       <span className="flex items-center gap-0.5">
                         <Heart className="w-3 h-3" /> {manga.likesCount || 0}
