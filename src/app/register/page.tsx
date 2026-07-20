@@ -14,9 +14,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ============================================
-  // INSCRIPTION
-  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -42,9 +39,7 @@ export default function RegisterPage() {
         throw new Error(data.message || "Erreur d'inscription");
       }
 
-      // Stocker le token
       localStorage.setItem("token", data.token);
-      // Rediriger vers la page d'accueil
       router.push("/");
     } catch (err: any) {
       setError(err.message);
@@ -55,8 +50,6 @@ export default function RegisterPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-ink-bg">
-
-      {/* HEADER */}
       <header className="border-b border-ink-border px-4 py-4">
         <div className="max-w-lg mx-auto">
           <Link href="/" className="flex items-center gap-2">
@@ -72,7 +65,6 @@ export default function RegisterPage() {
         </div>
       </header>
 
-      {/* FORMULAIRE */}
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
@@ -89,11 +81,8 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Nom d'utilisateur */}
             <div>
-              <label className="block text-ink-muted text-sm font-medium mb-1">
-                Nom d'utilisateur
-              </label>
+              <label className="block text-ink-muted text-sm font-medium mb-1">Nom d'utilisateur</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-muted" />
                 <input
@@ -108,11 +97,8 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Email */}
             <div>
-              <label className="block text-ink-muted text-sm font-medium mb-1">
-                Email
-              </label>
+              <label className="block text-ink-muted text-sm font-medium mb-1">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-muted" />
                 <input
@@ -126,11 +112,8 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Mot de passe */}
             <div>
-              <label className="block text-ink-muted text-sm font-medium mb-1">
-                Mot de passe
-              </label>
+              <label className="block text-ink-muted text-sm font-medium mb-1">Mot de passe</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-ink-muted" />
                 <input
