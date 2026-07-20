@@ -22,6 +22,18 @@ type Anime = {
 };
 
 // ============================================
+// DONNÉES MOCK (fallback)
+// ============================================
+const mockAnimes: Anime[] = [
+  { id: '1', title: 'Naruto', description: 'L\'histoire d\'un jeune ninja', coverImage: '', genre: ['Action', 'Aventure'], rating: 4.8 },
+  { id: '2', title: 'Demon Slayer', description: 'La chasse aux démons', coverImage: '', genre: ['Action', 'Fantastique'], rating: 4.9 },
+  { id: '3', title: 'One Piece', description: 'La quête du trésor ultime', coverImage: '', genre: ['Action', 'Comédie'], rating: 4.7 },
+  { id: '4', title: 'Attack on Titan', description: 'La lutte pour la survie', coverImage: '', genre: ['Action', 'Drame'], rating: 4.6 },
+  { id: '5', title: 'My Hero Academia', description: 'Le monde des super-héros', coverImage: '', genre: ['Action', 'Sci-Fi'], rating: 4.5 },
+  { id: '6', title: 'Jujutsu Kaisen', description: 'La lutte contre les fléaux', coverImage: '', genre: ['Action', 'Surnaturel'], rating: 4.8 },
+];
+
+// ============================================
 // SVG ICON
 // ============================================
 const IconAnime = () => (
@@ -35,35 +47,38 @@ const IconAnime = () => (
 // PAGE
 // ============================================
 export default function InkStreamPage() {
-  const [animes, setAnimes] = useState<Anime[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [animes, setAnimes] = useState<Anime[]>(mockAnimes);
+  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 
   // ============================================
-  // FETCH ANIMES
+  // FETCH ANIMES (optionnel, avec fallback mock)
   // ============================================
   useEffect(() => {
     const fetchAnimes = async () => {
-      setLoading(true);
       try {
         const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+        if (!baseUrl) return;
+
         const params = new URLSearchParams();
         if (search) params.set("q", search);
 
-        const res = await fetch(
-          `${baseUrl}/inkstream/search?${params}`
-        );
+        const res = await fetch(`${baseUrl}/inkstream/search?${params}`);
         const data = await res.json();
-        setAnimes(data.data || []);
+        
+        if (data.data && data.data.length > 0) {
+          setAnimes(data.data);
+        }
       } catch (error) {
-        console.error("Erreur:", error);
-      } finally {
-        setLoading(false);
+        console.error("Erreur API, utilisation des mock:", error);
+        // On garde les mock
       }
     };
 
-    fetchAnimes();
+    if (search) {
+      fetchAnimes();
+    }
   }, [search]);
 
   // ============================================
@@ -75,6 +90,10 @@ export default function InkStreamPage() {
       setShowSearch(false);
     }
   };
+
+  const filteredAnimes = animes.filter((anime) =>
+    anime.title.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
@@ -128,7 +147,7 @@ export default function InkStreamPage() {
       <main className="flex-1 px-4 py-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold text-white">Animes</h1>
-          <span className="text-ink-muted text-sm">{animes.length} résultats</span>
+          <span className="text-ink-muted text-sm">{filteredAnimes.length} résultats</span>
         </div>
 
         {loading ? (
@@ -137,7 +156,7 @@ export default function InkStreamPage() {
               <div key={i} className="aspect-[2/3] bg-ink-card rounded-xl animate-pulse" />
             ))}
           </div>
-        ) : animes.length === 0 ? (
+        ) : filteredAnimes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <IconAnime />
             <p className="text-ink-muted mt-4">Aucun anime trouvé</p>
@@ -145,7 +164,7 @@ export default function InkStreamPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {animes.map((anime) => (
+            {filteredAnimes.map((anime) => (
               <Link
                 key={anime.id}
                 href={`/inkstream/${anime.id}`}
