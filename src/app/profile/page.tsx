@@ -18,6 +18,8 @@ import {
   Calendar
 } from "lucide-react";
 
+const API_URL = "https://ink-backend.vercel.app";
+
 type UserProfile = {
   id: string;
   username: string;
@@ -41,9 +43,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // ============================================
-  // RÉCUPÉRER LE PROFIL
-  // ============================================
   useEffect(() => {
     const fetchProfile = async () => {
       const token = localStorage.getItem("token");
@@ -54,7 +53,7 @@ export default function ProfilePage() {
       }
 
       try {
-        const res = await fetch("https://ink-backend.vercel.app/users/me", {
+        const res = await fetch(`${API_URL}/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -81,17 +80,11 @@ export default function ProfilePage() {
     fetchProfile();
   }, [router]);
 
-  // ============================================
-  // DÉCONNEXION
-  // ============================================
   const handleLogout = () => {
     localStorage.removeItem("token");
     router.push("/login");
   };
 
-  // ============================================
-  // AFFICHAGE
-  // ============================================
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-ink-bg">
@@ -117,7 +110,7 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
 
-      {/* ===== HEADER ===== */}
+      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
           <span className="text-lg font-bold text-white">Profil</span>
@@ -135,7 +128,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* ===== AVATAR & INFOS ===== */}
+      {/* AVATAR */}
       <section className="px-4 py-6 text-center border-b border-ink-border">
         <div className="relative inline-block">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center text-3xl font-bold text-white mx-auto border-2 border-accent">
@@ -158,9 +151,6 @@ export default function ProfilePage() {
           <Mail className="w-3 h-3" />
           {profile.email}
         </p>
-        <p className="text-ink-muted text-sm mt-1">
-          {profile.bio || "Aucune bio"}
-        </p>
 
         <div className="flex justify-center gap-6 mt-4 text-sm">
           <div>
@@ -177,19 +167,13 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="flex justify-center gap-3 mt-4">
-          <button className="px-4 py-2 rounded-lg bg-accent/10 text-accent text-sm font-semibold hover:bg-accent/20 transition-colors flex items-center gap-2">
-            <Edit className="w-4 h-4" />
-            Modifier
-          </button>
-          <button className="px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-ink-muted text-sm font-semibold hover:text-white transition-colors flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Partager
-          </button>
-        </div>
+        <button className="mt-4 px-4 py-2 rounded-lg bg-accent/10 text-accent text-sm font-semibold hover:bg-accent/20 transition-colors flex items-center gap-2 mx-auto">
+          <Edit className="w-4 h-4" />
+          Modifier le profil
+        </button>
       </section>
 
-      {/* ===== MANGAS PUBLIÉS ===== */}
+      {/* MANGAS */}
       <section className="flex-1 px-4 py-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-ink-muted text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
@@ -240,9 +224,7 @@ export default function ProfilePage() {
         )}
       </section>
 
-      {/* ===== BOTTOM NAVIGATION ===== */}
       <BottomNav />
-
     </div>
   );
 }
