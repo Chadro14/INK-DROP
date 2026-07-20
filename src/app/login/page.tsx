@@ -13,20 +13,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        }
-      );
+      // 🔥 API DIRECTE DU BACKEND
+      const res = await fetch("https://ink-backend.vercel.app/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
       const data = await res.json();
 
@@ -36,7 +34,7 @@ export default function LoginPage() {
 
       localStorage.setItem("token", data.token);
       router.push("/");
-    } catch (err: any) {
+    } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -45,8 +43,6 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 py-8 overflow-hidden bg-ink-bg">
-
-      {/* ===== IMAGE DE FOND ===== */}
       <div
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
         style={{
@@ -54,11 +50,8 @@ export default function LoginPage() {
           backgroundColor: '#0A1628',
         }}
       />
-
-      {/* ===== OVERLAY ===== */}
       <div className="absolute inset-0 z-0 bg-black/60" />
 
-      {/* ===== FORMULAIRE ===== */}
       <div className="relative z-10 w-full max-w-md bg-ink-bg/80 backdrop-blur-md border border-ink-border rounded-2xl p-8 shadow-2xl">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
