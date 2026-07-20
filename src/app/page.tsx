@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { Heart, Eye, Clock, Star, Users, BookOpen, TrendingUp, Award, Search, Bell } from "lucide-react";
+import { Heart, Eye, Clock, Star, Users, BookOpen, TrendingUp, Award, Search, X } from "lucide-react";
 
 // ============================================
-// SVG ICONS
+// SVG LOGO
 // ============================================
 const IconLogo = () => (
-  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="2" y="2" width="20" height="20" rx="4" />
     <path d="M8 8h8v8H8z" />
     <circle cx="12" cy="12" r="2" />
@@ -63,6 +63,8 @@ export default function Home() {
   const [mangas, setMangas] = useState<Manga[]>([]);
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -85,6 +87,13 @@ export default function Home() {
     fetchData();
   }, []);
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      window.location.href = `/discover?search=${encodeURIComponent(searchQuery)}`;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-ink-bg">
@@ -100,25 +109,50 @@ export default function Home() {
       <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent-dark flex items-center justify-center text-white font-bold text-sm">
-              <IconLogo />
-            </div>
+            <IconLogo />
             <span className="text-lg font-bold text-white">
               INK<span className="text-accent">DROP</span>
             </span>
           </Link>
           <div className="flex items-center gap-3">
-            <button className="text-ink-muted hover:text-white transition-colors">
+            <button
+              onClick={() => setShowSearch(!showSearch)}
+              className="text-ink-muted hover:text-white transition-colors"
+            >
               <Search className="w-5 h-5" />
-            </button>
-            <button className="text-ink-muted hover:text-white transition-colors relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-[10px] text-white flex items-center justify-center font-bold">
-                3
-              </span>
             </button>
           </div>
         </div>
+
+        {/* Barre de recherche */}
+        {showSearch && (
+          <form onSubmit={handleSearch} className="mt-3 flex items-center gap-2 animate-fade-in">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Rechercher un manga..."
+              className="flex-1 px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none transition-colors"
+              autoFocus
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors"
+            >
+              OK
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowSearch(false);
+                setSearchQuery("");
+              }}
+              className="text-ink-muted hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </form>
+        )}
       </header>
 
       {/* ===== TAGLINE ===== */}
