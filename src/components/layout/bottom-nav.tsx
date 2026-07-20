@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Home, Compass, Film, User } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Home, Compass, Film, User } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: '/', label: 'Accueil', icon: Home },
-  { href: '/discover', label: 'Découvrir', icon: Compass },
-  { href: '/inkstream', label: 'InkStream', icon: Film },
-  { href: '/profile', label: 'Profil', icon: User },
+  { href: "/", label: "Accueil", icon: Home },
+  { href: "/discover", label: "Découvrir", icon: Compass },
+  { href: "/inkstream", label: "InkStream", icon: Film },
+  { href: "/profile", label: "Profil", icon: User },
 ];
 
 export function BottomNav() {
@@ -26,11 +26,11 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex flex-col items-center justify-center gap-0.5 transition-all duration-200 relative',
-                isActive ? 'text-accent' : 'text-ink-muted hover:text-ink-text'
+                "flex flex-col items-center justify-center gap-0.5 transition-all duration-200 relative",
+                isActive ? "text-accent" : "text-ink-muted hover:text-white"
               )}
             >
-              <Icon className={cn('h-5 w-5 transition-all', isActive && 'fill-accent/10')} />
+              <Icon className={cn("h-5 w-5 transition-all", isActive && "fill-accent/10")} />
               <span className="text-[10px] font-medium">{item.label}</span>
               {isActive && (
                 <span className="absolute -top-1 w-6 h-0.5 rounded-full bg-accent" />
