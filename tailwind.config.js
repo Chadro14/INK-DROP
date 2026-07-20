@@ -11,22 +11,19 @@ const config: Config = {
     extend: {
       colors: {
         // ============================================
-        // INKDROP COLORS
+        // INKDROP COLORS — BLEU/BLANC
         // ============================================
         ink: {
-          bg: '#0F0F0F',
-          card: '#1A1A1A',
-          border: '#2A2A2A',
-          text: '#FFFFFF',
-          muted: '#9CA3AF',
+          bg: '#0A1628',          // Bleu très foncé
+          card: '#0F213A',         // Bleu foncé
+          border: '#1A3A5C',       // Bleu moyen
+          text: '#FFFFFF',         // Blanc
+          muted: '#8CB4E8',        // Bleu clair
         },
-        // ============================================
-        // ACCENT
-        // ============================================
         accent: {
-          DEFAULT: '#FF6B35',
-          light: '#FFE66D',
-          dark: '#F03E5B',
+          DEFAULT: '#3B82F6',      // Bleu vif
+          light: '#60A5FA',        // Bleu clair
+          dark: '#1D4ED8',         // Bleu foncé
         },
         success: '#10B981',
         error: '#EF4444',
@@ -37,8 +34,6 @@ const config: Config = {
       animation: {
         'fade-in': 'fadeIn 0.6s ease-out forwards',
         'slide-up': 'slideUp 0.5s ease-out forwards',
-        'pulse-glow': 'pulseGlow 2s ease-in-out infinite',
-        'float': 'float 6s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -48,14 +43,6 @@ const config: Config = {
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(30px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        pulseGlow: {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(255, 107, 53, 0.2)' },
-          '50%': { boxShadow: '0 0 40px rgba(255, 107, 53, 0.4)' },
-        },
-        float: {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-10px)' },
         },
       },
     },
