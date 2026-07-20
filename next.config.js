@@ -1,21 +1,44 @@
 /** @type {import('next').NextConfig} */
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
-  disable: process.env.NODE_ENV === 'development',
-});
-
-const nextConfig = withPWA({
+const nextConfig = {
   images: {
     domains: [
-      'inkdrop-backend.vercel.app',
+      'ink-backend.vercel.app',
       'i.pinimg.com',
       'slbosebjvnotrifwhbrl.supabase.co',
     ],
   },
   reactStrictMode: true,
   swcMinify: true,
-});
+  output: 'standalone',
+  experimental: {
+    optimizeCss: true,
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
+  },
+  trailingSlash: false,
+  poweredByHeader: false,
+  generateEtags: true,
+  compress: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+      };
+    }
+    return config;
+  },
+};
 
 module.exports = nextConfig;
