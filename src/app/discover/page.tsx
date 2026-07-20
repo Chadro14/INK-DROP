@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Heart, Eye, Search, Filter, X } from "lucide-react";
 
@@ -15,17 +15,12 @@ const IconManga = () => (
   </svg>
 );
 
-export default function DiscoverContent() {
-  const router = useRouter();
+export default function DiscoverPage() {
   const searchParams = useSearchParams();
-
   const [mangas, setMangas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalPages, setTotalPages] = useState(1);
-  const [page, setPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
-
   const [search, setSearch] = useState(searchParams.get("search") || "");
+  const [showFilters, setShowFilters] = useState(false);
   const [genre, setGenre] = useState(searchParams.get("genre") || "");
   const [status, setStatus] = useState(searchParams.get("status") || "");
   const [sort, setSort] = useState(searchParams.get("sort") || "recent");
@@ -38,12 +33,14 @@ export default function DiscoverContent() {
     { value: "likes", label: "Les plus aimés" },
   ];
 
+  // ============================================
+  // FETCH
+  // ============================================
   useEffect(() => {
     const fetchMangas = async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams({
-          page: String(page),
           limit: "20",
           ...(search && { search }),
           ...(genre && { genre }),
@@ -56,7 +53,6 @@ export default function DiscoverContent() {
         );
         const data = await res.json();
         setMangas(data.data || []);
-        setTotalPages(data.meta?.totalPages || 1);
       } catch (error) {
         console.error("Erreur:", error);
       } finally {
@@ -65,17 +61,19 @@ export default function DiscoverContent() {
     };
 
     fetchMangas();
-  }, [page, search, genre, status, sort]);
+  }, [search, genre, status, sort]);
 
+  // ============================================
+  // APPLIQUER FILTRES
+  // ============================================
   const applyFilters = () => {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (genre) params.set("genre", genre);
     if (status) params.set("status", status);
     if (sort) params.set("sort", sort);
-    router.push(`/discover?${params}`);
+    window.location.href = `/discover?${params}`;
     setShowFilters(false);
-    setPage(1);
   };
 
   const clearFilters = () => {
@@ -83,33 +81,62 @@ export default function DiscoverContent() {
     setGenre("");
     setStatus("");
     setSort("recent");
-    router.push("/discover");
-    setPage(1);
+    window.location.href = "/discover";
     setShowFilters(false);
+  };
+
+  // ============================================
+  // HANDLE SEARCH
+  // ============================================
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (search.trim()) {
+      const params = new URLSearchParams();
+      params.set("search", search);
+      if (genre) params.set("genre", genre);
+      if (status) params.set("status", status);
+      if (sort) params.set("sort", sort);
+      window.location.href = `/discover?${params}`;
+    }
   };
 
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
 
-      {/* HEADER */}
+      {/* ===== HEADER ===== */}
       <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
-        <div className="flex items-center justify-end max-w-lg mx-auto gap-3">
+        <div className="flex items-center justify-between max-w-lg mx-auto">
+          <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher un manga..."
+              className="flex-1 px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none transition-colors"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </form>
           <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="text-ink-muted hover:text-white transition-colors"
+            onClick={() => setShowFilters(true)}
+            className="text-ink-muted hover:text-white ml-2"
           >
             <Filter className="w-5 h-5" />
           </button>
-          <Link href="/" className="text-ink-muted hover:text-white transition-colors">
-            <Search className="w-5 h-5" />
+          <Link href="/" className="text-ink-muted hover:text-white ml-1">
+            <X className="w-5 h-5" />
           </Link>
         </div>
       </header>
 
-      {/* FILTRES */}
+      {/* ===== FILTRES (overlay) ===== */}
       {showFilters && (
-        <div className="fixed inset-0 z-50 bg-ink-bg/95 backdrop-blur-sm animate-fade-in">
-          <div className="max-w-lg mx-auto px-4 py-6">
+        <div className="fixed inset-0 z-50 bg-ink-bg/95 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="max-w-lg mx-auto px-4 py-6 min-h-screen">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-white">Filtres</h2>
               <button onClick={() => setShowFilters(false)} className="text-ink-muted hover:text-white">
@@ -117,17 +144,7 @@ export default function DiscoverContent() {
               </button>
             </div>
 
-            <div className="mb-4">
-              <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Recherche</label>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Titre du manga..."
-                className="w-full mt-1 px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none transition-colors"
-              />
-            </div>
-
+            {/* Genre */}
             <div className="mb-4">
               <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Genre</label>
               <div className="flex flex-wrap gap-2 mt-1">
@@ -147,6 +164,7 @@ export default function DiscoverContent() {
               </div>
             </div>
 
+            {/* Statut */}
             <div className="mb-4">
               <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Statut</label>
               <div className="flex flex-wrap gap-2 mt-1">
@@ -166,6 +184,7 @@ export default function DiscoverContent() {
               </div>
             </div>
 
+            {/* Tri */}
             <div className="mb-6">
               <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Trier par</label>
               <select
@@ -197,7 +216,7 @@ export default function DiscoverContent() {
         </div>
       )}
 
-      {/* RÉSULTATS */}
+      {/* ===== RÉSULTATS ===== */}
       <main className="flex-1 px-4 py-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold text-white">Découvrir</h1>
@@ -222,62 +241,38 @@ export default function DiscoverContent() {
             </button>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              {mangas.map((manga) => (
-                <Link
-                  key={manga.id}
-                  href={`/manga/${manga.id}`}
-                  className="bg-ink-card border border-ink-border rounded-xl overflow-hidden hover:border-accent transition-all active:scale-[0.97]"
-                >
-                  <div className="aspect-[2/3] bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center relative">
-                    <IconManga />
-                    <div className="absolute top-2 left-2 flex gap-1">
-                      {manga.genre?.slice(0, 2).map((g: string) => (
-                        <span key={g} className="text-[8px] font-medium px-1.5 py-0.5 rounded bg-black/50 text-white backdrop-blur-sm">
-                          {g}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="p-2">
-                    <h3 className="text-sm font-semibold truncate text-white">{manga.title}</h3>
-                    <p className="text-ink-muted text-[10px] truncate">{manga.author?.username || "Inconnu"}</p>
-                    <div className="flex items-center gap-3 mt-0.5 text-ink-muted text-[10px]">
-                      <span className="flex items-center gap-0.5">
-                        <Heart className="w-3 h-3 text-accent" /> {manga.likesCount || 0}
+          <div className="grid grid-cols-2 gap-3">
+            {mangas.map((manga: any) => (
+              <Link
+                key={manga.id}
+                href={`/manga/${manga.id}`}
+                className="bg-ink-card border border-ink-border rounded-xl overflow-hidden hover:border-accent transition-all active:scale-[0.97]"
+              >
+                <div className="aspect-[2/3] bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center relative">
+                  <IconManga />
+                  <div className="absolute top-2 left-2 flex gap-1">
+                    {manga.genre?.slice(0, 2).map((g: string) => (
+                      <span key={g} className="text-[8px] font-medium px-1.5 py-0.5 rounded bg-black/50 text-white backdrop-blur-sm">
+                        {g}
                       </span>
-                      <span className="flex items-center gap-0.5">
-                        <Eye className="w-3 h-3 text-accent" /> {manga.viewsCount || 0}
-                      </span>
-                    </div>
+                    ))}
                   </div>
-                </Link>
-              ))}
-            </div>
-
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-6">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-accent transition-colors text-white"
-                >
-                  Précédent
-                </button>
-                <span className="text-ink-muted text-sm px-4">
-                  {page} / {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:border-accent transition-colors text-white"
-                >
-                  Suivant
-                </button>
-              </div>
-            )}
-          </>
+                </div>
+                <div className="p-2">
+                  <h3 className="text-sm font-semibold truncate text-white">{manga.title}</h3>
+                  <p className="text-ink-muted text-[10px] truncate">{manga.author?.username || "Inconnu"}</p>
+                  <div className="flex items-center gap-3 mt-0.5 text-ink-muted text-[10px]">
+                    <span className="flex items-center gap-0.5">
+                      <Heart className="w-3 h-3 text-accent" /> {manga.likesCount || 0}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <Eye className="w-3 h-3 text-accent" /> {manga.viewsCount || 0}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         )}
       </main>
 
