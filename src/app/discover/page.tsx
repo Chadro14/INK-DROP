@@ -15,7 +15,7 @@ const IconManga = () => (
   </svg>
 );
 
-export default function DiscoverPage() {
+export default function DiscoverContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -91,7 +91,7 @@ export default function DiscoverPage() {
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
 
-      {/* ===== HEADER SANS LOGO ===== */}
+      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
         <div className="flex items-center justify-end max-w-lg mx-auto gap-3">
           <button
@@ -106,7 +106,7 @@ export default function DiscoverPage() {
         </div>
       </header>
 
-      {/* ===== FILTRES ===== */}
+      {/* FILTRES */}
       {showFilters && (
         <div className="fixed inset-0 z-50 bg-ink-bg/95 backdrop-blur-sm animate-fade-in">
           <div className="max-w-lg mx-auto px-4 py-6">
@@ -197,7 +197,7 @@ export default function DiscoverPage() {
         </div>
       )}
 
-      {/* ===== RÉSULTATS ===== */}
+      {/* RÉSULTATS */}
       <main className="flex-1 px-4 py-4">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-xl font-bold text-white">Découvrir</h1>
