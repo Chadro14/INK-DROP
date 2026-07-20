@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { 
   User, 
@@ -12,18 +13,17 @@ import {
   LogOut,
   Star,
   Edit,
-  Eye
+  Eye,
+  Mail,
+  Calendar
 } from "lucide-react";
 
-// ============================================
-// TYPES
-// ============================================
 type UserProfile = {
   id: string;
   username: string;
   email: string;
-  avatarUrl: string;
-  bio: string;
+  avatarUrl: string | null;
+  bio: string | null;
   isCertified: boolean;
   premiumActive: boolean;
   createdAt: string;
@@ -32,81 +32,66 @@ type UserProfile = {
     followers: number;
     following: number;
   };
+  mangas?: any[];
 };
 
-type Manga = {
-  id: string;
-  title: string;
-  coverUrl: string;
-  genre: string[];
-  likesCount: number;
-  viewsCount: number;
-};
-
-// ============================================
-// COMPOSANTS SVG
-// ============================================
-const IconManga = () => (
-  <svg className="w-8 h-8 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <line x1="7" y1="7" x2="17" y2="7" />
-    <line x1="7" y1="11" x2="17" y2="11" />
-    <line x1="7" y1="15" x2="13" y2="15" />
-  </svg>
-);
-
-// ============================================
-// PAGE
-// ============================================
 export default function ProfilePage() {
+  const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [mangas, setMangas] = useState<Manga[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   // ============================================
-  // FETCH PROFIL
+  // RÉCUPÉRER LE PROFIL
   // ============================================
   useEffect(() => {
     const fetchProfile = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          window.location.href = "/login";
-          return;
-        }
+      const token = localStorage.getItem("token");
+      
+      if (!token) {
+        router.push("/login");
+        return;
+      }
 
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+      try {
+        const res = await fetch("https://ink-backend.vercel.app/users/me", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
         if (!res.ok) {
-          throw new Error("Non authentifié");
+          if (res.status === 401) {
+            localStorage.removeItem("token");
+            router.push("/login");
+            return;
+          }
+          throw new Error("Erreur lors du chargement du profil");
         }
 
         const data = await res.json();
         setProfile(data);
-        setMangas(data.mangas || []);
-      } catch (error) {
-        console.error("Erreur:", error);
-        window.location.href = "/login";
+      } catch (err: any) {
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProfile();
-  }, []);
+  }, [router]);
 
   // ============================================
   // DÉCONNEXION
   // ============================================
   const handleLogout = () => {
     localStorage.removeItem("token");
-    window.location.href = "/login";
+    router.push("/login");
   };
 
+  // ============================================
+  // AFFICHAGE
+  // ============================================
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-ink-bg">
@@ -115,13 +100,16 @@ export default function ProfilePage() {
     );
   }
 
-  if (!profile) {
+  if (error || !profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-ink-bg">
-        <p className="text-ink-muted">Utilisateur non trouvé</p>
-        <Link href="/login" className="mt-4 px-6 py-2 rounded-lg bg-accent text-white font-semibold">
+      <div className="flex flex-col items-center justify-center h-screen bg-ink-bg px-4">
+        <p className="text-ink-muted text-center">{error || "Profil non trouvé"}</p>
+        <button
+          onClick={() => router.push("/login")}
+          className="mt-4 px-6 py-2 rounded-lg bg-accent text-white font-semibold"
+        >
           Se connecter
-        </Link>
+        </button>
       </div>
     );
   }
@@ -147,7 +135,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* ===== AVATAR & NOM ===== */}
+      {/* ===== AVATAR & INFOS ===== */}
       <section className="px-4 py-6 text-center border-b border-ink-border">
         <div className="relative inline-block">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center text-3xl font-bold text-white mx-auto border-2 border-accent">
@@ -166,7 +154,13 @@ export default function ProfilePage() {
         </div>
 
         <h1 className="text-xl font-bold text-white mt-3">{profile.username}</h1>
-        <p className="text-ink-muted text-sm">{profile.bio || "Aucune bio"}</p>
+        <p className="text-ink-muted text-sm flex items-center justify-center gap-1">
+          <Mail className="w-3 h-3" />
+          {profile.email}
+        </p>
+        <p className="text-ink-muted text-sm mt-1">
+          {profile.bio || "Aucune bio"}
+        </p>
 
         <div className="flex justify-center gap-6 mt-4 text-sm">
           <div>
@@ -183,10 +177,16 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <button className="mt-4 px-6 py-2 rounded-lg bg-accent/10 text-accent text-sm font-semibold hover:bg-accent/20 transition-colors flex items-center gap-2 mx-auto">
-          <Edit className="w-4 h-4" />
-          Modifier le profil
-        </button>
+        <div className="flex justify-center gap-3 mt-4">
+          <button className="px-4 py-2 rounded-lg bg-accent/10 text-accent text-sm font-semibold hover:bg-accent/20 transition-colors flex items-center gap-2">
+            <Edit className="w-4 h-4" />
+            Modifier
+          </button>
+          <button className="px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-ink-muted text-sm font-semibold hover:text-white transition-colors flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Partager
+          </button>
+        </div>
       </section>
 
       {/* ===== MANGAS PUBLIÉS ===== */}
@@ -201,9 +201,9 @@ export default function ProfilePage() {
           </Link>
         </div>
 
-        {mangas.length === 0 ? (
+        {!profile.mangas || profile.mangas.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
-            <IconManga />
+            <BookOpen className="w-12 h-12 text-ink-muted/30" />
             <p className="text-ink-muted mt-4 text-sm">Aucun manga publié</p>
             <Link
               href="/creator/upload"
@@ -214,21 +214,14 @@ export default function ProfilePage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {mangas.map((manga) => (
+            {profile.mangas.map((manga: any) => (
               <Link
                 key={manga.id}
                 href={`/manga/${manga.id}`}
                 className="bg-ink-card border border-ink-border rounded-xl overflow-hidden hover:border-accent transition-all active:scale-[0.97]"
               >
                 <div className="aspect-[2/3] bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center relative">
-                  <IconManga />
-                  <div className="absolute top-2 left-2 flex gap-1">
-                    {manga.genre?.slice(0, 2).map((g: string) => (
-                      <span key={g} className="text-[8px] font-medium px-1.5 py-0.5 rounded bg-black/50 text-white backdrop-blur-sm">
-                        {g}
-                      </span>
-                    ))}
-                  </div>
+                  <BookOpen className="w-8 h-8 text-ink-muted/50" />
                 </div>
                 <div className="p-2">
                   <h3 className="text-sm font-semibold truncate text-white">{manga.title}</h3>
