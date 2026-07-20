@@ -5,17 +5,6 @@ import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Heart, Eye, Clock, Star, Users, BookOpen, TrendingUp, Award, Search, X } from "lucide-react";
 
-// ============================================
-// SVG LOGO
-// ============================================
-const IconLogo = () => (
-  <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="2" y="2" width="20" height="20" rx="4" />
-    <path d="M8 8h8v8H8z" />
-    <circle cx="12" cy="12" r="2" />
-  </svg>
-);
-
 const IconManga = () => (
   <svg className="w-8 h-8 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -34,9 +23,6 @@ const IconTrophy = () => (
   </svg>
 );
 
-// ============================================
-// TYPES
-// ============================================
 type Manga = {
   id: string;
   title: string;
@@ -56,9 +42,6 @@ type Creator = {
   _count: { mangas: number; followers: number };
 };
 
-// ============================================
-// PAGE
-// ============================================
 export default function Home() {
   const [mangas, setMangas] = useState<Manga[]>([]);
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -105,23 +88,15 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
 
-      {/* ===== HEADER ===== */}
+      {/* ===== HEADER SANS LOGO ===== */}
       <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Link href="/" className="flex items-center gap-2">
-            <IconLogo />
-            <span className="text-lg font-bold text-white">
-              INK<span className="text-accent">DROP</span>
-            </span>
-          </Link>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowSearch(!showSearch)}
-              className="text-ink-muted hover:text-white transition-colors"
-            >
-              <Search className="w-5 h-5" />
-            </button>
-          </div>
+        <div className="flex items-center justify-end max-w-lg mx-auto">
+          <button
+            onClick={() => setShowSearch(!showSearch)}
+            className="text-ink-muted hover:text-white transition-colors"
+          >
+            <Search className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Barre de recherche */}
@@ -293,9 +268,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== BOTTOM NAVIGATION ===== */}
       <BottomNav />
-
     </div>
   );
 }
