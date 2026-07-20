@@ -11,7 +11,7 @@ const nextConfig = {
   swcMinify: true,
   output: 'standalone',
   experimental: {
-    optimizeCss: true,
+    optimizeCss: false, // ← DÉSACTIVÉ
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
