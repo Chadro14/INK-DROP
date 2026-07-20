@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Mail, User, Lock, ArrowRight } from "lucide-react";
 
+// 🔥 FALLBACK SI LA VARIABLE D'ENV N'EST PAS DÉFINIE
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://ink-backend.vercel.app";
+
 export default function RegisterPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
@@ -20,14 +23,11 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/register`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, email, password }),
-        }
-      );
+      const res = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password }),
+      });
 
       const data = await res.json();
 
@@ -46,8 +46,7 @@ export default function RegisterPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 py-8 overflow-hidden bg-ink-bg">
-
-      {/* ===== IMAGE DE FOND ===== */}
+      {/* IMAGE DE FOND */}
       <div
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
         style={{
@@ -55,11 +54,9 @@ export default function RegisterPage() {
           backgroundColor: '#0A1628',
         }}
       />
-
-      {/* ===== OVERLAY ===== */}
       <div className="absolute inset-0 z-0 bg-black/60" />
 
-      {/* ===== FORMULAIRE ===== */}
+      {/* FORMULAIRE */}
       <div className="relative z-10 w-full max-w-md bg-ink-bg/80 backdrop-blur-md border border-ink-border rounded-2xl p-8 shadow-2xl">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
