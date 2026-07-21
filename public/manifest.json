@@ -2,10 +2,10 @@
   "name": "INKDROP",
   "short_name": "INKDROP",
   "description": "Plateforme de mangas et animes",
-  "start_url": "/",
+  "start_url": "/splash",
   "display": "standalone",
   "background_color": "#FFFFFF",
-  "theme_color": "#000000",
+  "theme_color": "#FFFFFF",
   "orientation": "portrait",
   "icons": [
     {
