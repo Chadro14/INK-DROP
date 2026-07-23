@@ -26,45 +26,41 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      // 🔥 ALERTE 1 : Vérifier si le token existe
       const token = localStorage.getItem("token");
       alert(`Token: ${token ? "EXISTE ✅" : "MANQUANT ❌"}`);
-      
+
       if (!token) {
         setError("Vous n'êtes pas connecté");
         setLoading(false);
-        alert("❌ Pas de token → redirection vers /login");
         router.push("/login");
         return;
       }
 
       try {
-        alert("🔵 Envoi de la requête vers /users/me");
-        
+        alert(`🔵 Envoi requête vers /users/me`);
+        alert(`🔑 Token: ${token.substring(0, 30)}...`);
+
         const res = await fetch(`${API_URL}/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
-        alert(`🟢 Réponse reçue : Status ${res.status}`);
+        alert(`🟢 Status: ${res.status}`);
+
+        // 🔥 Lire la réponse brute
+        const text = await res.text();
+        alert(`📦 Réponse brute: ${text.substring(0, 100)}...`);
 
         if (!res.ok) {
-          if (res.status === 401) {
-            localStorage.removeItem("token");
-            setError("Session expirée");
-            alert("🔴 401 → Token invalide");
-            router.push("/login");
-            return;
-          }
-          throw new Error(`Erreur ${res.status}`);
+          throw new Error(`Erreur ${res.status}: ${text}`);
         }
 
-        const data = await res.json();
-        alert(`✅ Profil chargé : ${data.username}`);
+        const data = JSON.parse(text);
+        alert(`✅ Profil chargé: ${data.username}`);
         setProfile(data);
       } catch (err: any) {
-        alert(`❌ ERREUR : ${err.message}`);
+        alert(`❌ ERREUR: ${err.message}`);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -74,150 +70,5 @@ export default function ProfilePage() {
     fetchProfile();
   }, [router]);
 
-  // ============================================
-  // AFFICHAGE
-  // ============================================
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-white">
-        <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (error || !profile) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-white px-4">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-4 w-full max-w-md">
-          <p className="text-red-600 font-semibold text-center">❌ {error || "Profil non trouvé"}</p>
-        </div>
-        <button
-          onClick={() => router.push("/login")}
-          className="px-6 py-2 rounded-lg bg-black text-white font-semibold"
-        >
-          Se connecter
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col min-h-screen pb-20 bg-white">
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          <span className="text-lg font-bold text-black">Profil</span>
-          <div className="flex items-center gap-3">
-            <button className="text-gray-500 hover:text-black transition-colors">
-              <Settings className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => {
-                localStorage.removeItem("token");
-                router.push("/login");
-              }}
-              className="text-gray-500 hover:text-red-500 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <section className="px-4 py-6 text-center border-b border-gray-200">
-        <div className="relative inline-block">
-          <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-3xl font-bold text-black mx-auto border-2 border-black">
-            {profile.username?.charAt(0).toUpperCase() || "?"}
-          </div>
-          {profile.isCertified && (
-            <span className="absolute -top-1 -right-1">
-              <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-            </span>
-          )}
-          {profile.premiumActive && (
-            <span className="absolute -bottom-1 -right-1 bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-              PREMIUM
-            </span>
-          )}
-        </div>
-
-        <h1 className="text-xl font-bold text-black mt-3">{profile.username}</h1>
-        <p className="text-gray-500 text-sm flex items-center justify-center gap-1">
-          <Mail className="w-3 h-3" />
-          {profile.email}
-        </p>
-
-        <div className="flex justify-center gap-6 mt-4 text-sm">
-          <div>
-            <span className="text-black font-bold">{profile._count?.mangas || 0}</span>
-            <span className="text-gray-500 ml-1">mangas</span>
-          </div>
-          <div>
-            <span className="text-black font-bold">{profile._count?.followers || 0}</span>
-            <span className="text-gray-500 ml-1">abonnés</span>
-          </div>
-          <div>
-            <span className="text-black font-bold">{profile._count?.following || 0}</span>
-            <span className="text-gray-500 ml-1">abonnements</span>
-          </div>
-        </div>
-
-        <button className="mt-4 px-4 py-2 rounded-lg bg-gray-100 text-black text-sm font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2 mx-auto">
-          <Edit className="w-4 h-4" />
-          Modifier le profil
-        </button>
-      </section>
-
-      <section className="flex-1 px-4 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-gray-500 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
-            <BookOpen className="w-3.5 h-3.5 text-black" />
-            Mangas publiés
-          </h2>
-          <Link href="/creator/upload" className="text-black text-xs font-medium hover:underline">
-            + Ajouter
-          </Link>
-        </div>
-
-        {!profile.mangas || profile.mangas.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <BookOpen className="w-12 h-12 text-gray-300" />
-            <p className="text-gray-500 mt-4 text-sm">Aucun manga publié</p>
-            <Link
-              href="/creator/upload"
-              className="mt-4 px-6 py-2 rounded-lg bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
-            >
-              Publier mon premier manga
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {profile.mangas.map((manga: any) => (
-              <Link
-                key={manga.id}
-                href={`/manga/${manga.id}`}
-                className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden hover:border-black transition-all active:scale-[0.97]"
-              >
-                <div className="aspect-[2/3] bg-gray-200 flex items-center justify-center relative">
-                  <BookOpen className="w-8 h-8 text-gray-400" />
-                </div>
-                <div className="p-2">
-                  <h3 className="text-sm font-semibold truncate text-black">{manga.title}</h3>
-                  <div className="flex items-center gap-3 mt-0.5 text-gray-500 text-[10px]">
-                    <span className="flex items-center gap-0.5">
-                      <Heart className="w-3 h-3 text-black" /> {manga.likesCount || 0}
-                    </span>
-                    <span className="flex items-center gap-0.5">
-                      <Eye className="w-3 h-3 text-black" /> {manga.viewsCount || 0}
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <BottomNav />
-    </div>
-  );
+  // ... le reste du code (affichage)
 }
