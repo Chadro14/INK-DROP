@@ -19,7 +19,6 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // 🔥 API DIRECTE DU BACKEND
       const res = await fetch("https://ink-backend.vercel.app/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -32,8 +31,18 @@ export default function LoginPage() {
         throw new Error(data.message || "Email ou mot de passe incorrect");
       }
 
+      // 🔥 STOCKER LE TOKEN
       localStorage.setItem("token", data.token);
+      
+      // 🔥 ALERTE 1 : Vérifier que le token est stocké
+      alert(`✅ Token stocké : ${data.token.substring(0, 20)}...`);
+      
       router.push("/");
+      
+      // 🔥 ALERTE 2 : Vérifier que le token est toujours là après redirection
+      setTimeout(() => {
+        alert(`🔴 Token dans localStorage : ${localStorage.getItem("token")}`);
+      }, 500);
     } catch (err) {
       setError(err.message);
     } finally {
