@@ -1,0 +1,311 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { BottomNav } from "@/components/layout/bottom-nav";
+import { 
+  ArrowLeft, 
+  Heart, 
+  Eye, 
+  BookOpen,
+  User,
+  Calendar,
+  Tag,
+  ChevronRight,
+  Share2,
+  Bookmark
+} from "lucide-react";
+
+const API_URL = "https://ink-backend.vercel.app";
+
+type Manga = {
+  id: string;
+  title: string;
+  description: string;
+  coverUrl: string;
+  author: {
+    id: string;
+    username: string;
+    avatarUrl: string;
+    isCertified: boolean;
+  };
+  status: string;
+  genre: string[];
+  viewsCount: number;
+  likesCount: number;
+  subscribersCount: number;
+  commentsCount: number;
+  isPremium: boolean;
+  createdAt: string;
+  chapters: {
+    id: string;
+    number: number;
+    title: string;
+    isFree: boolean;
+    price: number;
+    pageCount: number;
+    publishedAt: string;
+  }[];
+};
+
+export default function MangaPage() {
+  const params = useParams();
+  const router = useRouter();
+  const [manga, setManga] = useState<Manga | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [isLiked, setIsLiked] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  const mangaId = params.id as string;
+
+  // ============================================
+  // RÉCUPÉRER LE MANGA
+  // ============================================
+  useEffect(() => {
+    const fetchManga = async () => {
+      try {
+        const res = await fetch(`${API_URL}/mangas/${mangaId}`);
+        if (!res.ok) {
+          throw new Error("Manga non trouvé");
+        }
+        const data = await res.json();
+        setManga(data);
+        
+        // Vérifier si l'utilisateur a liké ou s'est abonné
+        const token = localStorage.getItem("token");
+        if (token) {
+          const [likedRes, subRes] = await Promise.all([
+            fetch(`${API_URL}/social/has-liked/${mangaId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch(`${API_URL}/social/is-subscribed/${mangaId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+          ]);
+          const likedData = await likedRes.json();
+          const subData = await subRes.json();
+          setIsLiked(likedData.liked || false);
+          setIsSubscribed(subData.subscribed || false);
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchManga();
+  }, [mangaId]);
+
+  // ============================================
+  // LIKE
+  // ============================================
+  const handleLike = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/social/like/${mangaId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setIsLiked(data.liked);
+      setManga((prev) => prev ? {
+        ...prev,
+        likesCount: data.liked ? prev.likesCount + 1 : prev.likesCount - 1,
+      } : null);
+    } catch (error) {
+      console.error("Erreur like:", error);
+    }
+  };
+
+  // ============================================
+  // ABONNEMENT
+  // ============================================
+  const handleSubscribe = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/social/subscribe/${mangaId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setIsSubscribed(data.subscribed);
+      setManga((prev) => prev ? {
+        ...prev,
+        subscribersCount: data.subscribed ? prev.subscribersCount + 1 : prev.subscribersCount - 1,
+      } : null);
+    } catch (error) {
+      console.error("Erreur abonnement:", error);
+    }
+  };
+
+  // ============================================
+  // AFFICHAGE
+  // ============================================
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-white">
+        <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error || !manga) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-white px-4">
+        <p className="text-gray-500 text-center">{error || "Manga non trouvé"}</p>
+        <Link href="/discover" className="mt-4 px-6 py-2 rounded-lg bg-black text-white font-semibold">
+          Retourner à la découverte
+        </Link>
+      </div>
+    );
+  }
+
+  const statusColors = {
+    ONGOING: "bg-green-100 text-green-700 border-green-200",
+    COMPLETED: "bg-blue-100 text-blue-700 border-blue-200",
+    HIATUS: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  };
+
+  const statusLabels = {
+    ONGOING: "En cours",
+    COMPLETED: "Terminé",
+    HIATUS: "En pause",
+  };
+
+  return (
+    <div className="flex flex-col min-h-screen pb-20 bg-white">
+
+      {/* ===== HEADER ===== */}
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between max-w-lg mx-auto">
+          <Link href="/discover" className="text-gray-500 hover:text-black transition-colors flex items-center gap-1">
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Retour</span>
+          </Link>
+          <span className="text-lg font-bold text-black truncate max-w-[150px]">{manga.title}</span>
+          <button className="text-gray-500 hover:text-black transition-colors">
+            <Share2 className="w-5 h-5" />
+          </button>
+        </div>
+      </header>
+
+      {/* ===== COUVERTURE ===== */}
+      <div className="relative aspect-[2/3] bg-gray-200">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <BookOpen className="w-24 h-24 text-gray-400/50" />
+        </div>
+        <div className="absolute bottom-4 left-4 right-4">
+          <h1 className="text-2xl font-bold text-white">{manga.title}</h1>
+          <Link href={`/creator/${manga.author.username}`} className="text-white/80 text-sm flex items-center gap-1 hover:text-white">
+            <User className="w-3 h-3" />
+            {manga.author.username}
+          </Link>
+        </div>
+      </div>
+
+      {/* ===== STATS ===== */}
+      <section className="px-4 py-4 border-b border-gray-200">
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-1 text-gray-500">
+            <Eye className="w-4 h-4" />
+            <span>{manga.viewsCount}</span>
+          </div>
+          <button onClick={handleLike} className="flex items-center gap-1 transition-colors">
+            <Heart className={`w-4 h-4 ${isLiked ? "fill-red-500 text-red-500" : "text-gray-500 hover:text-red-500"}`} />
+            <span className={isLiked ? "text-red-500" : "text-gray-500"}>{manga.likesCount}</span>
+          </button>
+          <div className="flex items-center gap-1 text-gray-500">
+            <span>📖 {manga.chapters?.length || 0}</span>
+          </div>
+          <button 
+            onClick={handleSubscribe}
+            className={`ml-auto px-4 py-1 rounded-full text-sm font-medium transition-colors ${
+              isSubscribed 
+                ? "bg-gray-200 text-black hover:bg-gray-300" 
+                : "bg-black text-white hover:bg-gray-800"
+            }`}
+          >
+            {isSubscribed ? "Abonné" : "S'abonner"}
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mt-3">
+          {manga.genre.map((g) => (
+            <span key={g} className="px-3 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs">
+              {g}
+            </span>
+          ))}
+          <span className={`px-3 py-0.5 rounded-full text-xs border ${statusColors[manga.status as keyof typeof statusColors]}`}>
+            {statusLabels[manga.status as keyof typeof statusLabels]}
+          </span>
+          {manga.isPremium && (
+            <span className="px-3 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs border border-yellow-200">
+              ⭐ Premium
+            </span>
+          )}
+        </div>
+      </section>
+
+      {/* ===== DESCRIPTION ===== */}
+      <section className="px-4 py-4 border-b border-gray-200">
+        <p className="text-gray-600 text-sm leading-relaxed">
+          {manga.description || "Aucune description disponible."}
+        </p>
+      </section>
+
+      {/* ===== CHAPITRES ===== */}
+      <section className="flex-1 px-4 py-4">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Chapitres</h2>
+        <div className="space-y-2">
+          {manga.chapters && manga.chapters.length > 0 ? (
+            manga.chapters.map((chapter) => (
+              <Link
+                key={chapter.id}
+                href={`/manga/${mangaId}/chapter/${chapter.number}`}
+                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100 hover:border-black transition-colors active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-sm font-bold text-gray-700">
+                    {chapter.number}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-black">{chapter.title || `Chapitre ${chapter.number}`}</p>
+                    <p className="text-xs text-gray-400">
+                      {chapter.pageCount || 0} pages
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {chapter.isFree ? (
+                    <span className="text-xs text-green-600">Gratuit</span>
+                  ) : (
+                    <span className="text-xs text-gray-500">{chapter.price || 0.50}$</span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </div>
+              </Link>
+            ))
+          ) : (
+            <p className="text-gray-400 text-sm text-center py-8">Aucun chapitre publié</p>
+          )}
+        </div>
+      </section>
+
+      <BottomNav />
+    </div>
+  );
+}
