@@ -18,81 +18,61 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 
-type UserProfile = {
-  id: string;
-  username: string;
-  email: string;
-  avatarUrl: string | null;
-  bio: string | null;
-  isCertified: boolean;
-  premiumActive: boolean;
-  createdAt: string;
-  _count: {
-    mangas: number;
-    followers: number;
-    following: number;
-  };
-  mangas?: any[];
-};
-
 export default function ProfilePage() {
   const router = useRouter();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [debugInfo, setDebugInfo] = useState("");
 
   useEffect(() => {
     const fetchProfile = async () => {
+      // 🔥 ALERTE 1 : Vérifier si le token existe
       const token = localStorage.getItem("token");
+      alert(`Token: ${token ? "EXISTE ✅" : "MANQUANT ❌"}`);
       
-      // 🔥 AFFICHAGE DU TOKEN DANS L'UI
-      setDebugInfo(`Token: ${token ? token.substring(0, 20) + "..." : "AUCUN TOKEN"}`);
-
       if (!token) {
         setError("Vous n'êtes pas connecté");
         setLoading(false);
+        alert("❌ Pas de token → redirection vers /login");
+        router.push("/login");
         return;
       }
 
       try {
+        alert("🔵 Envoi de la requête vers /users/me");
+        
         const res = await fetch(`${API_URL}/users/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
 
-        // 🔥 AFFICHAGE DU STATUT DE LA RÉPONSE
-        setDebugInfo((prev) => `${prev}\nStatus: ${res.status}`);
+        alert(`🟢 Réponse reçue : Status ${res.status}`);
 
         if (!res.ok) {
           if (res.status === 401) {
             localStorage.removeItem("token");
-            setError("Session expirée, reconnectez-vous");
-            setLoading(false);
+            setError("Session expirée");
+            alert("🔴 401 → Token invalide");
+            router.push("/login");
             return;
           }
-          throw new Error(`Erreur ${res.status}: ${res.statusText}`);
+          throw new Error(`Erreur ${res.status}`);
         }
 
         const data = await res.json();
+        alert(`✅ Profil chargé : ${data.username}`);
         setProfile(data);
-        setDebugInfo((prev) => `${prev}\n✅ Profil chargé`);
       } catch (err: any) {
+        alert(`❌ ERREUR : ${err.message}`);
         setError(err.message);
-        setDebugInfo((prev) => `${prev}\n❌ Erreur: ${err.message}`);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProfile();
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/login");
-  };
+  }, [router]);
 
   // ============================================
   // AFFICHAGE
@@ -105,13 +85,11 @@ export default function ProfilePage() {
     );
   }
 
-  // 🔥 AFFICHAGE DE L'ERREUR ET DU DEBUG
   if (error || !profile) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-white px-4">
-        <div className="w-full max-w-md bg-red-50 border border-red-200 rounded-xl p-6 mb-4">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-4 w-full max-w-md">
           <p className="text-red-600 font-semibold text-center">❌ {error || "Profil non trouvé"}</p>
-          <p className="text-gray-500 text-xs text-center mt-2 whitespace-pre-wrap">{debugInfo}</p>
         </div>
         <button
           onClick={() => router.push("/login")}
@@ -119,19 +97,12 @@ export default function ProfilePage() {
         >
           Se connecter
         </button>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-2 px-6 py-2 rounded-lg bg-gray-200 text-black font-semibold"
-        >
-          🔄 Recharger
-        </button>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-white">
-      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
           <span className="text-lg font-bold text-black">Profil</span>
@@ -140,7 +111,10 @@ export default function ProfilePage() {
               <Settings className="w-5 h-5" />
             </button>
             <button
-              onClick={handleLogout}
+              onClick={() => {
+                localStorage.removeItem("token");
+                router.push("/login");
+              }}
               className="text-gray-500 hover:text-red-500 transition-colors"
             >
               <LogOut className="w-5 h-5" />
@@ -149,7 +123,6 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* AVATAR */}
       <section className="px-4 py-6 text-center border-b border-gray-200">
         <div className="relative inline-block">
           <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-3xl font-bold text-black mx-auto border-2 border-black">
@@ -194,7 +167,6 @@ export default function ProfilePage() {
         </button>
       </section>
 
-      {/* MANGAS */}
       <section className="flex-1 px-4 py-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-gray-500 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
