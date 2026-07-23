@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -31,19 +31,9 @@ export default function LoginPage() {
         throw new Error(data.message || "Email ou mot de passe incorrect");
       }
 
-      // 🔥 STOCKER LE TOKEN
       localStorage.setItem("token", data.token);
-      
-      // 🔥 ALERTE 1 : Vérifier que le token est stocké
-      alert(`✅ Token stocké : ${data.token.substring(0, 20)}...`);
-      
       router.push("/");
-      
-      // 🔥 ALERTE 2 : Vérifier que le token est toujours là après redirection
-      setTimeout(() => {
-        alert(`🔴 Token dans localStorage : ${localStorage.getItem("token")}`);
-      }, 500);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
@@ -52,15 +42,20 @@ export default function LoginPage() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 py-8 overflow-hidden bg-ink-bg">
+
+      {/* ===== IMAGE DE FOND ===== */}
       <div
         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: `url('https://n.uguu.se/tjiqhbva.jpg')`,
+          backgroundImage: `url('https://files.catbox.moe/r35ie9.jpg')`,
           backgroundColor: '#0A1628',
         }}
       />
+
+      {/* ===== OVERLAY ===== */}
       <div className="absolute inset-0 z-0 bg-black/60" />
 
+      {/* ===== FORMULAIRE ===== */}
       <div className="relative z-10 w-full max-w-md bg-ink-bg/80 backdrop-blur-md border border-ink-border rounded-2xl p-8 shadow-2xl">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
