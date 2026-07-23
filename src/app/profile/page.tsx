@@ -13,7 +13,11 @@ import {
   Star,
   Edit,
   Eye,
-  Mail
+  Mail,
+  User,
+  ChevronRight,
+  Calendar,
+  Plus
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -108,17 +112,17 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-white">
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
+      {/* ===== HEADER (style TikTok) ===== */}
+      <header className="sticky top-0 z-40 bg-white border-b border-gray-100 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
-          <span className="text-lg font-bold text-black">Profil</span>
-          <div className="flex items-center gap-3">
-            <button className="text-gray-500 hover:text-black transition-colors">
+          <span className="text-xl font-bold text-black">Profil</span>
+          <div className="flex items-center gap-4">
+            <button className="text-gray-600 hover:text-black transition-colors">
               <Settings className="w-5 h-5" />
             </button>
             <button
               onClick={handleLogout}
-              className="text-gray-500 hover:text-red-500 transition-colors"
+              className="text-gray-600 hover:text-red-500 transition-colors"
             >
               <LogOut className="w-5 h-5" />
             </button>
@@ -126,60 +130,86 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* AVATAR & INFOS */}
-      <section className="px-4 py-6 text-center border-b border-gray-200">
-        <div className="relative inline-block">
-          <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-3xl font-bold text-black mx-auto border-2 border-black">
-            {profile.username?.charAt(0).toUpperCase() || "?"}
+      {/* ===== AVATAR & INFOS (style TikTok) ===== */}
+      <section className="px-4 py-6">
+        <div className="flex items-start gap-4">
+          {/* Avatar */}
+          <div className="relative flex-shrink-0">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-3xl font-bold text-black overflow-hidden border-2 border-black">
+              {profile.username?.charAt(0).toUpperCase() || "?"}
+            </div>
+            {profile.isCertified && (
+              <span className="absolute -top-1 -right-1">
+                <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+              </span>
+            )}
           </div>
-          {profile.isCertified && (
-            <span className="absolute -top-1 -right-1">
-              <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-            </span>
-          )}
-          {profile.premiumActive && (
-            <span className="absolute -bottom-1 -right-1 bg-black text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-              PREMIUM
-            </span>
-          )}
-        </div>
 
-        <h1 className="text-xl font-bold text-black mt-3">{profile.username}</h1>
-        <p className="text-gray-500 text-sm flex items-center justify-center gap-1">
-          <Mail className="w-3 h-3" />
-          {profile.email}
-        </p>
-
-        <div className="flex justify-center gap-6 mt-4 text-sm">
-          <div>
-            <span className="text-black font-bold">{profile._count?.mangas || 0}</span>
-            <span className="text-gray-500 ml-1">mangas</span>
-          </div>
-          <div>
-            <span className="text-black font-bold">{profile._count?.followers || 0}</span>
-            <span className="text-gray-500 ml-1">abonnés</span>
-          </div>
-          <div>
-            <span className="text-black font-bold">{profile._count?.following || 0}</span>
-            <span className="text-gray-500 ml-1">abonnements</span>
+          {/* Infos */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-black truncate">{profile.username}</h1>
+              {profile.premiumActive && (
+                <span className="px-2 py-0.5 rounded-full bg-black text-white text-[10px] font-bold">
+                  PRO
+                </span>
+              )}
+            </div>
+            <p className="text-gray-500 text-sm truncate">{profile.bio || "Aucune bio"}</p>
+            <div className="flex items-center gap-1 text-gray-400 text-xs mt-1">
+              <Mail className="w-3 h-3" />
+              <span className="truncate">{profile.email}</span>
+            </div>
           </div>
         </div>
 
-        <button className="mt-4 px-4 py-2 rounded-lg bg-gray-100 text-black text-sm font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2 mx-auto">
-          <Edit className="w-4 h-4" />
-          Modifier le profil
-        </button>
+        {/* Boutons d'action */}
+        <div className="flex gap-3 mt-4">
+          <Link
+            href="/profile/edit"
+            className="flex-1 py-2 rounded-lg bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+          >
+            <Edit className="w-4 h-4" />
+            Modifier le profil
+          </Link>
+          <button className="px-4 py-2 rounded-lg bg-gray-100 text-black text-sm font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Partager
+          </button>
+        </div>
       </section>
 
-      {/* MANGAS PUBLIÉS */}
+      {/* ===== STATISTIQUES (style TikTok) ===== */}
+      <section className="px-4 py-3 border-t border-b border-gray-100">
+        <div className="flex justify-around max-w-lg mx-auto">
+          <div className="text-center">
+            <p className="text-lg font-bold text-black">{profile._count?.mangas || 0}</p>
+            <p className="text-xs text-gray-500">Mangas</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-black">{profile._count?.followers || 0}</p>
+            <p className="text-xs text-gray-500">Abonnés</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-black">{profile._count?.following || 0}</p>
+            <p className="text-xs text-gray-500">Abonnements</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== MANGAS PUBLIÉS (style TikTok) ===== */}
       <section className="flex-1 px-4 py-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-gray-500 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
-            <BookOpen className="w-3.5 h-3.5 text-black" />
-            Mangas publiés
-          </h2>
-          <Link href="/creator/upload" className="text-black text-xs font-medium hover:underline">
-            + Ajouter
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-black" />
+            <h2 className="text-sm font-semibold text-black">Mangas publiés</h2>
+          </div>
+          <Link
+            href="/creator/upload"
+            className="flex items-center gap-1 text-sm font-medium text-black hover:underline"
+          >
+            <Plus className="w-4 h-4" />
+            Ajouter
           </Link>
         </div>
 
@@ -195,24 +225,24 @@ export default function ProfilePage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             {profile.mangas.map((manga: any) => (
               <Link
                 key={manga.id}
                 href={`/manga/${manga.id}`}
-                className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden hover:border-black transition-all active:scale-[0.97]"
+                className="group relative aspect-[2/3] bg-gray-100 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200"
               >
-                <div className="aspect-[2/3] bg-gray-200 flex items-center justify-center relative">
-                  <BookOpen className="w-8 h-8 text-gray-400" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <BookOpen className="w-8 h-8 text-gray-300 group-hover:text-gray-400 transition-colors" />
                 </div>
-                <div className="p-2">
-                  <h3 className="text-sm font-semibold truncate text-black">{manga.title}</h3>
-                  <div className="flex items-center gap-3 mt-0.5 text-gray-500 text-[10px]">
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
+                  <p className="text-white text-xs font-medium truncate">{manga.title}</p>
+                  <div className="flex items-center gap-2 text-white/70 text-[10px]">
                     <span className="flex items-center gap-0.5">
-                      <Heart className="w-3 h-3 text-black" /> {manga.likesCount || 0}
+                      <Heart className="w-3 h-3" /> {manga.likesCount || 0}
                     </span>
                     <span className="flex items-center gap-0.5">
-                      <Eye className="w-3 h-3 text-black" /> {manga.viewsCount || 0}
+                      <Eye className="w-3 h-3" /> {manga.viewsCount || 0}
                     </span>
                   </div>
                 </div>
