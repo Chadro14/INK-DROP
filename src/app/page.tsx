@@ -13,11 +13,17 @@ import {
   Eye,
   Star,
   Zap,
-  Clock,
-  Sparkles
+  Clock
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
+
+// ✅ 3 IMAGES POUR LE CARROUSEL
+const HERO_IMAGES = [
+  "https://files.catbox.moe/qrod9y.jpg",
+  "https://files.catbox.moe/iacwbr.jpg",
+  "https://files.catbox.moe/2sfji0.jpg",
+];
 
 type Manga = {
   id: string;
@@ -45,11 +51,11 @@ export default function Home() {
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // ✅ Carrousel automatique toutes les 3s
+  // ✅ CARROUSEL AUTO (4 secondes)
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % 3);
-    }, 3000);
+      setCurrentSlide((prev) => (prev + 1) % HERO_IMAGES.length);
+    }, 4000);
     return () => clearInterval(interval);
   }, []);
 
@@ -135,21 +141,28 @@ export default function Home() {
         )}
       </header>
 
-      {/* ===== CARROUSEL AUTO (3s) ===== */}
+      {/* ===== CARROUSEL 3 IMAGES (4s) ===== */}
       <section className="px-4 pt-4">
-        <div className="relative overflow-hidden rounded-xl bg-white/5 border border-white/10 aspect-[16/9]">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-white/20 text-6xl font-bold">INK</p>
-              <p className="text-white/10 text-sm">DROP</p>
-            </div>
-          </div>
-          <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-            {[0, 1, 2].map((i) => (
+        <div className="relative overflow-hidden rounded-xl border border-white/10 aspect-[16/9] bg-black">
+          {HERO_IMAGES.map((image, index) => (
+            <div
+              key={index}
+              className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ease-in-out ${
+                index === currentSlide ? "opacity-100" : "opacity-0"
+              }`}
+              style={{ backgroundImage: `url('${image}')` }}
+            />
+          ))}
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-black/40" />
+          
+          {/* Indicateurs */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+            {HERO_IMAGES.map((_, index) => (
               <span
-                key={i}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i === currentSlide ? "w-6 bg-white" : "w-1.5 bg-white/30"
+                key={index}
+                className={`h-1 rounded-full transition-all duration-300 ${
+                  index === currentSlide ? "w-6 bg-white" : "w-1.5 bg-white/30"
                 }`}
               />
             ))}
