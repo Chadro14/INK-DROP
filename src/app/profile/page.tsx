@@ -17,7 +17,20 @@ import {
   User,
   ChevronRight,
   Calendar,
-  Plus
+  Plus,
+  Share2,
+  Bell,
+  Shield,
+  CreditCard,
+  Award,
+  Zap,
+  Clock,
+  MessageCircle,
+  FileText,
+  HelpCircle,
+  Gift,
+  Coins,
+  TrendingUp
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -30,13 +43,22 @@ type UserProfile = {
   bio: string | null;
   isCertified: boolean;
   premiumActive: boolean;
+  premiumExpires: string | null;
   createdAt: string;
+  manas: number;
+  steamPoints: number;
+  steamLevel: number;
   _count: {
     mangas: number;
     followers: number;
     following: number;
   };
   mangas?: any[];
+  earnings?: {
+    total: number;
+    pending: number;
+    paid: number;
+  };
 };
 
 export default function ProfilePage() {
@@ -55,14 +77,17 @@ export default function ProfilePage() {
       }
 
       try {
-        const res = await fetch(`${API_URL}/users/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const [profileRes, earningsRes] = await Promise.all([
+          fetch(`${API_URL}/users/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_URL}/dashboard/earnings`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
 
-        if (!res.ok) {
-          if (res.status === 401) {
+        if (!profileRes.ok) {
+          if (profileRes.status === 401) {
             localStorage.removeItem("token");
             router.push("/login");
             return;
@@ -70,8 +95,17 @@ export default function ProfilePage() {
           throw new Error("Erreur lors du chargement du profil");
         }
 
-        const data = await res.json();
-        setProfile(data);
+        const profileData = await profileRes.json();
+        
+        let earningsData = null;
+        if (earningsRes.ok) {
+          earningsData = await earningsRes.json();
+        }
+
+        setProfile({
+          ...profileData,
+          earnings: earningsData || { total: 0, pending: 0, paid: 0 },
+        });
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -85,6 +119,19 @@ export default function ProfilePage() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     router.push("/login");
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: `INKDROP - ${profile?.username}`,
+        text: `Découvre le profil de ${profile?.username} sur INKDROP !`,
+        url: `https://ink-drop-one.vercel.app/creator/${profile?.username}`,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(`https://ink-drop-one.vercel.app/creator/${profile?.username}`);
+      alert("📋 Lien copié !");
+    }
   };
 
   if (loading) {
@@ -112,14 +159,20 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-white">
 
-      {/* ===== HEADER (style TikTok) ===== */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-100 px-4 py-3">
+      {/* HEADER */}
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-100 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
           <span className="text-xl font-bold text-black">Profil</span>
-          <div className="flex items-center gap-4">
-            <button className="text-gray-600 hover:text-black transition-colors">
-              <Settings className="w-5 h-5" />
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleShare}
+              className="text-gray-600 hover:text-black transition-colors"
+            >
+              <Share2 className="w-5 h-5" />
             </button>
+            <Link href="/profile/settings" className="text-gray-600 hover:text-black transition-colors">
+              <Settings className="w-5 h-5" />
+            </Link>
             <button
               onClick={handleLogout}
               className="text-gray-600 hover:text-red-500 transition-colors"
@@ -130,13 +183,21 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* ===== AVATAR & INFOS (style TikTok) ===== */}
+      {/* AVATAR & INFOS PUBLIQUES */}
       <section className="px-4 py-6">
         <div className="flex items-start gap-4">
-          {/* Avatar */}
+          {/* ✅ AVATAR PUBLIC */}
           <div className="relative flex-shrink-0">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-3xl font-bold text-black overflow-hidden border-2 border-black">
-              {profile.username?.charAt(0).toUpperCase() || "?"}
+              {profile.avatarUrl ? (
+                <img 
+                  src={profile.avatarUrl} 
+                  alt={profile.username} 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                profile.username?.charAt(0).toUpperCase() || "?"
+              )}
             </div>
             {profile.isCertified && (
               <span className="absolute -top-1 -right-1">
@@ -145,7 +206,6 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Infos */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-black truncate">{profile.username}</h1>
@@ -160,6 +220,10 @@ export default function ProfilePage() {
               <Mail className="w-3 h-3" />
               <span className="truncate">{profile.email}</span>
             </div>
+            <div className="flex items-center gap-1 text-gray-400 text-xs">
+              <Calendar className="w-3 h-3" />
+              <span>Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
+            </div>
           </div>
         </div>
 
@@ -170,18 +234,21 @@ export default function ProfilePage() {
             className="flex-1 py-2 rounded-lg bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
           >
             <Edit className="w-4 h-4" />
-            Modifier le profil
+            Modifier
           </Link>
-          <button className="px-4 py-2 rounded-lg bg-gray-100 text-black text-sm font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2">
-            <Users className="w-4 h-4" />
+          <button
+            onClick={handleShare}
+            className="px-4 py-2 rounded-lg bg-gray-100 text-black text-sm font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2"
+          >
+            <Share2 className="w-4 h-4" />
             Partager
           </button>
         </div>
       </section>
 
-      {/* ===== STATISTIQUES (style TikTok) ===== */}
+      {/* STATS & MANAS */}
       <section className="px-4 py-3 border-t border-b border-gray-100">
-        <div className="flex justify-around max-w-lg mx-auto">
+        <div className="grid grid-cols-4 gap-2 max-w-lg mx-auto">
           <div className="text-center">
             <p className="text-lg font-bold text-black">{profile._count?.mangas || 0}</p>
             <p className="text-xs text-gray-500">Mangas</p>
@@ -194,10 +261,35 @@ export default function ProfilePage() {
             <p className="text-lg font-bold text-black">{profile._count?.following || 0}</p>
             <p className="text-xs text-gray-500">Abonnements</p>
           </div>
+          <div className="text-center">
+            <p className="text-lg font-bold text-black">{profile.manas || 0}</p>
+            <p className="text-xs text-gray-500">MANAS</p>
+          </div>
         </div>
       </section>
 
-      {/* ===== MANGAS PUBLIÉS (style TikTok) ===== */}
+      {/* STEAM & REVENUS */}
+      <section className="px-4 py-3 border-b border-gray-100">
+        <div className="grid grid-cols-3 gap-2 max-w-lg mx-auto">
+          <div className="text-center bg-gray-50 rounded-lg p-2">
+            <Zap className="w-4 h-4 mx-auto text-yellow-500" />
+            <p className="text-sm font-bold text-black">{profile.steamPoints || 0}</p>
+            <p className="text-[10px] text-gray-500">Points Steam</p>
+          </div>
+          <div className="text-center bg-gray-50 rounded-lg p-2">
+            <Award className="w-4 h-4 mx-auto text-purple-500" />
+            <p className="text-sm font-bold text-black">Niv. {profile.steamLevel || 1}</p>
+            <p className="text-[10px] text-gray-500">Niveau</p>
+          </div>
+          <div className="text-center bg-gray-50 rounded-lg p-2">
+            <Coins className="w-4 h-4 mx-auto text-green-500" />
+            <p className="text-sm font-bold text-black">{profile.earnings?.total || 0}$</p>
+            <p className="text-[10px] text-gray-500">Revenus</p>
+          </div>
+        </div>
+      </section>
+
+      {/* MANGAS PUBLIÉS */}
       <section className="flex-1 px-4 py-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
