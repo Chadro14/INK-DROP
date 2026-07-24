@@ -10,16 +10,12 @@ import {
   Bell, 
   Shield, 
   Users, 
-  Globe, 
   Moon, 
   LogOut, 
   Trash2,
-  ChevronRight,
   Eye,
   EyeOff,
-  Save,
-  AlertCircle,
-  CheckCircle
+  Save
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -31,7 +27,6 @@ export default function SettingsPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // État des paramètres
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,36 +36,14 @@ export default function SettingsPage() {
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
-
-      try {
-        const res = await fetch(`${API_URL}/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Erreur");
-        const data = await res.json();
-        // Charger les préférences depuis l'utilisateur (si existantes)
-        setNotificationsEnabled(data.notificationsEnabled !== undefined ? data.notificationsEnabled : true);
-        setPrivateProfile(data.privateProfile || false);
-        setDarkMode(data.darkMode || false);
-      } catch (err) {
-        setError("Impossible de charger les paramètres");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSettings();
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    setLoading(false);
   }, [router]);
 
-  // ============================================
-  // CHANGER LE MOT DE PASSE
-  // ============================================
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -122,80 +95,6 @@ export default function SettingsPage() {
     }
   };
 
-  // ============================================
-  // SAUVEGARDER LES PRÉFÉRENCES
-  // ============================================
-  const handleSavePreferences = async () => {
-    setSaving(true);
-    setError("");
-    setSuccess("");
-
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_URL}/users/preferences`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          notificationsEnabled,
-          privateProfile,
-          darkMode,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Erreur lors de la sauvegarde");
-      }
-
-      setSuccess("✅ Préférences sauvegardées !");
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // ============================================
-  // SUPPRIMER LE COMPTE
-  // ============================================
-  const handleDeleteAccount = async () => {
-    if (!confirm("⚠️ Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible !")) {
-      return;
-    }
-
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_URL}/users/me`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!res.ok) {
-        throw new Error("Erreur lors de la suppression");
-      }
-
-      localStorage.removeItem("token");
-      router.push("/login");
-    } catch (err: any) {
-      setError(err.message);
-    }
-  };
-
-  // ============================================
-  // DÉCONNEXION
-  // ============================================
   const handleLogout = () => {
     localStorage.removeItem("token");
     router.push("/login");
@@ -212,7 +111,6 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-white">
 
-      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
           <Link href="/profile" className="text-gray-500 hover:text-black transition-colors flex items-center gap-1">
@@ -238,7 +136,7 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* ===== CHANGER LE MOT DE PASSE ===== */}
+        {/* Mot de passe */}
         <section className="mb-8">
           <h2 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
             <Lock className="w-4 h-4" />
@@ -303,83 +201,7 @@ export default function SettingsPage() {
           </form>
         </section>
 
-        {/* ===== PRÉFÉRENCES ===== */}
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-            <Bell className="w-4 h-4" />
-            Préférences
-          </h2>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <div>
-                <p className="text-sm font-medium text-black">Notifications</p>
-                <p className="text-xs text-gray-400">Recevoir des alertes</p>
-              </div>
-              <button
-                onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                className={`w-12 h-7 rounded-full transition-colors ${
-                  notificationsEnabled ? "bg-black" : "bg-gray-300"
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 rounded-full bg-white transform transition-transform ${
-                    notificationsEnabled ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <div>
-                <p className="text-sm font-medium text-black">Profil privé</p>
-                <p className="text-xs text-gray-400">Seuls vos abonnés voient vos mangas</p>
-              </div>
-              <button
-                onClick={() => setPrivateProfile(!privateProfile)}
-                className={`w-12 h-7 rounded-full transition-colors ${
-                  privateProfile ? "bg-black" : "bg-gray-300"
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 rounded-full bg-white transform transition-transform ${
-                    privateProfile ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between py-2 border-b border-gray-100">
-              <div>
-                <p className="text-sm font-medium text-black">Mode sombre</p>
-                <p className="text-xs text-gray-400">Thème sombre pour l'application</p>
-              </div>
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`w-12 h-7 rounded-full transition-colors ${
-                  darkMode ? "bg-black" : "bg-gray-300"
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 rounded-full bg-white transform transition-transform ${
-                    darkMode ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
-
-            <button
-              onClick={handleSavePreferences}
-              disabled={saving}
-              className="w-full py-2 rounded-lg bg-gray-100 text-black font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              Sauvegarder les préférences
-            </button>
-          </div>
-        </section>
-
-        {/* ===== DÉCONNEXION & SUPPRESSION ===== */}
+        {/* Compte */}
         <section>
           <h2 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
             <Shield className="w-4 h-4" />
@@ -395,7 +217,11 @@ export default function SettingsPage() {
           </button>
 
           <button
-            onClick={handleDeleteAccount}
+            onClick={() => {
+              if (confirm("⚠️ Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible !")) {
+                // Logique de suppression
+              }
+            }}
             className="w-full py-3 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
           >
             <Trash2 className="w-4 h-4" />
