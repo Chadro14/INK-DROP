@@ -4,28 +4,27 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { ArrowLeft, Camera, User, Mail, Lock, Save } from "lucide-react";
+import { ArrowLeft, Camera, User, Mail, Lock, Save, X, AlertCircle } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
 export default function EditProfilePage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  // Formulaire
-  const [bio, setBio] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [bio, setBio] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [currentAvatar, setCurrentAvatar] = useState<string | null>(null);
 
-  // ============================================
-  // RÉCUPÉRER LE PROFIL
-  // ============================================
+  // ✅ État pour le message des 30 jours
+  const [usernameChangeMessage, setUsernameChangeMessage] = useState("");
+
   useEffect(() => {
     const fetchProfile = async () => {
       const token = localStorage.getItem("token");
@@ -40,10 +39,22 @@ export default function EditProfilePage() {
         });
         if (!res.ok) throw new Error("Erreur");
         const data = await res.json();
-        setBio(data.bio || "");
         setUsername(data.username || "");
         setEmail(data.email || "");
+        setBio(data.bio || "");
         setCurrentAvatar(data.avatarUrl || null);
+        
+        // ✅ Vérifier le délai de 30 jours pour le changement de nom
+        if (data.lastUsernameChange) {
+          const daysSinceLastChange = Math.floor(
+            (Date.now() - new Date(data.lastUsernameChange).getTime()) / (1000 * 60 * 60 * 24)
+          );
+          if (daysSinceLastChange < 30) {
+            setUsernameChangeMessage(
+              `⚠️ Vous pourrez changer votre nom dans ${30 - daysSinceLastChange} jours`
+            );
+          }
+        }
       } catch (err) {
         setError("Impossible de charger le profil");
       } finally {
@@ -54,9 +65,6 @@ export default function EditProfilePage() {
     fetchProfile();
   }, [router]);
 
-  // ============================================
-  // GESTION DE L'AVATAR
-  // ============================================
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -67,14 +75,12 @@ export default function EditProfilePage() {
     }
   };
 
-  // ============================================
-  // SAUVEGARDER
-  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError("");
     setSuccess(false);
+    setUsernameChangeMessage("");
 
     const token = localStorage.getItem("token");
     if (!token) {
@@ -83,19 +89,29 @@ export default function EditProfilePage() {
     }
 
     try {
-      // 1. Mettre à jour le profil
+      // ✅ Vérifier si le nom a changé
+      const usernameChanged = username !== currentAvatar; // placeholder, à remplacer par la logique réelle
+
       const res = await fetch(`${API_URL}/users/me`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ bio, username, email }),
+        body: JSON.stringify({ username, email, bio }),
       });
 
-      if (!res.ok) throw new Error("Erreur lors de la mise à jour");
+      const data = await res.json();
 
-      // 2. Upload de l'avatar (si présent)
+      if (!res.ok) {
+        // ✅ Gérer l'erreur "30 jours"
+        if (res.status === 400 && data.message && data.message.includes("30 jours")) {
+          setUsernameChangeMessage(data.message);
+        }
+        throw new Error(data.message || "Erreur lors de la mise à jour");
+      }
+
+      // Upload de l'avatar (si présent)
       if (avatarFile) {
         const formData = new FormData();
         formData.append("avatar", avatarFile);
@@ -152,6 +168,13 @@ export default function EditProfilePage() {
           </div>
         )}
 
+        {usernameChangeMessage && (
+          <div className="mb-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>{usernameChangeMessage}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
 
           {/* AVATAR */}
@@ -183,7 +206,7 @@ export default function EditProfilePage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-black focus:border-black outline-none transition-colors"
+                className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black focus:border-black outline-none transition-colors"
                 required
               />
             </div>
@@ -198,7 +221,7 @@ export default function EditProfilePage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-black focus:border-black outline-none transition-colors"
+                className="w-full pl-10 pr-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black focus:border-black outline-none transition-colors"
                 required
               />
             </div>
@@ -212,8 +235,9 @@ export default function EditProfilePage() {
               onChange={(e) => setBio(e.target.value)}
               rows={4}
               placeholder="Parlez-nous de vous..."
-              className="w-full px-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-black placeholder-gray-400 focus:border-black outline-none transition-colors resize-none"
+              className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black placeholder-gray-400 focus:border-black outline-none transition-colors resize-none"
             />
+            <p className="text-xs text-gray-400 mt-1">Maximum 160 caractères</p>
           </div>
 
           {/* Bouton */}
