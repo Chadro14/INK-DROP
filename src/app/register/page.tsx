@@ -1,14 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Mail, User, Lock, Calendar, ArrowRight } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
+// ✅ 6 IMAGES POUR LE DIAPORAMA
+const BACKGROUND_IMAGES = [
+  "https://files.catbox.moe/1xmjr4.jpg",
+  "https://files.catbox.moe/1g1zlk.jpg",
+  "https://files.catbox.moe/stzkgi.jpg",
+  "https://files.catbox.moe/dtsx6k.jpg",
+  "https://files.catbox.moe/wrom2c.jpg",
+  "https://files.catbox.moe/svor4a.jpg",
+];
+
 export default function RegisterPage() {
   const router = useRouter();
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // États du formulaire
   const [firstName, setFirstName] = useState("");
@@ -22,6 +33,14 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // ✅ CHANGEMENT D'IMAGE TOUTES LES 3 SECONDES
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % BACKGROUND_IMAGES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,18 +92,34 @@ export default function RegisterPage() {
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 py-8 overflow-hidden bg-black">
 
-      {/* Arrière-plan avec diaporama */}
+      {/* ===== DIAPORAMA EN ARRIÈRE-PLAN ===== */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-black/70 z-10" />
-        <div className="w-full h-full bg-cover bg-center bg-no-repeat animate-fade-in"
-          style={{
-            backgroundImage: `url('https://files.catbox.moe/1xmjr4.jpg')`,
-          }}
-        />
+        {BACKGROUND_IMAGES.map((image, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ease-in-out ${
+              index === currentImageIndex ? "opacity-100" : "opacity-0"
+            }`}
+            style={{ backgroundImage: `url('${image}')` }}
+          />
+        ))}
+        {/* Indicateurs */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          {BACKGROUND_IMAGES.map((_, index) => (
+            <span
+              key={index}
+              className={`h-1 rounded-full transition-all duration-300 ${
+                index === currentImageIndex ? "w-6 bg-white" : "w-1.5 bg-white/30"
+              }`}
+            />
+          ))}
+        </div>
       </div>
 
+      {/* ===== FORMULAIRE ===== */}
       <div className="relative z-10 w-full max-w-md bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl p-8 shadow-2xl">
-        {/* Logo */}
+
         <div className="text-center mb-8">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full border border-white/20 flex items-center justify-center">
             <span className="text-2xl font-bold text-white">I</span>
