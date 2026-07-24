@@ -1,10 +1,11 @@
+tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { ArrowLeft, Camera, User, Mail, Lock, Save, X, AlertCircle } from "lucide-react";
+import { ArrowLeft, Camera, User, Mail, Lock, Save, X, AlertCircle, Share2, Settings } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
@@ -24,6 +25,9 @@ export default function EditProfilePage() {
 
   // ✅ État pour le message des 30 jours
   const [usernameChangeMessage, setUsernameChangeMessage] = useState("");
+
+  // ✅ État pour le partage
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -75,6 +79,28 @@ export default function EditProfilePage() {
     }
   };
 
+  // ✅ Fonction pour le partage
+  const handleShare = () => {
+    const shareData = {
+      title: `INKDROP - ${username}`,
+      text: `Découvre le profil de ${username} sur INKDROP ! 📚`,
+      url: `https://ink-drop-one.vercel.app/creator/${username}`,
+    };
+
+    if (navigator.share) {
+      navigator.share(shareData).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareData.url);
+      alert("📋 Lien copié !");
+    }
+    setShareMenuOpen(false);
+  };
+
+  // ✅ Fonction pour les paramètres
+  const handleSettings = () => {
+    router.push("/profile/settings");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -89,9 +115,6 @@ export default function EditProfilePage() {
     }
 
     try {
-      // ✅ Vérifier si le nom a changé
-      const usernameChanged = username !== currentAvatar; // placeholder, à remplacer par la logique réelle
-
       const res = await fetch(`${API_URL}/users/me`, {
         method: "PUT",
         headers: {
@@ -142,7 +165,7 @@ export default function EditProfilePage() {
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-white">
 
-      {/* HEADER */}
+      {/* HEADER avec boutons Share & Settings */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
           <Link href="/profile" className="text-gray-500 hover:text-black transition-colors flex items-center gap-1">
@@ -150,7 +173,24 @@ export default function EditProfilePage() {
             <span className="text-sm">Retour</span>
           </Link>
           <span className="text-lg font-bold text-black">Modifier le profil</span>
-          <div className="w-16" />
+          <div className="flex items-center gap-2">
+            {/* ✅ Bouton Partager */}
+            <button
+              onClick={handleShare}
+              className="text-gray-500 hover:text-black transition-colors"
+              title="Partager le profil"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+            {/* ✅ Bouton Paramètres */}
+            <button
+              onClick={handleSettings}
+              className="text-gray-500 hover:text-black transition-colors"
+              title="Paramètres"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
 
