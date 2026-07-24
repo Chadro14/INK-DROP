@@ -11,7 +11,7 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: 'INKDROP — Plateforme de mangas et animes',
-  description: 'La première plateforme manga payée en mobile money. Lisez, publiez et soutenez vos créateurs préférés.',
+  description: 'La première plateforme manga payée en mobile money.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -29,10 +29,10 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-        <meta name="theme-color" content="#FFFFFF" />
+        <meta name="theme-color" content="#000000" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </head>
-      <body className={`${outfit.variable} min-h-screen flex flex-col bg-white text-black`}>
+      <body className={`${outfit.variable} min-h-screen flex flex-col bg-black text-white`}>
         <Providers>{children}</Providers>
       </body>
     </html>
