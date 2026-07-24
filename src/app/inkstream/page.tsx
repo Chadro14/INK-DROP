@@ -16,10 +16,6 @@ type Anime = {
   rating: number;
   source: string;
   episodesCount: number;
-  uploader?: {
-    username: string;
-    full_name: string;
-  };
 };
 
 export default function InkStreamPage() {
@@ -28,6 +24,9 @@ export default function InkStreamPage() {
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 
+  // ============================================
+  // RÉCUPÉRER LES ANIMES
+  // ============================================
   useEffect(() => {
     const fetchAnimes = async () => {
       setLoading(true);
@@ -56,18 +55,18 @@ export default function InkStreamPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen pb-20 bg-white">
+    <div className="flex flex-col min-h-screen pb-20 bg-black text-white">
 
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-sm border-b border-white/10 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
           <div className="flex items-center gap-2">
-            <Film className="w-6 h-6 text-black" />
-            <span className="text-lg font-bold text-black">InkStream</span>
+            <Film className="w-6 h-6 text-white" />
+            <span className="text-lg font-bold text-white">InkStream</span>
           </div>
           <button
             onClick={() => setShowSearch(!showSearch)}
-            className="text-gray-500 hover:text-black transition-colors"
+            className="text-white/60 hover:text-white transition-colors"
           >
             <Search className="w-5 h-5" />
           </button>
@@ -80,12 +79,12 @@ export default function InkStreamPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher un anime..."
-              className="flex-1 px-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-black placeholder-gray-400 focus:border-black outline-none transition-colors"
+              className="flex-1 px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 focus:border-white outline-none transition-colors"
               autoFocus
             />
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-black text-white font-semibold hover:bg-gray-800 transition-colors"
+              className="px-4 py-2 rounded-lg bg-white text-black font-semibold hover:bg-white/90 transition-colors"
             >
               OK
             </button>
@@ -95,7 +94,7 @@ export default function InkStreamPage() {
                 setShowSearch(false);
                 setSearch("");
               }}
-              className="text-gray-400 hover:text-black transition-colors"
+              className="text-white/40 hover:text-white transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
@@ -106,21 +105,20 @@ export default function InkStreamPage() {
       {/* RÉSULTATS */}
       <main className="flex-1 px-4 py-4">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-black">Animes</h1>
-          <span className="text-gray-400 text-sm">{animes.length} résultats</span>
+          <h1 className="text-xl font-bold text-white">Animes</h1>
+          <span className="text-white/40 text-sm">{animes.length} résultats</span>
         </div>
 
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="aspect-[2/3] bg-gray-100 rounded-xl animate-pulse" />
+              <div key={i} className="aspect-[2/3] bg-white/5 rounded-xl animate-pulse" />
             ))}
           </div>
         ) : animes.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <Film className="w-12 h-12 text-gray-300" />
-            <p className="text-gray-500 mt-4">Aucun anime trouvé</p>
-            <p className="text-gray-400 text-sm mt-1">Essayez une autre recherche</p>
+            <Film className="w-12 h-12 text-white/20" />
+            <p className="text-white/40 mt-4">Aucun anime trouvé</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
@@ -128,11 +126,19 @@ export default function InkStreamPage() {
               <Link
                 key={anime.id}
                 href={`/inkstream/${anime.id}`}
-                className="bg-gray-50 border border-gray-200 rounded-xl overflow-hidden hover:border-black transition-all active:scale-[0.97]"
+                className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-white/30 transition-all active:scale-[0.97]"
               >
-                <div className="aspect-[2/3] bg-gray-200 flex items-center justify-center relative">
-                  <Film className="w-8 h-8 text-gray-400" />
-                  {anime.rating && (
+                <div className="aspect-[2/3] bg-white/5 flex items-center justify-center relative overflow-hidden">
+                  {anime.coverImage ? (
+                    <img 
+                      src={anime.coverImage} 
+                      alt={anime.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-white/20 text-sm">Pas d'image</div>
+                  )}
+                  {anime.rating > 0 && (
                     <span className="absolute top-2 right-2 flex items-center gap-0.5 text-xs font-bold bg-black/60 text-yellow-400 px-2 py-0.5 rounded-full backdrop-blur-sm">
                       <Star className="w-3 h-3 fill-yellow-400" />
                       {anime.rating.toFixed(1)}
@@ -147,9 +153,9 @@ export default function InkStreamPage() {
                   </div>
                 </div>
                 <div className="p-2">
-                  <h3 className="text-sm font-semibold truncate text-black">{anime.title}</h3>
-                  <p className="text-gray-400 text-[10px] truncate">
-                    {anime.uploader?.full_name || anime.uploader?.username || "Source inconnue"}
+                  <h3 className="text-sm font-semibold truncate text-white">{anime.title}</h3>
+                  <p className="text-white/40 text-[10px] truncate">
+                    {anime.episodesCount || 0} épisodes
                   </p>
                 </div>
               </Link>
