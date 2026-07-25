@@ -96,7 +96,7 @@ export default function ProfilePage() {
         }
 
         const profileData = await profileRes.json();
-        
+
         let earningsData = null;
         if (earningsRes.ok) {
           earningsData = await earningsRes.json();
@@ -122,14 +122,17 @@ export default function ProfilePage() {
   };
 
   const handleShare = () => {
+    const username = profile?.username || "utilisateur";
+    const shareUrl = `https://ink-drop-one.vercel.app/creator/${username}`;
+    
     if (navigator.share) {
       navigator.share({
-        title: `INKDROP - ${profile?.username}`,
-        text: `Découvre le profil de ${profile?.username} sur INKDROP !`,
-        url: `https://ink-drop-one.vercel.app/creator/${profile?.username}`,
+        title: `INKDROP - ${username}`,
+        text: `Découvre le profil de ${username} sur INKDROP ! 📚`,
+        url: shareUrl,
       }).catch(() => {});
     } else {
-      navigator.clipboard.writeText(`https://ink-drop-one.vercel.app/creator/${profile?.username}`);
+      navigator.clipboard.writeText(shareUrl);
       alert("📋 Lien copié !");
     }
   };
@@ -186,7 +189,6 @@ export default function ProfilePage() {
       {/* AVATAR & INFOS PUBLIQUES */}
       <section className="px-4 py-6">
         <div className="flex items-start gap-4">
-          {/* ✅ AVATAR PUBLIC */}
           <div className="relative flex-shrink-0">
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-3xl font-bold text-black overflow-hidden border-2 border-black">
               {profile.avatarUrl ? (
@@ -338,6 +340,36 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 </div>
+
+                {/* BOUTON SUPPRIMER */}
+                <button
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (confirm(`Supprimer "${manga.title}" définitivement ?`)) {
+                      const token = localStorage.getItem("token");
+                      try {
+                        const res = await fetch(`${API_URL}/mangas/${manga.id}`, {
+                          method: "DELETE",
+                          headers: { Authorization: `Bearer ${token}` },
+                        });
+                        if (res.ok) {
+                          window.location.reload();
+                        } else {
+                          alert("Erreur lors de la suppression");
+                        }
+                      } catch (error) {
+                        alert("Erreur réseau");
+                      }
+                    }
+                  }}
+                  className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-red-500/80 text-white hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
               </Link>
             ))}
           </div>
