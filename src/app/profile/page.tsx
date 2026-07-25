@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { 
   BookOpen, 
-  Users, 
   Heart, 
   Settings, 
   LogOut,
@@ -14,23 +13,12 @@ import {
   Edit,
   Eye,
   Mail,
-  User,
-  ChevronRight,
   Calendar,
   Plus,
   Share2,
-  Bell,
-  Shield,
-  CreditCard,
   Award,
   Zap,
-  Clock,
-  MessageCircle,
-  FileText,
-  HelpCircle,
-  Gift,
-  Coins,
-  TrendingUp
+  Coins
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -326,10 +314,20 @@ export default function ProfilePage() {
                 href={`/manga/${manga.id}`}
                 className="group relative aspect-[2/3] bg-gray-100 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200"
               >
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <BookOpen className="w-8 h-8 text-gray-300 group-hover:text-gray-400 transition-colors" />
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
+                {/* AFFICHAGE DE L'IMAGE DE COUVERTURE */}
+                {manga.coverUrl || manga.imageUrl ? (
+                  <img 
+                    src={manga.coverUrl || manga.imageUrl} 
+                    alt={manga.title} 
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <BookOpen className="w-8 h-8 text-gray-300 group-hover:text-gray-400 transition-colors" />
+                  </div>
+                )}
+
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
                   <p className="text-white text-xs font-medium truncate">{manga.title}</p>
                   <div className="flex items-center gap-2 text-white/70 text-[10px]">
                     <span className="flex items-center gap-0.5">
@@ -341,7 +339,7 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* BOUTON SUPPRIMER */}
+                {/* BOUTON SUPPRIMER TOUJOURS VISIBLE */}
                 <button
                   onClick={async (e) => {
                     e.preventDefault();
@@ -363,9 +361,10 @@ export default function ProfilePage() {
                       }
                     }
                   }}
-                  className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-red-500/80 text-white hover:bg-red-600 transition-all opacity-0 group-hover:opacity-100"
+                  className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-red-600 text-white shadow-md hover:bg-red-700 transition-all"
+                  title="Supprimer le manga"
                 >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
