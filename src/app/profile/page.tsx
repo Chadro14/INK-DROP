@@ -18,7 +18,8 @@ import {
   Share2,
   Award,
   Zap,
-  Coins
+  Coins,
+  ChevronRight
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -116,7 +117,7 @@ export default function ProfilePage() {
     if (navigator.share) {
       navigator.share({
         title: `INKDROP - ${username}`,
-        text: `Découvre le profil de ${username} sur INKDROP ! 📚`,
+        text: `Découvre le profil de ${username} sur INKDROP !`,
         url: shareUrl,
       }).catch(() => {});
     } else {
@@ -189,6 +190,7 @@ export default function ProfilePage() {
                 profile.username?.charAt(0).toUpperCase() || "?"
               )}
             </div>
+            {/* 🏆 BADGE CERTIFICATION */}
             {profile.isCertified && (
               <span className="absolute -top-1 -right-1">
                 <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
@@ -279,6 +281,25 @@ export default function ProfilePage() {
         </div>
       </section>
 
+      {/* 📌 LIEN VERS LA CERTIFICATION */}
+      <section className="px-4 py-3 border-b border-gray-100">
+        <Link
+          href="/certification"
+          className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-black transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <Award className="w-5 h-5 text-gray-600" />
+            <span className="text-sm font-medium text-black">Certification</span>
+            {profile.isCertified && (
+              <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-semibold">
+                ✅ Certifié
+              </span>
+            )}
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-400" />
+        </Link>
+      </section>
+
       {/* MANGAS PUBLIÉS */}
       <section className="flex-1 px-4 py-4">
         <div className="flex items-center justify-between mb-4">
@@ -314,7 +335,6 @@ export default function ProfilePage() {
                 href={`/manga/${manga.id}`}
                 className="group relative aspect-[2/3] bg-gray-100 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200"
               >
-                {/* AFFICHAGE DE L'IMAGE DE COUVERTURE */}
                 {manga.coverUrl || manga.imageUrl ? (
                   <img 
                     src={manga.coverUrl || manga.imageUrl} 
@@ -342,7 +362,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* BOUTON SUPPRIMER */}
                 <button
                   onClick={async (e) => {
                     e.preventDefault();
