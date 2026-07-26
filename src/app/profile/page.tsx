@@ -336,10 +336,13 @@ export default function ProfilePage() {
                     <span className="flex items-center gap-0.5">
                       <Eye className="w-3 h-3" /> {manga.viewsCount || 0}
                     </span>
+                    <span className="flex items-center gap-0.5">
+                      <BookOpen className="w-3 h-3" /> {manga._count?.chapters || 0}
+                    </span>
                   </div>
                 </div>
 
-                {/* BOUTON SUPPRIMER TOUJOURS VISIBLE */}
+                {/* BOUTON SUPPRIMER */}
                 <button
                   onClick={async (e) => {
                     e.preventDefault();
