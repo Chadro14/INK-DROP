@@ -132,7 +132,7 @@ export default function MangaPage({ params }: { params: { id: string } }) {
     <div className="flex flex-col min-h-screen pb-20 bg-white">
 
       {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-100 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
           <Link href="/discover" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
             <ArrowLeft className="w-5 h-5" />
@@ -172,7 +172,7 @@ export default function MangaPage({ params }: { params: { id: string } }) {
               </span>
             )}
             {manga.status === "HIATUS" && (
-              <span className="px-2 py-0.5 rounded-full bg-orange-500 text-white text-[10px] font-medium">
+              <span className="px-2 py-0.5 rounded-full bg-yellow-500 text-white text-[10px] font-medium">
                 En pause
               </span>
             )}
@@ -181,7 +181,7 @@ export default function MangaPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* ===== INFOS ===== */}
-      <section className="px-4 py-4 border-b border-gray-100">
+      <section className="px-4 py-4 border-b border-gray-200">
         <p className="text-gray-700 text-sm">{manga.description || "Aucune description"}</p>
         <div className="flex flex-wrap gap-2 mt-3">
           {manga.genre.map((g) => (
@@ -190,21 +190,21 @@ export default function MangaPage({ params }: { params: { id: string } }) {
             </span>
           ))}
         </div>
-        <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
+        <div className="flex items-center gap-4 mt-3 text-sm text-gray-600">
           <button
             onClick={handleLike}
             className="flex items-center gap-1 hover:text-black transition-colors"
           >
             <Heart className="w-4 h-4" />
-            {manga.likesCount || 0}
+            <span>{manga.likesCount || 0}</span>
           </button>
           <span className="flex items-center gap-1">
             <Eye className="w-4 h-4" />
-            {manga.viewsCount || 0}
+            <span>{manga.viewsCount || 0}</span>
           </span>
           <span className="flex items-center gap-1">
             <BookOpen className="w-4 h-4" />
-            {manga.chapters?.length || 0} chapitres
+            <span>{manga.chapters?.length || 0} chapitres</span>
           </span>
         </div>
       </section>
@@ -237,7 +237,7 @@ export default function MangaPage({ params }: { params: { id: string } }) {
                 <Link
                   key={chapter.id}
                   href={`/manga/${manga.id}/chapter/${chapter.number}`}
-                  className="block py-3 px-4 rounded-lg bg-gray-50 border border-gray-100 hover:border-black transition-all"
+                  className="block py-3 px-4 rounded-lg bg-gray-50 border border-gray-200 hover:border-black transition-all"
                 >
                   <div className="flex justify-between items-center">
                     <div>
@@ -251,7 +251,7 @@ export default function MangaPage({ params }: { params: { id: string } }) {
                           <span className="text-xs text-gray-500">{chapter.price || 0.50}$</span>
                         )}
                         <span className="text-xs text-gray-400">
-                          {chapter.contentType === "PDF" ? "📄 PDF" : `${chapter.pageCount || 0} pages`}
+                          {chapter.contentType === "PDF" ? "PDF" : `${chapter.pageCount || 0} pages`}
                         </span>
                       </div>
                     </div>
