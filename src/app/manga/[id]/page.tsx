@@ -72,7 +72,7 @@ export default function MangaPage() {
         }
         const data = await res.json();
         setManga(data);
-        
+
         // Vérifier si l'utilisateur a liké ou s'est abonné
         const token = localStorage.getItem("token");
         if (token) {
@@ -204,10 +204,18 @@ export default function MangaPage() {
 
       {/* ===== COUVERTURE ===== */}
       <div className="relative aspect-[2/3] bg-gray-200">
+        {manga.coverUrl ? (
+          <img
+            src={manga.coverUrl}
+            alt={manga.title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <BookOpen className="w-24 h-24 text-gray-400/50" />
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <div className="absolute inset-0 flex items-center justify-center">
-          <BookOpen className="w-24 h-24 text-gray-400/50" />
-        </div>
         <div className="absolute bottom-4 left-4 right-4">
           <h1 className="text-2xl font-bold text-white">{manga.title}</h1>
           <Link href={`/creator/${manga.author.username}`} className="text-white/80 text-sm flex items-center gap-1 hover:text-white">
@@ -244,13 +252,13 @@ export default function MangaPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 mt-3">
-          {manga.genre.map((g) => (
+          {manga.genre && manga.genre.map((g) => (
             <span key={g} className="px-3 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs">
               {g}
             </span>
           ))}
-          <span className={`px-3 py-0.5 rounded-full text-xs border ${statusColors[manga.status as keyof typeof statusColors]}`}>
-            {statusLabels[manga.status as keyof typeof statusLabels]}
+          <span className={`px-3 py-0.5 rounded-full text-xs border ${statusColors[manga.status as keyof typeof statusColors] || ""}`}>
+            {statusLabels[manga.status as keyof typeof statusLabels] || manga.status}
           </span>
           {manga.isPremium && (
             <span className="px-3 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs border border-yellow-200">
