@@ -126,16 +126,16 @@ export default function NewChapterPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
+    <div className="flex flex-col min-h-screen pb-20 bg-white">
 
       {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Link href={`/manga/${mangaId}`} className="text-ink-muted hover:text-white transition-colors flex items-center gap-1">
+          <Link href={`/manga/${mangaId}`} className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">Retour</span>
           </Link>
-          <span className="text-lg font-bold text-white">Ajouter un chapitre</span>
+          <span className="text-lg font-bold text-black">Ajouter un chapitre</span>
           <div className="w-16" />
         </div>
       </header>
@@ -143,13 +143,13 @@ export default function NewChapterPage() {
       <main className="flex-1 px-4 py-4 max-w-lg mx-auto w-full">
 
         {success && (
-          <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-500 text-sm text-center">
+          <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm text-center">
             ✅ Chapitre ajouté ! Redirection...
           </div>
         )}
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
+          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
             {error}
           </div>
         )}
@@ -162,7 +162,7 @@ export default function NewChapterPage() {
               type="button"
               onClick={() => setMode("pdf")}
               className={`py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                mode === "pdf" ? "bg-accent text-white" : "bg-ink-card border border-ink-border text-ink-muted"
+                mode === "pdf" ? "bg-black text-white" : "bg-gray-100 border border-gray-200 text-gray-700 hover:bg-gray-200"
               }`}
             >
               <FileText className="w-4 h-4" /> PDF
@@ -171,7 +171,7 @@ export default function NewChapterPage() {
               type="button"
               onClick={() => setMode("photos")}
               className={`py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                mode === "photos" ? "bg-accent text-white" : "bg-ink-card border border-ink-border text-ink-muted"
+                mode === "photos" ? "bg-black text-white" : "bg-gray-100 border border-gray-200 text-gray-700 hover:bg-gray-200"
               }`}
             >
               <ImageIcon className="w-4 h-4" /> Photos
@@ -180,40 +180,40 @@ export default function NewChapterPage() {
 
           {/* Numéro du chapitre */}
           <div>
-            <label className="block text-ink-muted text-sm font-medium mb-1">Numéro du chapitre *</label>
+            <label className="block text-gray-700 text-sm font-medium mb-1">Numéro du chapitre *</label>
             <input
               type="number"
               value={number}
               onChange={(e) => setNumber(e.target.value)}
               placeholder="1"
-              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none"
+              className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black placeholder-gray-400 focus:border-black outline-none transition-colors"
               required
             />
           </div>
 
           {/* Titre */}
           <div>
-            <label className="block text-ink-muted text-sm font-medium mb-1">Titre (optionnel)</label>
+            <label className="block text-gray-700 text-sm font-medium mb-1">Titre (optionnel)</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Titre du chapitre"
-              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none"
+              className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black placeholder-gray-400 focus:border-black outline-none transition-colors"
             />
           </div>
 
           {/* MODE PDF */}
           {mode === "pdf" && (
             <div>
-              <label className="block text-ink-muted text-sm font-medium mb-1">Fichier PDF *</label>
-              <div className="relative border-2 border-dashed border-ink-border rounded-lg p-6 text-center hover:border-accent/50 transition-colors">
+              <label className="block text-gray-700 text-sm font-medium mb-1">Fichier PDF *</label>
+              <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-black transition-colors">
                 {pdfFile ? (
-                  <p className="text-white text-sm">{pdfFile.name}</p>
+                  <p className="text-black text-sm">{pdfFile.name}</p>
                 ) : (
                   <>
-                    <FileText className="w-10 h-10 text-ink-muted/50 mx-auto mb-2" />
-                    <p className="text-ink-muted text-sm">Cliquez pour choisir un PDF</p>
+                    <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-500 text-sm">Cliquez pour choisir un PDF</p>
                   </>
                 )}
                 <input
@@ -229,12 +229,12 @@ export default function NewChapterPage() {
           {/* MODE PHOTOS */}
           {mode === "photos" && (
             <div>
-              <label className="block text-ink-muted text-sm font-medium mb-1">
+              <label className="block text-gray-700 text-sm font-medium mb-1">
                 Photos * ({photoFiles.length} sélectionnée{photoFiles.length > 1 ? "s" : ""})
               </label>
-              <div className="relative border-2 border-dashed border-ink-border rounded-lg p-6 text-center hover:border-accent/50 transition-colors mb-3">
-                <ImageIcon className="w-10 h-10 text-ink-muted/50 mx-auto mb-2" />
-                <p className="text-ink-muted text-sm">Ajouter des photos (une ou plusieurs)</p>
+              <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-black transition-colors mb-3">
+                <ImageIcon className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">Ajouter des photos (une ou plusieurs)</p>
                 <input
                   type="file"
                   accept="image/*"
@@ -247,7 +247,7 @@ export default function NewChapterPage() {
               {photoFiles.length > 0 && (
                 <div className="grid grid-cols-3 gap-2">
                   {photoFiles.map((file, index) => (
-                    <div key={index} className="relative rounded-lg overflow-hidden border border-ink-border">
+                    <div key={index} className="relative rounded-lg overflow-hidden border border-gray-200">
                       <img
                         src={URL.createObjectURL(file)}
                         alt={`Page ${index + 1}`}
@@ -256,7 +256,7 @@ export default function NewChapterPage() {
                       <button
                         type="button"
                         onClick={() => removePhoto(index)}
-                        className="absolute top-1 right-1 p-1 rounded-full bg-red-500 text-white"
+                        className="absolute top-1 right-1 p-1 rounded-full bg-red-500 text-white hover:bg-red-600"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -264,7 +264,7 @@ export default function NewChapterPage() {
                         type="button"
                         onClick={() => toggleFree(index)}
                         className={`absolute bottom-1 left-1 right-1 py-1 rounded text-[10px] font-medium ${
-                          freeIndexes.has(index) ? "bg-green-500 text-white" : "bg-black/60 text-ink-muted"
+                          freeIndexes.has(index) ? "bg-green-500 text-white" : "bg-black/60 text-white"
                         }`}
                       >
                         {freeIndexes.has(index) ? "Gratuite" : "Payante"}
@@ -278,24 +278,24 @@ export default function NewChapterPage() {
 
           {/* Prix */}
           <div>
-            <label className="block text-ink-muted text-sm font-medium mb-1">Prix (USD, optionnel)</label>
+            <label className="block text-gray-700 text-sm font-medium mb-1">Prix (USD, optionnel)</label>
             <input
               type="number"
               step="0.01"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="0.99"
-              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none"
+              className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black placeholder-gray-400 focus:border-black outline-none transition-colors"
             />
           </div>
 
           {/* Brouillon */}
-          <label className="flex items-center gap-2 text-sm text-ink-muted">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
             <input
               type="checkbox"
               checked={isDraft}
               onChange={(e) => setIsDraft(e.target.checked)}
-              className="w-4 h-4"
+              className="w-4 h-4 accent-black"
             />
             Enregistrer comme brouillon (non publié)
           </label>
@@ -303,7 +303,7 @@ export default function NewChapterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-3 rounded-lg bg-black text-white font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? (
               <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
