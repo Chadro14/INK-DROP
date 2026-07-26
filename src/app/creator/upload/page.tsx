@@ -32,7 +32,7 @@ export default function UploadMangaPage() {
   // ============================================
   // GESTION DE LA COUVERTURE
   // ============================================
-  const handleCoverChange = (e: React.ChangeEvent<HTMLInput>) => {
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setCoverFile(file);
@@ -95,13 +95,18 @@ export default function UploadMangaPage() {
         const formData = new FormData();
         formData.append("cover", coverFile);
 
-        await fetch(`${API_URL}/mangas/${mangaId}/cover`, {
+        const coverRes = await fetch(`${API_URL}/mangas/${mangaId}/cover`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
           },
           body: formData,
         });
+
+        // ✅ On gère la réponse même si elle n'est pas parfaite
+        if (!coverRes.ok) {
+          console.warn("⚠️ La couverture n'a pas pu être uploadée, mais le manga est créé");
+        }
       }
 
       setSuccess(true);
@@ -116,16 +121,16 @@ export default function UploadMangaPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
+    <div className="flex flex-col min-h-screen pb-20 bg-white">
 
       {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Link href="/profile" className="text-ink-muted hover:text-white transition-colors flex items-center gap-1">
+          <Link href="/profile" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">Retour</span>
           </Link>
-          <span className="text-lg font-bold text-white">Publier un manga</span>
+          <span className="text-lg font-bold text-black">Publier un manga</span>
           <div className="w-16" />
         </div>
       </header>
@@ -134,13 +139,13 @@ export default function UploadMangaPage() {
       <main className="flex-1 px-4 py-4 max-w-lg mx-auto w-full">
 
         {success && (
-          <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-500 text-sm text-center">
+          <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm text-center">
             ✅ Manga créé avec succès ! Redirection...
           </div>
         )}
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
+          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
             {error}
           </div>
         )}
@@ -149,32 +154,32 @@ export default function UploadMangaPage() {
 
           {/* Titre */}
           <div>
-            <label className="block text-ink-muted text-sm font-medium mb-1">Titre *</label>
+            <label className="block text-gray-700 text-sm font-medium mb-1">Titre *</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Titre de votre manga"
-              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none transition-colors"
+              className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black placeholder-gray-400 focus:border-black outline-none transition-colors"
               required
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-ink-muted text-sm font-medium mb-1">Description</label>
+            <label className="block text-gray-700 text-sm font-medium mb-1">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Décrivez votre manga..."
               rows={4}
-              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none transition-colors resize-none"
+              className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black placeholder-gray-400 focus:border-black outline-none transition-colors resize-none"
             />
           </div>
 
           {/* Genres */}
           <div>
-            <label className="block text-ink-muted text-sm font-medium mb-2">Genres</label>
+            <label className="block text-gray-700 text-sm font-medium mb-2">Genres</label>
             <div className="flex flex-wrap gap-2">
               {genres.map((g) => (
                 <button
@@ -183,8 +188,8 @@ export default function UploadMangaPage() {
                   onClick={() => toggleGenre(g)}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                     genre.includes(g)
-                      ? "bg-accent text-white"
-                      : "bg-ink-card border border-ink-border text-ink-muted hover:text-white"
+                      ? "bg-black text-white"
+                      : "bg-gray-100 border border-gray-200 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   {g}
@@ -195,11 +200,11 @@ export default function UploadMangaPage() {
 
           {/* Statut */}
           <div>
-            <label className="block text-ink-muted text-sm font-medium mb-1">Statut</label>
+            <label className="block text-gray-700 text-sm font-medium mb-1">Statut</label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white focus:border-accent outline-none transition-colors"
+              className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black focus:border-black outline-none transition-colors"
             >
               {statuses.map((s) => (
                 <option key={s.value} value={s.value}>{s.label}</option>
@@ -209,12 +214,12 @@ export default function UploadMangaPage() {
 
           {/* Couverture */}
           <div>
-            <label className="block text-ink-muted text-sm font-medium mb-1">Couverture</label>
+            <label className="block text-gray-700 text-sm font-medium mb-1">Couverture</label>
             <div
               className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
                 coverPreview
-                  ? "border-accent/50"
-                  : "border-ink-border hover:border-accent/50"
+                  ? "border-black"
+                  : "border-gray-300 hover:border-black"
               }`}
             >
               {coverPreview ? (
@@ -237,9 +242,9 @@ export default function UploadMangaPage() {
                 </div>
               ) : (
                 <div>
-                  <ImageIcon className="w-12 h-12 text-ink-muted/50 mx-auto mb-2" />
-                  <p className="text-ink-muted text-sm">Cliquez ou glissez une image</p>
-                  <p className="text-ink-muted/50 text-xs">PNG, JPG, WEBP — Max 5MB</p>
+                  <ImageIcon className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">Cliquez ou glissez une image</p>
+                  <p className="text-gray-400 text-xs">PNG, JPG, WEBP — Max 5MB</p>
                 </div>
               )}
               <input
@@ -255,7 +260,7 @@ export default function UploadMangaPage() {
           <button
             type="submit"
             disabled={loading || !title.trim()}
-            className="w-full py-3 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 rounded-lg bg-black text-white font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
