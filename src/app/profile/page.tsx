@@ -19,7 +19,8 @@ import {
   Award,
   Zap,
   Coins,
-  ChevronRight
+  ChevronRight,
+  BadgeCheck
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -113,7 +114,7 @@ export default function ProfilePage() {
   const handleShare = () => {
     const username = profile?.username || "utilisateur";
     const shareUrl = `https://ink-drop-one.vercel.app/creator/${username}`;
-    
+
     if (navigator.share) {
       navigator.share({
         title: `INKDROP - ${username}`,
@@ -190,17 +191,19 @@ export default function ProfilePage() {
                 profile.username?.charAt(0).toUpperCase() || "?"
               )}
             </div>
-            {/* 🏆 BADGE CERTIFICATION */}
-            {profile.isCertified && (
-              <span className="absolute -top-1 -right-1">
-                <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-              </span>
-            )}
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-black truncate">{profile.username}</h1>
+              {profile.isCertified && (
+                <BadgeCheck
+                  className="w-5 h-5 flex-shrink-0"
+                  fill={profile.avatarColor || "#FFD700"}
+                  color="white"
+                  strokeWidth={1.5}
+                />
+              )}
               {profile.premiumActive && (
                 <span className="px-2 py-0.5 rounded-full bg-black text-white text-[10px] font-bold">
                   PRO
@@ -299,6 +302,22 @@ export default function ProfilePage() {
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </Link>
       </section>
+
+      {/* ADMIN LINK */}
+      {profile.role === 'ADMIN' && (
+        <section className="px-4 py-2 border-b border-gray-100">
+          <Link
+            href="/admin/certify"
+            className="flex items-center justify-between py-3 px-4 bg-gray-100 rounded-lg border border-gray-200 hover:border-black transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Shield className="w-5 h-5 text-gray-600" />
+              <span className="text-sm font-medium text-black">Admin - Certification</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+          </Link>
+        </section>
+      )}
 
       {/* MANGAS PUBLIÉS */}
       <section className="flex-1 px-4 py-4">
