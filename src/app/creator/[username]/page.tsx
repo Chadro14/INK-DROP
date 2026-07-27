@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { BookOpen, Heart, Eye, Star, Mail, Calendar, ArrowLeft } from "lucide-react";
+import { BookOpen, Heart, Eye, BadgeCheck, Mail, Calendar, ArrowLeft } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
@@ -13,6 +13,7 @@ type UserProfile = {
   username: string;
   email: string;
   avatarUrl: string | null;
+  avatarColor: string | null;
   bio: string | null;
   isCertified: boolean;
   premiumActive: boolean;
@@ -103,18 +104,19 @@ export default function PublicProfilePage() {
                 profile.username?.charAt(0).toUpperCase() || "?"
               )}
             </div>
-
-            {/* ✅ BADGE DE CERTIFICATION — VERSION UNIFIÉE */}
-            {profile.isCertified && (
-              <span className="absolute -top-1 -right-1">
-                <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
-              </span>
-            )}
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-black truncate">{profile.username}</h1>
+              {profile.isCertified && (
+                <BadgeCheck
+                  className="w-5 h-5 flex-shrink-0"
+                  fill={profile.avatarColor || "#FFD700"}
+                  color="white"
+                  strokeWidth={1.5}
+                />
+              )}
               {profile.premiumActive && (
                 <span className="px-2 py-0.5 rounded-full bg-black text-white text-[10px] font-bold">
                   PRO
