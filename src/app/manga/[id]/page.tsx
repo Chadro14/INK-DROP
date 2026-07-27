@@ -26,7 +26,7 @@ type Chapter = {
   publishedAt: string | null;
   pageCount: number;
   contentType: string;
-  coverUrl: string | null;  // ✅ AJOUTÉ
+  coverUrl: string | null;
   pages?: any[];
   pdfUrl?: string;
 };
