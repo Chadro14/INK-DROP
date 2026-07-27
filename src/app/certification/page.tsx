@@ -10,9 +10,6 @@ import {
   Users, 
   BookOpen, 
   Clock,
-  Award,
-  ChevronRight,
-  Sparkles,
   ArrowLeft
 } from "lucide-react";
 
@@ -134,7 +131,7 @@ export default function CertificationPage() {
                 <div>
                   <p className="text-sm font-medium text-black">Chapitres publiés</p>
                   <p className="text-xs text-gray-400">
-                    {status.conditions.chapters.current} / {status.conditions.chapters.required}
+                    {status.conditions.chapters.current} / 40
                   </p>
                 </div>
               </div>
@@ -154,7 +151,7 @@ export default function CertificationPage() {
                 <div>
                   <p className="text-sm font-medium text-black">Abonnés</p>
                   <p className="text-xs text-gray-400">
-                    {status.conditions.followers.current} / {status.conditions.followers.required}
+                    {status.conditions.followers.current} / 350
                   </p>
                 </div>
               </div>
@@ -166,7 +163,7 @@ export default function CertificationPage() {
             </div>
           </div>
 
-          {/* Ancienneté : 5 mois */}
+          {/* Ancienneté : 5 mois (150 jours) */}
           <div className={`rounded-lg p-4 border ${status.conditions.age.met ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -174,7 +171,7 @@ export default function CertificationPage() {
                 <div>
                   <p className="text-sm font-medium text-black">Ancienneté</p>
                   <p className="text-xs text-gray-400">
-                    {status.conditions.age.current} jours / {status.conditions.age.required} jours
+                    {status.conditions.age.current} / 150 jours
                   </p>
                 </div>
               </div>
