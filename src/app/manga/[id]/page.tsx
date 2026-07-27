@@ -2,78 +2,102 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { 
   ArrowLeft, 
-  BookOpen, 
   Heart, 
   Eye, 
-  Clock,
-  Plus,
-  FileText,
-  Image as ImageIcon
+  BookOpen,
+  User,
+  Calendar,
+  Tag,
+  ChevronRight,
+  Share2,
+  Bookmark,
+  Plus
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-type Chapter = {
-  id: string;
-  number: number;
-  title: string | null;
-  isFree: boolean;
-  price: number | null;
-  publishedAt: string | null;
-  pageCount: number;
-  contentType: string;
-  coverUrl: string | null;
-  pages?: any[];
-  pdfUrl?: string;
-};
-
 type Manga = {
   id: string;
   title: string;
-  description: string | null;
-  coverUrl: string | null;
+  description: string;
+  coverUrl: string;
+  author: {
+    id: string;
+    username: string;
+    avatarUrl: string;
+    isCertified: boolean;
+  };
   status: string;
   genre: string[];
   viewsCount: number;
   likesCount: number;
   subscribersCount: number;
-  author: {
+  commentsCount: number;
+  isPremium: boolean;
+  createdAt: string;
+  chapters: {
     id: string;
-    username: string;
-    avatarUrl: string | null;
-  };
-  chapters: Chapter[];
+    number: number;
+    title: string;
+    isFree: boolean;
+    price: number;
+    pageCount: number;
+    publishedAt: string;
+    coverUrl?: string | null;
+  }[];
 };
 
-export default function MangaPage({ params }: { params: { id: string } }) {
+export default function MangaPage() {
+  const params = useParams();
   const router = useRouter();
   const [manga, setManga] = useState<Manga | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isAuthor, setIsAuthor] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
+  const mangaId = params.id as string;
+
+  // ============================================
+  // RÉCUPÉRER LE MANGA
+  // ============================================
   useEffect(() => {
     const fetchManga = async () => {
       try {
-        const res = await fetch(`${API_URL}/mangas/${params.id}`);
-        if (!res.ok) throw new Error("Manga non trouvé");
+        const res = await fetch(`${API_URL}/mangas/${mangaId}`);
+        if (!res.ok) {
+          throw new Error("Manga non trouvé");
+        }
         const data = await res.json();
         setManga(data);
-
+        
+        // Vérifier si l'utilisateur a liké ou s'est abonné, et récupérer son ID
         const token = localStorage.getItem("token");
         if (token) {
-          const userRes = await fetch(`${API_URL}/users/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (userRes.ok) {
-            const userData = await userRes.json();
-            setUser(userData);
-            setIsAuthor(userData.id === data.author.id);
+          const [likedRes, subRes, meRes] = await Promise.all([
+            fetch(`${API_URL}/social/has-liked/${mangaId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch(`${API_URL}/social/is-subscribed/${mangaId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch(`${API_URL}/users/me`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+          ]);
+          const likedData = await likedRes.json();
+          const subData = await subRes.json();
+          setIsLiked(likedData.liked || false);
+          setIsSubscribed(subData.subscribed || false);
+
+          if (meRes.ok) {
+            const meData = await meRes.json();
+            setCurrentUserId(meData.id);
           }
         }
       } catch (err: any) {
@@ -84,8 +108,11 @@ export default function MangaPage({ params }: { params: { id: string } }) {
     };
 
     fetchManga();
-  }, [params.id]);
+  }, [mangaId]);
 
+  // ============================================
+  // LIKE
+  // ============================================
   const handleLike = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -94,21 +121,50 @@ export default function MangaPage({ params }: { params: { id: string } }) {
     }
 
     try {
-      const res = await fetch(`${API_URL}/social/like/${params.id}`, {
+      const res = await fetch(`${API_URL}/social/like/${mangaId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) {
-        setManga((prev) => prev ? {
-          ...prev,
-          likesCount: prev.likesCount + 1,
-        } : null);
-      }
+      const data = await res.json();
+      setIsLiked(data.liked);
+      setManga((prev) => prev ? {
+        ...prev,
+        likesCount: data.liked ? prev.likesCount + 1 : prev.likesCount - 1,
+      } : null);
     } catch (error) {
       console.error("Erreur like:", error);
     }
   };
 
+  // ============================================
+  // ABONNEMENT
+  // ============================================
+  const handleSubscribe = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/social/subscribe/${mangaId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setIsSubscribed(data.subscribed);
+      setManga((prev) => prev ? {
+        ...prev,
+        subscribersCount: data.subscribed ? prev.subscribersCount + 1 : prev.subscribersCount - 1,
+      } : null);
+    } catch (error) {
+      console.error("Erreur abonnement:", error);
+    }
+  };
+
+  // ============================================
+  // AFFICHAGE
+  // ============================================
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-white">
@@ -128,23 +184,39 @@ export default function MangaPage({ params }: { params: { id: string } }) {
     );
   }
 
+  const statusColors = {
+    ONGOING: "bg-green-100 text-green-700 border-green-200",
+    COMPLETED: "bg-blue-100 text-blue-700 border-blue-200",
+    HIATUS: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  };
+
+  const statusLabels = {
+    ONGOING: "En cours",
+    COMPLETED: "Terminé",
+    HIATUS: "En pause",
+  };
+
+  const isAuthor = currentUserId && manga.author.id === currentUserId;
+
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-white">
 
       {/* ===== HEADER ===== */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Link href="/discover" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+          <Link href="/discover" className="text-gray-500 hover:text-black transition-colors flex items-center gap-1">
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">Retour</span>
           </Link>
-          <span className="text-sm font-medium text-black truncate max-w-[150px]">{manga.title}</span>
-          <div className="w-16" />
+          <span className="text-lg font-bold text-black truncate max-w-[150px]">{manga.title}</span>
+          <button className="text-gray-500 hover:text-black transition-colors">
+            <Share2 className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
       {/* ===== COUVERTURE ===== */}
-      <div className="relative aspect-[2/3] bg-gray-100">
+      <div className="relative aspect-[2/3] bg-gray-200">
         {manga.coverUrl ? (
           <img
             src={manga.coverUrl}
@@ -153,144 +225,124 @@ export default function MangaPage({ params }: { params: { id: string } }) {
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <BookOpen className="w-24 h-24 text-gray-300" />
+            <BookOpen className="w-24 h-24 text-gray-400/50" />
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
         <div className="absolute bottom-4 left-4 right-4">
           <h1 className="text-2xl font-bold text-white">{manga.title}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-sm text-white/80">par {manga.author.username}</p>
-            {manga.status === "ONGOING" && (
-              <span className="px-2 py-0.5 rounded-full bg-green-500 text-white text-[10px] font-medium">
-                En cours
-              </span>
-            )}
-            {manga.status === "COMPLETED" && (
-              <span className="px-2 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-medium">
-                Terminé
-              </span>
-            )}
-            {manga.status === "HIATUS" && (
-              <span className="px-2 py-0.5 rounded-full bg-yellow-500 text-white text-[10px] font-medium">
-                En pause
-              </span>
-            )}
-          </div>
+          <Link href={`/creator/${manga.author.username}`} className="text-white/80 text-sm flex items-center gap-1 hover:text-white">
+            <User className="w-3 h-3" />
+            {manga.author.username}
+          </Link>
         </div>
       </div>
 
-      {/* ===== INFOS ===== */}
+      {/* ===== STATS ===== */}
       <section className="px-4 py-4 border-b border-gray-200">
-        <p className="text-gray-700 text-sm">{manga.description || "Aucune description"}</p>
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-1 text-gray-500">
+            <Eye className="w-4 h-4" />
+            <span>{manga.viewsCount}</span>
+          </div>
+          <button onClick={handleLike} className="flex items-center gap-1 transition-colors">
+            <Heart className={`w-4 h-4 ${isLiked ? "fill-red-500 text-red-500" : "text-gray-500 hover:text-red-500"}`} />
+            <span className={isLiked ? "text-red-500" : "text-gray-500"}>{manga.likesCount}</span>
+          </button>
+          <div className="flex items-center gap-1 text-gray-500">
+            <span>📖 {manga.chapters?.length || 0}</span>
+          </div>
+          <button 
+            onClick={handleSubscribe}
+            className={`ml-auto px-4 py-1 rounded-full text-sm font-medium transition-colors ${
+              isSubscribed 
+                ? "bg-gray-200 text-black hover:bg-gray-300" 
+                : "bg-black text-white hover:bg-gray-800"
+            }`}
+          >
+            {isSubscribed ? "Abonné" : "S'abonner"}
+          </button>
+        </div>
+
         <div className="flex flex-wrap gap-2 mt-3">
           {manga.genre.map((g) => (
-            <span key={g} className="px-3 py-1 rounded-full bg-gray-100 text-black text-xs font-medium">
+            <span key={g} className="px-3 py-0.5 rounded-full bg-gray-100 text-gray-600 text-xs">
               {g}
             </span>
           ))}
-        </div>
-        <div className="flex items-center gap-4 mt-3 text-sm text-gray-600">
-          <button
-            onClick={handleLike}
-            className="flex items-center gap-1 hover:text-black transition-colors"
-          >
-            <Heart className="w-4 h-4" />
-            <span>{manga.likesCount || 0}</span>
-          </button>
-          <span className="flex items-center gap-1">
-            <Eye className="w-4 h-4" />
-            <span>{manga.viewsCount || 0}</span>
+          <span className={`px-3 py-0.5 rounded-full text-xs border ${statusColors[manga.status as keyof typeof statusColors]}`}>
+            {statusLabels[manga.status as keyof typeof statusLabels]}
           </span>
-          <span className="flex items-center gap-1">
-            <BookOpen className="w-4 h-4" />
-            <span>{manga.chapters?.length || 0} chapitres</span>
-          </span>
+          {manga.isPremium && (
+            <span className="px-3 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs border border-yellow-200">
+              ⭐ Premium
+            </span>
+          )}
         </div>
       </section>
 
-      {/* ===== CHAPITRES AVEC VIGNETTES ===== */}
+      {/* ===== DESCRIPTION ===== */}
+      <section className="px-4 py-4 border-b border-gray-200">
+        <p className="text-gray-600 text-sm leading-relaxed">
+          {manga.description || "Aucune description disponible."}
+        </p>
+      </section>
+
+      {/* ===== CHAPITRES ===== */}
       <section className="flex-1 px-4 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-black">Chapitres</h2>
-          <span className="text-xs text-gray-400">{manga.chapters?.length || 0} chapitres</span>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Chapitres</h2>
+          {isAuthor && (
+            <Link
+              href={`/manga/${mangaId}/chapter/new`}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-black text-white text-xs font-semibold hover:bg-gray-800 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Ajouter un chapitre
+            </Link>
+          )}
         </div>
-
-        {!manga.chapters || manga.chapters.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <BookOpen className="w-12 h-12 text-gray-300" />
-            <p className="text-gray-500 mt-4 text-sm">Aucun chapitre publié</p>
-            {isAuthor && (
+        <div className="space-y-2">
+          {manga.chapters && manga.chapters.length > 0 ? (
+            manga.chapters.map((chapter) => (
               <Link
-                href={`/manga/${manga.id}/chapter/new`}
-                className="mt-4 px-6 py-2 rounded-lg bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center gap-2"
+                key={chapter.id}
+                href={`/manga/${mangaId}/chapter/${chapter.number}`}
+                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100 hover:border-black transition-colors active:scale-[0.98]"
               >
-                <Plus className="w-4 h-4" />
-                Ajouter le premier chapitre
-              </Link>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="space-y-2">
-              {manga.chapters.map((chapter) => (
-                <Link
-                  key={chapter.id}
-                  href={`/manga/${manga.id}/chapter/${chapter.number}`}
-                  className="block py-3 px-4 rounded-lg bg-gray-50 border border-gray-200 hover:border-black transition-all"
-                >
-                  <div className="flex items-center gap-4">
-                    {/* ✅ VIGNETTE DU CHAPITRE */}
-                    <div className="w-12 h-16 rounded-md overflow-hidden flex-shrink-0 bg-gray-200">
-                      {chapter.coverUrl ? (
-                        <img
-                          src={chapter.coverUrl}
-                          alt={`Chapitre ${chapter.number}`}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                          📄
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-black">
-                        Chapitre {chapter.number} {chapter.title && `- ${chapter.title}`}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {chapter.isFree ? (
-                          <span className="text-xs text-green-600 font-medium">Gratuit</span>
-                        ) : (
-                          <span className="text-xs text-gray-500">{chapter.price || 0.50}$</span>
-                        )}
-                        <span className="text-xs text-gray-400">
-                          {chapter.contentType === "PDF" ? "PDF" : `${chapter.pageCount || 0} pages`}
-                        </span>
-                      </div>
-                    </div>
-
-                    <span className="text-xs text-gray-400 flex-shrink-0">
-                      {chapter.publishedAt ? new Date(chapter.publishedAt).toLocaleDateString() : "Brouillon"}
-                    </span>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-14 rounded-md bg-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                    {chapter.coverUrl ? (
+                      <img
+                        src={chapter.coverUrl}
+                        alt={chapter.title || `Chapitre ${chapter.number}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-gray-500">{chapter.number}</span>
+                    )}
                   </div>
-                </Link>
-              ))}
-            </div>
-
-            {/* ===== AJOUTER UN CHAPITRE ===== */}
-            {isAuthor && (
-              <Link
-                href={`/manga/${manga.id}/chapter/new`}
-                className="mt-4 w-full py-3 rounded-lg bg-black text-white font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                Ajouter un chapitre
+                  <div>
+                    <p className="text-sm font-medium text-black">{chapter.title || `Chapitre ${chapter.number}`}</p>
+                    <p className="text-xs text-gray-400">
+                      {chapter.pageCount || 0} pages
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {chapter.isFree ? (
+                    <span className="text-xs text-green-600">Gratuit</span>
+                  ) : (
+                    <span className="text-xs text-gray-500">{chapter.price || 0.50}$</span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-gray-400" />
+                </div>
               </Link>
-            )}
-          </>
-        )}
+            ))
+          ) : (
+            <p className="text-gray-400 text-sm text-center py-8">Aucun chapitre publié</p>
+          )}
+        </div>
       </section>
 
       <BottomNav />
