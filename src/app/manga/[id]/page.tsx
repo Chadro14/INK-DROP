@@ -26,6 +26,7 @@ type Chapter = {
   publishedAt: string | null;
   pageCount: number;
   contentType: string;
+  coverUrl: string | null;  // ✅ AJOUTÉ
   pages?: any[];
   pdfUrl?: string;
 };
@@ -64,7 +65,6 @@ export default function MangaPage({ params }: { params: { id: string } }) {
         const data = await res.json();
         setManga(data);
 
-        // Vérifier si l'utilisateur est l'auteur
         const token = localStorage.getItem("token");
         if (token) {
           const userRes = await fetch(`${API_URL}/users/me`, {
@@ -209,7 +209,7 @@ export default function MangaPage({ params }: { params: { id: string } }) {
         </div>
       </section>
 
-      {/* ===== CHAPITRES ===== */}
+      {/* ===== CHAPITRES AVEC VIGNETTES ===== */}
       <section className="flex-1 px-4 py-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-black">Chapitres</h2>
@@ -239,8 +239,23 @@ export default function MangaPage({ params }: { params: { id: string } }) {
                   href={`/manga/${manga.id}/chapter/${chapter.number}`}
                   className="block py-3 px-4 rounded-lg bg-gray-50 border border-gray-200 hover:border-black transition-all"
                 >
-                  <div className="flex justify-between items-center">
-                    <div>
+                  <div className="flex items-center gap-4">
+                    {/* ✅ VIGNETTE DU CHAPITRE */}
+                    <div className="w-12 h-16 rounded-md overflow-hidden flex-shrink-0 bg-gray-200">
+                      {chapter.coverUrl ? (
+                        <img
+                          src={chapter.coverUrl}
+                          alt={`Chapitre ${chapter.number}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                          📄
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-black">
                         Chapitre {chapter.number} {chapter.title && `- ${chapter.title}`}
                       </p>
@@ -255,7 +270,8 @@ export default function MangaPage({ params }: { params: { id: string } }) {
                         </span>
                       </div>
                     </div>
-                    <span className="text-xs text-gray-400">
+
+                    <span className="text-xs text-gray-400 flex-shrink-0">
                       {chapter.publishedAt ? new Date(chapter.publishedAt).toLocaleDateString() : "Brouillon"}
                     </span>
                   </div>
