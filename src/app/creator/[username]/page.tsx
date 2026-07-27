@@ -103,9 +103,11 @@ export default function PublicProfilePage() {
                 profile.username?.charAt(0).toUpperCase() || "?"
               )}
             </div>
+
+            {/* ✅ BADGE DE CERTIFICATION — VERSION UNIFIÉE */}
             {profile.isCertified && (
               <span className="absolute -top-1 -right-1">
-                <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
+                <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
               </span>
             )}
           </div>
@@ -169,9 +171,17 @@ export default function PublicProfilePage() {
                 href={`/manga/${manga.id}`}
                 className="group relative aspect-[2/3] bg-gray-100 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200"
               >
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <BookOpen className="w-8 h-8 text-gray-300 group-hover:text-gray-400 transition-colors" />
-                </div>
+                {manga.coverUrl ? (
+                  <img 
+                    src={manga.coverUrl} 
+                    alt={manga.title} 
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <BookOpen className="w-8 h-8 text-gray-300" />
+                  </div>
+                )}
                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
                   <p className="text-white text-xs font-medium truncate">{manga.title}</p>
                   <div className="flex items-center gap-2 text-white/70 text-[10px]">
