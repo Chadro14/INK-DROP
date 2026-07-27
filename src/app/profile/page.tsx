@@ -20,7 +20,9 @@ import {
   Zap,
   Coins,
   ChevronRight,
-  BadgeCheck
+  BadgeCheck,
+  Shield,
+  Palette
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -31,6 +33,7 @@ type UserProfile = {
   email: string;
   avatarUrl: string | null;
   bio: string | null;
+  role: string;
   isCertified: boolean;
   premiumActive: boolean;
   premiumExpires: string | null;
@@ -38,6 +41,7 @@ type UserProfile = {
   manas: number;
   steamPoints: number;
   steamLevel: number;
+  avatarColor: string | null;
   _count: {
     mangas: number;
     followers: number;
@@ -303,7 +307,27 @@ export default function ProfilePage() {
         </Link>
       </section>
 
-      {/* ADMIN LINK */}
+      {/* 🎨 LIEN VERS COULEUR DU BADGE */}
+      {profile.isCertified && (
+        <section className="px-4 py-2 border-b border-gray-100">
+          <Link
+            href="/profile/badge-color"
+            className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-black transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Palette className="w-5 h-5 text-gray-600" />
+              <span className="text-sm font-medium text-black">Couleur du badge</span>
+              <div
+                className="w-4 h-4 rounded-full border border-gray-300"
+                style={{ backgroundColor: profile.avatarColor || '#FFD700' }}
+              />
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+          </Link>
+        </section>
+      )}
+
+      {/* 🛡️ ADMIN LINK */}
       {profile.role === 'ADMIN' && (
         <section className="px-4 py-2 border-b border-gray-100">
           <Link
