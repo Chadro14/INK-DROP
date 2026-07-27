@@ -122,10 +122,11 @@ export default function CertificationPage() {
           </p>
         </div>
 
-        {/* CONDITIONS */}
+        {/* CONDITIONS MISES À JOUR */}
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-gray-700">Conditions requises</h3>
 
+          {/* Chapitres : 40+ */}
           <div className={`rounded-lg p-4 border ${status.conditions.chapters.met ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -145,6 +146,7 @@ export default function CertificationPage() {
             </div>
           </div>
 
+          {/* Abonnés : 350+ */}
           <div className={`rounded-lg p-4 border ${status.conditions.followers.met ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -164,6 +166,7 @@ export default function CertificationPage() {
             </div>
           </div>
 
+          {/* Ancienneté : 5 mois */}
           <div className={`rounded-lg p-4 border ${status.conditions.age.met ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
