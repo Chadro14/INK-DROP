@@ -20,6 +20,21 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 
+// ⚠️ Remplace cette URL par l'URL exacte de ton projet Supabase si besoin
+const SUPABASE_STORAGE_URL = "https://YOUR_SUPABASE_PROJECT_ID.supabase.co/storage/v1/object/public/chapters";
+
+/**
+ * Helper pour garantir qu'on a toujours une URL complète d'image
+ */
+const getImageUrl = (url?: string | null) => {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  // Si c'est un ancien chemin relatif stocké en BDD
+  return `${SUPABASE_STORAGE_URL}/${url}`;
+};
+
 type Manga = {
   id: string;
   title: string;
@@ -197,6 +212,7 @@ export default function MangaPage() {
   };
 
   const isAuthor = currentUserId && manga.author.id === currentUserId;
+  const fullCoverUrl = getImageUrl(manga.coverUrl);
 
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-white">
@@ -217,9 +233,9 @@ export default function MangaPage() {
 
       {/* ===== COUVERTURE ===== */}
       <div className="relative aspect-[2/3] bg-gray-200">
-        {manga.coverUrl ? (
+        {fullCoverUrl ? (
           <img
-            src={manga.coverUrl}
+            src={fullCoverUrl}
             alt={manga.title}
             className="absolute inset-0 w-full h-full object-cover"
           />
@@ -304,41 +320,44 @@ export default function MangaPage() {
         </div>
         <div className="space-y-2">
           {manga.chapters && manga.chapters.length > 0 ? (
-            manga.chapters.map((chapter) => (
-              <Link
-                key={chapter.id}
-                href={`/manga/${mangaId}/chapter/${chapter.number}`}
-                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100 hover:border-black transition-colors active:scale-[0.98]"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-14 rounded-md bg-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                    {chapter.coverUrl ? (
-                      <img
-                        src={chapter.coverUrl}
-                        alt={chapter.title || `Chapitre ${chapter.number}`}
-                        className="w-full h-full object-cover"
-                      />
+            manga.chapters.map((chapter) => {
+              const chapterCoverUrl = getImageUrl(chapter.coverUrl);
+              return (
+                <Link
+                  key={chapter.id}
+                  href={`/manga/${mangaId}/chapter/${chapter.number}`}
+                  className="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100 hover:border-black transition-colors active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-14 rounded-md bg-gray-200 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                      {chapterCoverUrl ? (
+                        <img
+                          src={chapterCoverUrl}
+                          alt={chapter.title || `Chapitre ${chapter.number}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-sm font-bold text-gray-500">{chapter.number}</span>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-black">{chapter.title || `Chapitre ${chapter.number}`}</p>
+                      <p className="text-xs text-gray-400">
+                        {chapter.pageCount || 0} pages
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {chapter.isFree ? (
+                      <span className="text-xs text-green-600">Gratuit</span>
                     ) : (
-                      <span className="text-sm font-bold text-gray-500">{chapter.number}</span>
+                      <span className="text-xs text-gray-500">{chapter.price || 0.50}$</span>
                     )}
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-black">{chapter.title || `Chapitre ${chapter.number}`}</p>
-                    <p className="text-xs text-gray-400">
-                      {chapter.pageCount || 0} pages
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {chapter.isFree ? (
-                    <span className="text-xs text-green-600">Gratuit</span>
-                  ) : (
-                    <span className="text-xs text-gray-500">{chapter.price || 0.50}$</span>
-                  )}
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                </div>
-              </Link>
-            ))
+                </Link>
+              );
+            })
           ) : (
             <p className="text-gray-400 text-sm text-center py-8">Aucun chapitre publié</p>
           )}
