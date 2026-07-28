@@ -3,13 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
 import { ArrowLeft, Upload, AlertCircle, FileText, Image as ImageIcon } from "lucide-react";
-
-// Initialisation du client Supabase
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://TON_PROJECT_ID.supabase.co";
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "TA_CLE_ANON_SUPABASE";
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://ink-backend.vercel.app";
 
@@ -30,57 +24,21 @@ export default function NewChapterPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
-
-  /**
-   * Upload direct vers le bucket Supabase avec sécurisation des noms et erreurs
-   */
-  const uploadToSupabase = async (file: File, folderPath: string): Promise<string> => {
-    try {
-      const fileExt = file.name.split(".").pop()?.toLowerCase() || "jpeg";
-      const sanitizedExt = fileExt.replace(/[^a-z0-9]/g, "");
-      const fileName = `${folderPath}/${Date.now()}_${Math.random().toString(36).substring(7)}.${sanitizedExt}`;
-
-      const contentType = file.type || (sanitizedExt === "pdf" ? "application/pdf" : "image/jpeg");
-
-      const { error: uploadError } = await supabase.storage
-        .from("chapters")
-        .upload(fileName, file, { 
-          contentType, 
-          upsert: true,
-          cacheControl: "3600",
-        });
-
-      if (uploadError) {
-        throw new Error(`Erreur Supabase (${file.name}) : ${uploadError.message}`);
-      }
-
-      const { data } = supabase.storage.from("chapters").getPublicUrl(fileName);
-      return data.publicUrl;
-    } catch (err: any) {
-      if (err.message?.includes("Failed to fetch")) {
-        throw new Error(`Problème de connexion lors de l'envoi de ${file.name}. Vérifiez votre réseau ou le bucket Supabase.`);
-      }
-      throw err;
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setStatusMessage("");
 
-    // 1. Validation stricte du numéro de chapitre
     const parsedNumber = parseInt(String(number), 10);
     if (isNaN(parsedNumber) || parsedNumber < 1) {
-      setError("Le numéro du chapitre doit être un nombre entier valide (ex: 1, 2, 3).");
+      setError("Le numéro du chapitre doit être un nombre entier valide.");
       return;
     }
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setError("Vous devez être connecté pour publier.");
+      setError("Vous devez être connecté.");
       return;
     }
 
@@ -97,50 +55,34 @@ export default function NewChapterPage() {
     setLoading(true);
 
     try {
-      let uploadedPdfUrl = "";
-      let uploadedImagesUrls: string[] = [];
-      let uploadedCoverUrl = "";
+      const formData = new FormData();
+      formData.append("number", String(parsedNumber));
+      if (title.trim()) formData.append("title", title.trim());
+      formData.append("isFree", String(isFree));
+      formData.append("isDraft", String(isDraft));
+      formData.append("price", String(isFree ? 0 : price));
 
-      // 2. Upload de la couverture (si présente)
+      // Ajout de la couverture optionnelle
       if (coverFile) {
-        setStatusMessage("Transfert de la couverture...");
-        uploadedCoverUrl = await uploadToSupabase(coverFile, `manga/${mangaId}/covers`);
+        formData.append("cover", coverFile);
       }
 
-      // 3. Upload du PDF ou des images par étapes
+      // Ajout du PDF ou des images
       if (uploadType === "pdf" && pdfFile) {
-        setStatusMessage("Transfert du PDF sur Supabase...");
-        uploadedPdfUrl = await uploadToSupabase(pdfFile, `manga/${mangaId}/pdfs`);
+        formData.append("pdf", pdfFile);
       } else if (uploadType === "images" && pageFiles) {
-        const totalFiles = pageFiles.length;
-        for (let i = 0; i < totalFiles; i++) {
-          setStatusMessage(`Envoi image ${i + 1} / ${totalFiles}...`);
-          const url = await uploadToSupabase(
-            pageFiles[i],
-            `manga/${mangaId}/ch_${parsedNumber}`
-          );
-          uploadedImagesUrls.push(url);
+        for (let i = 0; i < pageFiles.length; i++) {
+          formData.append("pages", pageFiles[i]);
         }
       }
 
-      // 4. Envoi du payload JSON au backend NestJS
-      setStatusMessage("Enregistrement du chapitre...");
       const res = await fetch(`${API_URL}/mangas/${mangaId}/chapters`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          // Pas de Content-Type ici, le navigateur gère le boundary du FormData
         },
-        body: JSON.stringify({
-          number: parsedNumber,
-          title: title.trim() || undefined,
-          isFree: Boolean(isFree),
-          isDraft: Boolean(isDraft),
-          price: isFree ? 0 : Number(price) || 0,
-          pdfUrl: uploadedPdfUrl || undefined,
-          imagesUrls: uploadedImagesUrls.length > 0 ? uploadedImagesUrls : undefined,
-          coverUrl: uploadedCoverUrl || undefined,
-        }),
+        body: formData,
       });
 
       if (!res.ok) {
@@ -150,11 +92,10 @@ export default function NewChapterPage() {
 
       router.push(`/manga/${mangaId}`);
     } catch (err: any) {
-      console.error("Erreur soumission chapitre :", err);
+      console.error(err);
       setError(err.message || "Une erreur est survenue lors de la création.");
     } finally {
       setLoading(false);
-      setStatusMessage("");
     }
   };
 
@@ -296,18 +237,18 @@ export default function NewChapterPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors flex flex-col items-center justify-center gap-1"
+          className="w-full py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
         >
           {loading ? (
-            <div className="flex items-center gap-2">
+            <>
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm">{statusMessage || "Chargement..."}</span>
-            </div>
+              <span>Envoi en cours...</span>
+            </>
           ) : (
-            <div className="flex items-center gap-2">
+            <>
               <Upload className="w-5 h-5" />
               <span>Publier le chapitre</span>
-            </div>
+            </>
           )}
         </button>
       </form>
