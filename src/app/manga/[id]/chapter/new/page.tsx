@@ -1,320 +1,295 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Upload, X, FileText, Image as ImageIcon } from "lucide-react";
+import { createClient } from "@supabase/supabase-js";
+import { ArrowLeft, Upload, AlertCircle, FileText, Image as ImageIcon } from "lucide-react";
 
-const API_URL = "https://ink-backend.vercel.app";
+// Initialisation du client Supabase
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://TON_PROJECT_ID.supabase.co";
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "TA_CLE_ANON_SUPABASE";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://ink-backend.vercel.app";
 
 export default function NewChapterPage() {
-  const router = useRouter();
   const params = useParams();
+  const router = useRouter();
   const mangaId = params.id as string;
 
-  const [mode, setMode] = useState<"pdf" | "photos">("pdf");
-  const [number, setNumber] = useState("");
+  const [number, setNumber] = useState<number>(1);
   const [title, setTitle] = useState("");
-  const [price, setPrice] = useState("");
+  const [price, setPrice] = useState<number>(0);
+  const [isFree, setIsFree] = useState(true);
   const [isDraft, setIsDraft] = useState(false);
 
+  const [uploadType, setUploadType] = useState<"pdf" | "images">("pdf");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
-  const [freeIndexes, setFreeIndexes] = useState<Set<number>>(new Set());
+  const [pageFiles, setPageFiles] = useState<FileList | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
 
-  // ============================================
-  // GESTION DES FICHIERS
-  // ============================================
-  const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setPdfFile(file);
+  /**
+   * Upload direct vers le bucket Supabase
+   */
+  const uploadToSupabase = async (file: File, folderPath: string): Promise<string> => {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${folderPath}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("chapters")
+      .upload(fileName, file, { contentType: file.type, upsert: true });
+
+    if (uploadError) {
+      throw new Error(`Erreur lors du transfert de ${file.name} : ${uploadError.message}`);
+    }
+
+    const { data } = supabase.storage.from("chapters").getPublicUrl(fileName);
+    return data.publicUrl;
   };
 
-  const handlePhotosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setPhotoFiles((prev) => [...prev, ...files]);
-  };
-
-  const removePhoto = (index: number) => {
-    setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
-    setFreeIndexes((prev) => {
-      const next = new Set<number>();
-      prev.forEach((i) => {
-        if (i < index) next.add(i);
-        else if (i > index) next.add(i - 1);
-      });
-      return next;
-    });
-  };
-
-  const toggleFree = (index: number) => {
-    setFreeIndexes((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  };
-
-  // ============================================
-  // SOUMISSION
-  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    if (!number.trim()) {
-      setError("Le numéro du chapitre est requis");
-      return;
-    }
-    if (mode === "pdf" && !pdfFile) {
-      setError("Sélectionnez un fichier PDF");
-      return;
-    }
-    if (mode === "photos" && photoFiles.length === 0) {
-      setError("Sélectionnez au moins une photo");
-      return;
-    }
+    setStatusMessage("");
 
     const token = localStorage.getItem("token");
     if (!token) {
-      router.push("/login");
+      setError("Vous devez être connecté.");
+      return;
+    }
+
+    if (uploadType === "pdf" && !pdfFile) {
+      setError("Veuillez choisir un fichier PDF.");
+      return;
+    }
+
+    if (uploadType === "images" && (!pageFiles || pageFiles.length === 0)) {
+      setError("Veuillez sélectionner au moins une image.");
       return;
     }
 
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("number", number);
-      if (title.trim()) formData.append("title", title);
-      if (price.trim()) formData.append("price", price);
-      formData.append("isDraft", String(isDraft));
+      let uploadedPdfUrl = "";
+      let uploadedImagesUrls: string[] = [];
+      let uploadedCoverUrl = "";
 
-      if (mode === "pdf" && pdfFile) {
-        formData.append("pdf", pdfFile);
-      } else {
-        photoFiles.forEach((file) => formData.append("photos", file));
-        formData.append("freePageIndexes", JSON.stringify(Array.from(freeIndexes)));
+      // 1. Upload de la couverture (si renseignée)
+      if (coverFile) {
+        setStatusMessage("Transfert de la couverture...");
+        uploadedCoverUrl = await uploadToSupabase(coverFile, `manga/${mangaId}/covers`);
       }
 
+      // 2. Upload du PDF ou des images
+      if (uploadType === "pdf" && pdfFile) {
+        setStatusMessage("Transfert du PDF sur Supabase...");
+        uploadedPdfUrl = await uploadToSupabase(pdfFile, `manga/${mangaId}/pdfs`);
+      } else if (uploadType === "images" && pageFiles) {
+        setStatusMessage(`Transfert des ${pageFiles.length} pages...`);
+        for (let i = 0; i < pageFiles.length; i++) {
+          const url = await uploadToSupabase(
+            pageFiles[i],
+            `manga/${mangaId}/ch_${number}`
+          );
+          uploadedImagesUrls.push(url);
+          setStatusMessage(`Transfert des pages (${i + 1}/${pageFiles.length})...`);
+        }
+      }
+
+      // 3. Envoi du payload JSON léger à NestJS
+      setStatusMessage("Enregistrement du chapitre en base...");
       const res = await fetch(`${API_URL}/mangas/${mangaId}/chapters`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          number: Number(number),
+          title: title || undefined,
+          isFree: Boolean(isFree),
+          isDraft: Boolean(isDraft),
+          price: isFree ? 0 : Number(price),
+          pdfUrl: uploadedPdfUrl || undefined,
+          imagesUrls: uploadedImagesUrls.length > 0 ? uploadedImagesUrls : undefined,
+          coverUrl: uploadedCoverUrl || undefined,
+        }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        throw new Error(data.message || "Erreur lors de l'ajout du chapitre");
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.message || `Erreur serveur (${res.status})`);
       }
 
-      setSuccess(true);
-      setTimeout(() => {
-        router.push(`/manga/${mangaId}`);
-      }, 1200);
+      // Redirection après succès
+      router.push(`/manga/${mangaId}`);
     } catch (err: any) {
-      setError(err.message);
+      console.error(err);
+      setError(err.message || "Une erreur est survenue lors de la création.");
     } finally {
       setLoading(false);
+      setStatusMessage("");
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen pb-20 bg-white">
+    <div className="min-h-screen bg-white px-4 py-6 max-w-lg mx-auto">
+      <Link href={`/manga/${mangaId}`} className="flex items-center gap-2 text-gray-500 hover:text-black mb-6">
+        <ArrowLeft className="w-5 h-5" />
+        <span>Retour au manga</span>
+      </Link>
 
-      {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Link href={`/manga/${mangaId}`} className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm">Retour</span>
-          </Link>
-          <span className="text-lg font-bold text-black">Ajouter un chapitre</span>
-          <div className="w-16" />
+      <h1 className="text-2xl font-bold mb-6">Nouveau chapitre</h1>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700 text-sm">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <p>{error}</p>
         </div>
-      </header>
+      )}
 
-      <main className="flex-1 px-4 py-4 max-w-lg mx-auto w-full">
-
-        {success && (
-          <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm text-center">
-            ✅ Chapitre ajouté ! Redirection...
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-
-          {/* Choix du mode */}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setMode("pdf")}
-              className={`py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                mode === "pdf" ? "bg-black text-white" : "bg-gray-100 border border-gray-200 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              <FileText className="w-4 h-4" /> PDF
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("photos")}
-              className={`py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                mode === "photos" ? "bg-black text-white" : "bg-gray-100 border border-gray-200 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              <ImageIcon className="w-4 h-4" /> Photos
-            </button>
-          </div>
-
-          {/* Numéro du chapitre */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* N° et Titre */}
+        <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="block text-gray-700 text-sm font-medium mb-1">Numéro du chapitre *</label>
+            <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">N° Chapitre</label>
             <input
               type="number"
+              min="1"
               value={number}
-              onChange={(e) => setNumber(e.target.value)}
-              placeholder="1"
-              className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black placeholder-gray-400 focus:border-black outline-none transition-colors"
+              onChange={(e) => setNumber(parseInt(e.target.value) || 1)}
               required
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-black text-black"
             />
           </div>
-
-          {/* Titre */}
-          <div>
-            <label className="block text-gray-700 text-sm font-medium mb-1">Titre (optionnel)</label>
+          <div className="col-span-2">
+            <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Titre (optionnel)</label>
             <input
               type="text"
+              placeholder="Ex: Le réveil"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Titre du chapitre"
-              className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black placeholder-gray-400 focus:border-black outline-none transition-colors"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-black text-black"
             />
           </div>
+        </div>
 
-          {/* MODE PDF */}
-          {mode === "pdf" && (
-            <div>
-              <label className="block text-gray-700 text-sm font-medium mb-1">Fichier PDF *</label>
-              <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-black transition-colors">
-                {pdfFile ? (
-                  <p className="text-black text-sm">{pdfFile.name}</p>
-                ) : (
-                  <>
-                    <FileText className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-500 text-sm">Cliquez pour choisir un PDF</p>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={handlePdfChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
-              </div>
-            </div>
-          )}
+        {/* Format PDF ou Images */}
+        <div>
+          <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Format du contenu</label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setUploadType("pdf")}
+              className={`p-3 border rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition-all ${
+                uploadType === "pdf" ? "border-black bg-black text-white" : "border-gray-200 text-gray-600 hover:border-gray-400"
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Fichier PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => setUploadType("images")}
+              className={`p-3 border rounded-xl flex items-center justify-center gap-2 font-medium text-sm transition-all ${
+                uploadType === "images" ? "border-black bg-black text-white" : "border-gray-200 text-gray-600 hover:border-gray-400"
+              }`}
+            >
+              <ImageIcon className="w-4 h-4" />
+              Images (PNG/JPG)
+            </button>
+          </div>
+        </div>
 
-          {/* MODE PHOTOS */}
-          {mode === "photos" && (
-            <div>
-              <label className="block text-gray-700 text-sm font-medium mb-1">
-                Photos * ({photoFiles.length} sélectionnée{photoFiles.length > 1 ? "s" : ""})
-              </label>
-              <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-black transition-colors mb-3">
-                <ImageIcon className="w-10 h-10 text-gray-300 mx-auto mb-2" />
-                <p className="text-gray-500 text-sm">Ajouter des photos (une ou plusieurs)</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePhotosChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
-              </div>
-
-              {photoFiles.length > 0 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {photoFiles.map((file, index) => (
-                    <div key={index} className="relative rounded-lg overflow-hidden border border-gray-200">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`Page ${index + 1}`}
-                        className="w-full h-24 object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(index)}
-                        className="absolute top-1 right-1 p-1 rounded-full bg-red-500 text-white hover:bg-red-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleFree(index)}
-                        className={`absolute bottom-1 left-1 right-1 py-1 rounded text-[10px] font-medium ${
-                          freeIndexes.has(index) ? "bg-green-500 text-white" : "bg-black/60 text-white"
-                        }`}
-                      >
-                        {freeIndexes.has(index) ? "Gratuite" : "Payante"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Prix */}
+        {/* Fichiers principal */}
+        {uploadType === "pdf" ? (
           <div>
-            <label className="block text-gray-700 text-sm font-medium mb-1">Prix (USD, optionnel)</label>
+            <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Document PDF</label>
             <input
-              type="number"
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="0.99"
-              className="w-full px-4 py-3 rounded-lg bg-gray-50 border border-gray-200 text-black placeholder-gray-400 focus:border-black outline-none transition-colors"
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
+              required
+              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-black hover:file:bg-gray-200"
             />
           </div>
+        ) : (
+          <div>
+            <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Pages du chapitre</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => setPageFiles(e.target.files)}
+              required
+              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-black hover:file:bg-gray-200"
+            />
+          </div>
+        )}
 
-          {/* Brouillon */}
-          <label className="flex items-center gap-2 text-sm text-gray-600">
+        {/* Couverture Optionnelle */}
+        <div>
+          <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Couverture du chapitre (Optionnelle)</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
+            className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-black hover:file:bg-gray-200"
+          />
+        </div>
+
+        {/* Options de publication */}
+        <div className="p-4 border rounded-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Chapitre gratuit</span>
             <input
               type="checkbox"
-              checked={isDraft}
-              onChange={(e) => setIsDraft(e.target.checked)}
-              className="w-4 h-4 accent-black"
+              checked={isFree}
+              onChange={(e) => setIsFree(e.target.checked)}
+              className="w-5 h-5 accent-black rounded cursor-pointer"
             />
-            Enregistrer comme brouillon (non publié)
-          </label>
+          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-lg bg-black text-white font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {loading ? (
-              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <Upload className="w-4 h-4" /> Publier le chapitre
-              </>
-            )}
-          </button>
-        </form>
-      </main>
+          {!isFree && (
+            <div>
+              <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Prix ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.10"
+                value={price}
+                onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-black text-black"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Bouton de soumission */}
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full py-3 bg-black text-white rounded-xl font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors flex flex-col items-center justify-center gap-1"
+        >
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm">{statusMessage || "Chargement..."}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Upload className="w-5 h-5" />
+              <span>Publier le chapitre</span>
+            </div>
+          )}
+        </button>
+      </form>
     </div>
   );
 }
