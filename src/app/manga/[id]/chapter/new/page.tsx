@@ -18,7 +18,7 @@ export default function NewChapterPage() {
   const router = useRouter();
   const mangaId = params.id as string;
 
-  const [number, setNumber] = useState<number>(1);
+  const [number, setNumber] = useState<number | string>(1);
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState<number>(0);
   const [isFree, setIsFree] = useState(true);
@@ -34,22 +34,36 @@ export default function NewChapterPage() {
   const [error, setError] = useState("");
 
   /**
-   * Upload direct vers le bucket Supabase
+   * Upload direct vers le bucket Supabase avec sécurisation des noms et erreurs
    */
   const uploadToSupabase = async (file: File, folderPath: string): Promise<string> => {
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${folderPath}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+    try {
+      const fileExt = file.name.split(".").pop()?.toLowerCase() || "jpeg";
+      const sanitizedExt = fileExt.replace(/[^a-z0-9]/g, "");
+      const fileName = `${folderPath}/${Date.now()}_${Math.random().toString(36).substring(7)}.${sanitizedExt}`;
 
-    const { error: uploadError } = await supabase.storage
-      .from("chapters")
-      .upload(fileName, file, { contentType: file.type, upsert: true });
+      const contentType = file.type || (sanitizedExt === "pdf" ? "application/pdf" : "image/jpeg");
 
-    if (uploadError) {
-      throw new Error(`Erreur lors du transfert de ${file.name} : ${uploadError.message}`);
+      const { error: uploadError } = await supabase.storage
+        .from("chapters")
+        .upload(fileName, file, { 
+          contentType, 
+          upsert: true,
+          cacheControl: "3600",
+        });
+
+      if (uploadError) {
+        throw new Error(`Erreur Supabase (${file.name}) : ${uploadError.message}`);
+      }
+
+      const { data } = supabase.storage.from("chapters").getPublicUrl(fileName);
+      return data.publicUrl;
+    } catch (err: any) {
+      if (err.message?.includes("Failed to fetch")) {
+        throw new Error(`Problème de connexion lors de l'envoi de ${file.name}. Vérifiez votre réseau ou le bucket Supabase.`);
+      }
+      throw err;
     }
-
-    const { data } = supabase.storage.from("chapters").getPublicUrl(fileName);
-    return data.publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,9 +71,16 @@ export default function NewChapterPage() {
     setError("");
     setStatusMessage("");
 
+    // 1. Validation stricte du numéro de chapitre
+    const parsedNumber = parseInt(String(number), 10);
+    if (isNaN(parsedNumber) || parsedNumber < 1) {
+      setError("Le numéro du chapitre doit être un nombre entier valide (ex: 1, 2, 3).");
+      return;
+    }
+
     const token = localStorage.getItem("token");
     if (!token) {
-      setError("Vous devez être connecté.");
+      setError("Vous devez être connecté pour publier.");
       return;
     }
 
@@ -80,30 +101,30 @@ export default function NewChapterPage() {
       let uploadedImagesUrls: string[] = [];
       let uploadedCoverUrl = "";
 
-      // 1. Upload de la couverture (si renseignée)
+      // 2. Upload de la couverture (si présente)
       if (coverFile) {
         setStatusMessage("Transfert de la couverture...");
         uploadedCoverUrl = await uploadToSupabase(coverFile, `manga/${mangaId}/covers`);
       }
 
-      // 2. Upload du PDF ou des images
+      // 3. Upload du PDF ou des images par étapes
       if (uploadType === "pdf" && pdfFile) {
         setStatusMessage("Transfert du PDF sur Supabase...");
         uploadedPdfUrl = await uploadToSupabase(pdfFile, `manga/${mangaId}/pdfs`);
       } else if (uploadType === "images" && pageFiles) {
-        setStatusMessage(`Transfert des ${pageFiles.length} pages...`);
-        for (let i = 0; i < pageFiles.length; i++) {
+        const totalFiles = pageFiles.length;
+        for (let i = 0; i < totalFiles; i++) {
+          setStatusMessage(`Envoi image ${i + 1} / ${totalFiles}...`);
           const url = await uploadToSupabase(
             pageFiles[i],
-            `manga/${mangaId}/ch_${number}`
+            `manga/${mangaId}/ch_${parsedNumber}`
           );
           uploadedImagesUrls.push(url);
-          setStatusMessage(`Transfert des pages (${i + 1}/${pageFiles.length})...`);
         }
       }
 
-      // 3. Envoi du payload JSON léger à NestJS
-      setStatusMessage("Enregistrement du chapitre en base...");
+      // 4. Envoi du payload JSON au backend NestJS
+      setStatusMessage("Enregistrement du chapitre...");
       const res = await fetch(`${API_URL}/mangas/${mangaId}/chapters`, {
         method: "POST",
         headers: {
@@ -111,11 +132,11 @@ export default function NewChapterPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          number: Number(number),
-          title: title || undefined,
+          number: parsedNumber,
+          title: title.trim() || undefined,
           isFree: Boolean(isFree),
           isDraft: Boolean(isDraft),
-          price: isFree ? 0 : Number(price),
+          price: isFree ? 0 : Number(price) || 0,
           pdfUrl: uploadedPdfUrl || undefined,
           imagesUrls: uploadedImagesUrls.length > 0 ? uploadedImagesUrls : undefined,
           coverUrl: uploadedCoverUrl || undefined,
@@ -127,10 +148,9 @@ export default function NewChapterPage() {
         throw new Error(errorData?.message || `Erreur serveur (${res.status})`);
       }
 
-      // Redirection après succès
       router.push(`/manga/${mangaId}`);
     } catch (err: any) {
-      console.error(err);
+      console.error("Erreur soumission chapitre :", err);
       setError(err.message || "Une erreur est survenue lors de la création.");
     } finally {
       setLoading(false);
@@ -162,8 +182,9 @@ export default function NewChapterPage() {
             <input
               type="number"
               min="1"
+              step="1"
               value={number}
-              onChange={(e) => setNumber(parseInt(e.target.value) || 1)}
+              onChange={(e) => setNumber(e.target.value)}
               required
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-black text-black"
             />
@@ -207,7 +228,7 @@ export default function NewChapterPage() {
           </div>
         </div>
 
-        {/* Fichiers principal */}
+        {/* Fichier principal */}
         {uploadType === "pdf" ? (
           <div>
             <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Document PDF</label>
