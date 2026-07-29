@@ -66,8 +66,9 @@ export default function NewChapterPage() {
         filesToUpload.push(coverFile);
       }
 
-      // 2. Demander au backend les URLs signées
       const filenames = filesToUpload.map((f) => f.name);
+
+      // 2. Demander au backend les URLs signées
       const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/upload-url`, {
         method: "POST",
         headers: {
@@ -77,18 +78,24 @@ export default function NewChapterPage() {
         body: JSON.stringify({ filenames }),
       });
 
-      if (!urlRes.ok) {
-        const errorData = await urlRes.json().catch(() => null);
-        throw new Error(errorData?.message || "Impossible d'obtenir les URLs de téléchargement.");
+      const data = await urlRes.json().catch(() => null);
+
+      // Vérification de sécurité : s'assure que le backend a renvoyé un Tableau [] et pas une erreur {}
+      if (!urlRes.ok || !Array.isArray(data)) {
+        console.error("Erreur serveur ou format invalide :", data);
+        throw new Error(
+          data?.message || `Erreur du serveur d'upload (${urlRes.status})`
+        );
       }
 
-      const instructions: Array<{ filename: string; uploadUrl: string; key: string }> =
-        await urlRes.json();
+      const instructions: Array<{ filename: string; uploadUrl: string; key: string }> = data;
 
-      // 3. Upload direct vers Supabase (Bypass de la limite Vercel)
+      // 3. Upload direct vers Supabase Storage via PUT
       for (const file of filesToUpload) {
         const target = instructions.find((i) => i.filename === file.name);
-        if (!target) continue;
+        if (!target) {
+          throw new Error(`Aucune URL d'upload trouvée pour le fichier : ${file.name}`);
+        }
 
         const uploadRes = await fetch(target.uploadUrl, {
           method: "PUT",
@@ -97,11 +104,11 @@ export default function NewChapterPage() {
         });
 
         if (!uploadRes.ok) {
-          throw new Error(`Échec de l'envoi du fichier ${file.name}`);
+          throw new Error(`Échec du téléversement de ${file.name} vers le stockage.`);
         }
       }
 
-      // 4. Récupérer les URLs publiques finales
+      // 4. Extraire les URLs publiques finales
       let pdfUrl: string | undefined;
       let coverUrl: string | undefined;
       const imagesUrls: string[] = [];
@@ -119,7 +126,7 @@ export default function NewChapterPage() {
         coverUrl = instructions.find((i) => i.filename === coverFile.name)?.key;
       }
 
-      // 5. Envoyer le JSON final au backend NestJS
+      // 5. Enregistrement final des métadonnées du chapitre en BDD
       const payload = {
         number: parsedNumber,
         title: title.trim() || undefined,
@@ -142,7 +149,7 @@ export default function NewChapterPage() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.message || `Erreur serveur (${res.status})`);
+        throw new Error(errorData?.message || `Erreur lors de la création (${res.status})`);
       }
 
       router.push(`/manga/${mangaId}`);
