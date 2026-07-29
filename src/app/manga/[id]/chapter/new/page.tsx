@@ -12,7 +12,7 @@ export default function NewChapterPage() {
   const router = useRouter();
   const mangaId = params.id as string;
 
-  const [number, setNumber] = useState<number | string>(1);
+  const [number, setNumber] = useState<number>(1);
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState<number>(0);
   const [isFree, setIsFree] = useState(true);
@@ -30,9 +30,9 @@ export default function NewChapterPage() {
     e.preventDefault();
     setError("");
 
-    const parsedNumber = parseInt(String(number), 10);
-    if (isNaN(parsedNumber) || parsedNumber < 1) {
-      setError("Le numéro du chapitre doit être un nombre entier valide.");
+    const parsedNumber = Number(number);
+    if (!parsedNumber || parsedNumber < 1) {
+      setError("Le numéro du chapitre doit être un entier valide.");
       return;
     }
 
@@ -55,34 +55,89 @@ export default function NewChapterPage() {
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append("number", String(parsedNumber));
-      if (title.trim()) formData.append("title", title.trim());
-      formData.append("isFree", String(isFree));
-      formData.append("isDraft", String(isDraft));
-      formData.append("price", String(isFree ? 0 : price));
-
-      // Ajout de la couverture optionnelle
+      // 1. Lister tous les fichiers à uploader
+      const filesToUpload: File[] = [];
+      if (uploadType === "pdf" && pdfFile) {
+        filesToUpload.push(pdfFile);
+      } else if (uploadType === "images" && pageFiles) {
+        Array.from(pageFiles).forEach((f) => filesToUpload.push(f));
+      }
       if (coverFile) {
-        formData.append("cover", coverFile);
+        filesToUpload.push(coverFile);
       }
 
-      // Ajout du PDF ou des images
-      if (uploadType === "pdf" && pdfFile) {
-        formData.append("pdf", pdfFile);
-      } else if (uploadType === "images" && pageFiles) {
-        for (let i = 0; i < pageFiles.length; i++) {
-          formData.append("pages", pageFiles[i]);
+      // 2. Demander au backend les URLs signées
+      const filenames = filesToUpload.map((f) => f.name);
+      const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/upload-url`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ filenames }),
+      });
+
+      if (!urlRes.ok) {
+        const errorData = await urlRes.json().catch(() => null);
+        throw new Error(errorData?.message || "Impossible d'obtenir les URLs de téléchargement.");
+      }
+
+      const instructions: Array<{ filename: string; uploadUrl: string; key: string }> =
+        await urlRes.json();
+
+      // 3. Upload direct vers Supabase (Bypass de la limite Vercel)
+      for (const file of filesToUpload) {
+        const target = instructions.find((i) => i.filename === file.name);
+        if (!target) continue;
+
+        const uploadRes = await fetch(target.uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error(`Échec de l'envoi du fichier ${file.name}`);
         }
       }
+
+      // 4. Récupérer les URLs publiques finales
+      let pdfUrl: string | undefined;
+      let coverUrl: string | undefined;
+      const imagesUrls: string[] = [];
+
+      if (uploadType === "pdf" && pdfFile) {
+        pdfUrl = instructions.find((i) => i.filename === pdfFile.name)?.key;
+      } else if (uploadType === "images" && pageFiles) {
+        Array.from(pageFiles).forEach((f) => {
+          const key = instructions.find((i) => i.filename === f.name)?.key;
+          if (key) imagesUrls.push(key);
+        });
+      }
+
+      if (coverFile) {
+        coverUrl = instructions.find((i) => i.filename === coverFile.name)?.key;
+      }
+
+      // 5. Envoyer le JSON final au backend NestJS
+      const payload = {
+        number: parsedNumber,
+        title: title.trim() || undefined,
+        isFree,
+        isDraft,
+        price: isFree ? 0 : Number(price),
+        pdfUrl,
+        imagesUrls: imagesUrls.length > 0 ? imagesUrls : undefined,
+        coverUrl,
+      };
 
       const res = await fetch(`${API_URL}/mangas/${mangaId}/chapters`, {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-          // Pas de Content-Type ici, le navigateur gère le boundary du FormData
         },
-        body: formData,
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -93,7 +148,7 @@ export default function NewChapterPage() {
       router.push(`/manga/${mangaId}`);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "Une erreur est survenue lors de la création.");
+      setError(err.message || "Une erreur est survenue.");
     } finally {
       setLoading(false);
     }
@@ -116,7 +171,7 @@ export default function NewChapterPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* N° et Titre */}
+        {/* Numéro et Titre */}
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">N° Chapitre</label>
@@ -125,7 +180,7 @@ export default function NewChapterPage() {
               min="1"
               step="1"
               value={number}
-              onChange={(e) => setNumber(e.target.value)}
+              onChange={(e) => setNumber(parseInt(e.target.value, 10) || 1)}
               required
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-black text-black"
             />
@@ -142,7 +197,7 @@ export default function NewChapterPage() {
           </div>
         </div>
 
-        {/* Format PDF ou Images */}
+        {/* Choix PDF vs Images */}
         <div>
           <label className="block text-xs font-semibold uppercase text-gray-500 mb-2">Format du contenu</label>
           <div className="grid grid-cols-2 gap-3">
@@ -169,7 +224,7 @@ export default function NewChapterPage() {
           </div>
         </div>
 
-        {/* Fichier principal */}
+        {/* Inputs Fichiers */}
         {uploadType === "pdf" ? (
           <div>
             <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Document PDF</label>
@@ -195,9 +250,9 @@ export default function NewChapterPage() {
           </div>
         )}
 
-        {/* Couverture Optionnelle */}
+        {/* Couverture */}
         <div>
-          <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Couverture du chapitre (Optionnelle)</label>
+          <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">Couverture (Optionnelle)</label>
           <input
             type="file"
             accept="image/*"
@@ -206,7 +261,7 @@ export default function NewChapterPage() {
           />
         </div>
 
-        {/* Options de publication */}
+        {/* Options Tarifaires */}
         <div className="p-4 border rounded-xl space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium">Chapitre gratuit</span>
@@ -233,7 +288,6 @@ export default function NewChapterPage() {
           )}
         </div>
 
-        {/* Bouton de soumission */}
         <button
           type="submit"
           disabled={loading}
@@ -242,7 +296,7 @@ export default function NewChapterPage() {
           {loading ? (
             <>
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Envoi en cours...</span>
+              <span>Téléversement direct...</span>
             </>
           ) : (
             <>
