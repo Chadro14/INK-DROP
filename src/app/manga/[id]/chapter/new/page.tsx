@@ -1,360 +1,357 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Upload, AlertCircle, FileText, Image as ImageIcon, Info, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Upload, X, FileText, Image as ImageIcon } from "lucide-react";
+import { supabaseClient } from "@/lib/supabase-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://ink-backend.vercel.app";
+const API_URL = "https://ink-backend.vercel.app";
 
 export default function NewChapterPage() {
-  const params = useParams();
   const router = useRouter();
+  const params = useParams();
   const mangaId = params.id as string;
 
-  const [season, setSeason] = useState<number>(1);
-  const [number, setNumber] = useState<number>(1);
+  const [mode, setMode] = useState<"pdf" | "photos">("pdf");
+  const [number, setNumber] = useState("");
   const [title, setTitle] = useState("");
+  const [price, setPrice] = useState("");
+  const [isDraft, setIsDraft] = useState(false);
 
-  const [uploadType, setUploadType] = useState<"pdf" | "images">("pdf");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  
-  // Tableau pour cumuler les images (plusieurs sessions)
-  const [pageFiles, setPageFiles] = useState<File[]>([]);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [freeIndexes, setFreeIndexes] = useState<Set<number>>(new Set());
 
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
 
-  // Fonction pour cumuler les images sans effacer les précédentes
-  const handleImageSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setPageFiles((prev) => [...prev, ...newFiles]);
-    }
-    // Réinitialise l'input pour permettre de re-sélectionner si besoin
-    e.target.value = "";
+  const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setPdfFile(file);
+  };
+
+  const handlePhotosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setPhotoFiles((prev) => [...prev, ...files]);
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
+    setFreeIndexes((prev) => {
+      const next = new Set<number>();
+      prev.forEach((i) => {
+        if (i < index) next.add(i);
+        else if (i > index) next.add(i - 1);
+      });
+      return next;
+    });
+  };
+
+  const toggleFree = (index: number) => {
+    setFreeIndexes((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    const parsedSeason = Number(season);
-    const parsedNumber = Number(number);
-
-    if (!parsedNumber || parsedNumber < 1 || parsedNumber > 10) {
-      setError("Le numéro du chapitre doit être compris entre 1 et 10.");
+    if (!number.trim()) {
+      setError("Le numéro du chapitre est requis");
+      return;
+    }
+    if (mode === "pdf" && !pdfFile) {
+      setError("Sélectionnez un fichier PDF");
+      return;
+    }
+    if (mode === "photos" && photoFiles.length === 0) {
+      setError("Sélectionnez au moins une photo");
       return;
     }
 
     const token = localStorage.getItem("token");
     if (!token) {
-      setError("Vous devez être connecté.");
-      return;
-    }
-
-    if (uploadType === "pdf" && !pdfFile) {
-      setError("Veuillez choisir un fichier PDF.");
-      return;
-    }
-
-    if (uploadType === "images" && pageFiles.length === 0) {
-      setError("Veuillez sélectionner au moins une image.");
+      router.push("/login");
       return;
     }
 
     setLoading(true);
 
     try {
-      const filesToUpload: File[] = uploadType === "pdf" && pdfFile ? [pdfFile] : pageFiles;
-      const filenames = filesToUpload.map((f) => f.name);
+      // ===== ÉTAPE 1 : demander les URLs d'upload signées =====
+      setProgress("Préparation de l'upload...");
+      const count = mode === "pdf" ? 1 : photoFiles.length;
 
-      // Envoi de la demande d'URL (on inclut fileNames et filenames au cas où le backend préfère l'un ou l'autre)
-      const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/upload-url`, {
+      const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/upload-urls`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ filenames, fileNames: filenames }),
+        body: JSON.stringify({
+          mode,
+          count,
+          chapterNumber: parseInt(number, 10),
+        }),
       });
 
-      const rawData = await urlRes.json().catch(() => null);
-
+      const urlData = await urlRes.json();
       if (!urlRes.ok) {
-        throw new Error(rawData?.message || `Erreur serveur (${urlRes.status})`);
+        throw new Error(urlData.message || "Erreur lors de la préparation de l'upload");
       }
 
-      // Recherche de la liste des URLs dans les différents formats possibles du backend
-      let instructionsData: any[] = [];
-      if (Array.isArray(rawData)) instructionsData = rawData;
-      else if (rawData?.data && Array.isArray(rawData.data)) instructionsData = rawData.data;
-      else if (rawData?.urls && Array.isArray(rawData.urls)) instructionsData = rawData.urls;
-      else if (rawData?.uploadUrls && Array.isArray(rawData.uploadUrls)) instructionsData = rawData.uploadUrls;
+      const uploadTargets: { key: string; path: string; token: string }[] = urlData.files;
 
-      if (instructionsData.length === 0) {
-        throw new Error("Le serveur n'a renvoyé aucune URL de téléversement valide.");
-      }
+      // ===== ÉTAPE 2 : uploader directement vers Supabase =====
+      const filesToUpload = mode === "pdf" ? [pdfFile!] : photoFiles;
 
-      // Upload direct vers le stockage (ex: AWS, Supabase, etc.)
-      for (const file of filesToUpload) {
-        const target = instructionsData.find((i: any) => i.filename === file.name);
-        if (!target) {
-          throw new Error(`Aucune URL trouvée pour le fichier : ${file.name}`);
-        }
+      for (let i = 0; i < uploadTargets.length; i++) {
+        setProgress(`Envoi du fichier ${i + 1}/${uploadTargets.length}...`);
+        const target = uploadTargets[i];
+        const file = filesToUpload[i];
 
-        const uploadRes = await fetch(target.uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
+        const { error: uploadError } = await supabaseClient.storage
+          .from("chapters")
+          .uploadToSignedUrl(target.path, target.token, file);
 
-        if (!uploadRes.ok) {
-          throw new Error(`Échec de l'envoi de ${file.name}`);
+        if (uploadError) {
+          throw new Error(`Échec de l'envoi du fichier ${i + 1} : ${uploadError.message}`);
         }
       }
 
-      // Récupération des clés/URLs publiques
-      let pdfUrl: string | undefined;
-      const imagesUrls: string[] = [];
+      // ===== ÉTAPE 3 : finaliser le chapitre (métadonnées uniquement) =====
+      setProgress("Finalisation...");
+      const keys = uploadTargets.map((t) => t.key);
 
-      if (uploadType === "pdf" && pdfFile) {
-        pdfUrl = instructionsData.find((i: any) => i.filename === pdfFile.name)?.key;
-      } else if (uploadType === "images") {
-        pageFiles.forEach((f) => {
-          const key = instructionsData.find((i: any) => i.filename === f.name)?.key;
-          if (key) imagesUrls.push(key);
-        });
-      }
-
-      // Sauvegarde du chapitre dans la base de données
-      const payload = {
-        season: parsedSeason,
-        number: parsedNumber,
-        title: title.trim() || undefined,
-        isFree: false, 
-        price: 0.55,  
-        pdfUrl,
-        imagesUrls: imagesUrls.length > 0 ? imagesUrls : undefined,
-      };
-
-      const res = await fetch(`${API_URL}/mangas/${mangaId}/chapters`, {
+      const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/finalize`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          mode,
+          keys,
+          number: parseInt(number, 10),
+          title: title.trim() || undefined,
+          price: price.trim() ? parseFloat(price) : undefined,
+          isDraft,
+          freePageIndexes: mode === "photos" ? JSON.stringify(Array.from(freeIndexes)) : undefined,
+        }),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => null);
-        throw new Error(errorData?.message || `Erreur lors de la création (${res.status})`);
+      const finalizeData = await finalizeRes.json();
+      if (!finalizeRes.ok) {
+        throw new Error(finalizeData.message || "Erreur lors de la création du chapitre");
       }
 
-      router.push(`/manga/${mangaId}`);
+      setSuccess(true);
+      setTimeout(() => {
+        router.push(`/manga/${mangaId}`);
+      }, 1200);
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Une erreur est survenue.");
+      setError(err.message);
     } finally {
       setLoading(false);
+      setProgress("");
     }
   };
 
   return (
-    <div className="min-h-screen bg-white text-black px-4 py-8 md:py-12">
-      <div className="max-w-2xl mx-auto">
-        
-        <Link 
-          href={`/manga/${mangaId}`} 
-          className="inline-flex items-center gap-2 text-black font-extrabold hover:underline mb-8 uppercase tracking-wider text-sm"
-        >
-          <ArrowLeft className="w-5 h-5 text-black" />
-          <span>Retour</span>
-        </Link>
+    <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
 
-        <div className="mb-8 space-y-4">
-          <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-black uppercase">
-            Nouveau Chapitre
-          </h1>
-          
-          <div className="flex flex-col gap-3 p-4 border-2 border-black bg-white rounded-lg">
-            <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-black flex-shrink-0 mt-0.5" />
-              <p className="text-sm font-bold text-black">
-                PRIX FIXE : Le chapitre sera vendu à 0,55 $. Les deux derniers chapitres sont obligatoirement payants.
-              </p>
-            </div>
-            <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-black flex-shrink-0 mt-0.5" />
-              <p className="text-sm font-bold text-black">
-                LIMITE : Un chapitre est limité à 10 par saison. Arrivé à 10, passez à la saison suivante.
-              </p>
-            </div>
-          </div>
+      <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
+        <div className="flex items-center justify-between max-w-lg mx-auto">
+          <Link href={`/manga/${mangaId}`} className="text-ink-muted hover:text-white transition-colors flex items-center gap-1">
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm">Retour</span>
+          </Link>
+          <span className="text-lg font-bold text-white">Ajouter un chapitre</span>
+          <div className="w-16" />
         </div>
+      </header>
 
-        {error && (
-          <div className="mb-8 p-4 border-2 border-black bg-white rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-6 h-6 text-black flex-shrink-0" />
-            <p className="text-base font-extrabold text-black">{error}</p>
+      <main className="flex-1 px-4 py-4 max-w-lg mx-auto w-full">
+
+        {success && (
+          <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-500 text-sm text-center">
+            ✅ Chapitre ajouté ! Redirection...
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-            <div>
-              <label className="block text-sm font-extrabold text-black mb-2 uppercase tracking-wide">
-                Saison
-              </label>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={season}
-                onChange={(e) => setSeason(parseInt(e.target.value, 10) || 1)}
-                required
-                className="w-full px-4 py-3 border-2 border-black rounded-lg focus:outline-none focus:ring-4 focus:ring-black font-extrabold text-black bg-white text-lg"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-extrabold text-black mb-2 uppercase tracking-wide">
-                Chapitre
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="10"
-                step="1"
-                value={number}
-                onChange={(e) => setNumber(parseInt(e.target.value, 10) || 1)}
-                required
-                className="w-full px-4 py-3 border-2 border-black rounded-lg focus:outline-none focus:ring-4 focus:ring-black font-extrabold text-black bg-white text-lg"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-extrabold text-black mb-2 uppercase tracking-wide">
-                Titre (Optionnel)
-              </label>
-              <input
-                type="text"
-                placeholder="Nom du chapitre..."
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-black rounded-lg focus:outline-none focus:ring-4 focus:ring-black font-extrabold text-black bg-white text-lg placeholder-black/30"
-              />
-            </div>
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
+            {error}
+          </div>
+        )}
+
+        {loading && progress && (
+          <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 text-sm text-center">
+            {progress}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setMode("pdf")}
+              className={`py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                mode === "pdf" ? "bg-accent text-white" : "bg-ink-card border border-ink-border text-ink-muted"
+              }`}
+            >
+              <FileText className="w-4 h-4" /> PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("photos")}
+              className={`py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
+                mode === "photos" ? "bg-accent text-white" : "bg-ink-card border border-ink-border text-ink-muted"
+              }`}
+            >
+              <ImageIcon className="w-4 h-4" /> Photos
+            </button>
           </div>
 
-          <div className="space-y-5">
-            <label className="block text-sm font-extrabold text-black uppercase tracking-wide">
-              Contenu
-            </label>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setUploadType("pdf")}
-                className={`p-4 border-2 rounded-lg flex flex-col items-center justify-center gap-2 font-extrabold transition-all ${
-                  uploadType === "pdf" ? "border-black bg-black text-white" : "border-black bg-white text-black hover:bg-black/5"
-                }`}
-              >
-                <FileText className={`w-6 h-6 ${uploadType === "pdf" ? "text-white" : "text-black"}`} />
-                PDF
-              </button>
-              <button
-                type="button"
-                onClick={() => setUploadType("images")}
-                className={`p-4 border-2 rounded-lg flex flex-col items-center justify-center gap-2 font-extrabold transition-all ${
-                  uploadType === "images" ? "border-black bg-black text-white" : "border-black bg-white text-black hover:bg-black/5"
-                }`}
-              >
-                <ImageIcon className={`w-6 h-6 ${uploadType === "images" ? "text-white" : "text-black"}`} />
-                IMAGES
-              </button>
-            </div>
+          <div>
+            <label className="block text-ink-muted text-sm font-medium mb-1">Numéro du chapitre *</label>
+            <input
+              type="number"
+              value={number}
+              onChange={(e) => setNumber(e.target.value)}
+              placeholder="1"
+              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none"
+              required
+            />
+          </div>
 
-            <div className="mt-4">
-              {uploadType === "pdf" ? (
-                <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-black border-dashed rounded-lg cursor-pointer bg-white hover:bg-black/5 transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <FileText className="w-8 h-8 mb-3 text-black" />
-                    {pdfFile ? (
-                      <p className="text-lg font-extrabold text-black">{pdfFile.name}</p>
-                    ) : (
-                      <p className="text-base font-extrabold text-black">Cliquez pour ajouter le PDF</p>
-                    )}
-                  </div>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
-                    className="hidden"
-                  />
-                </label>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-black border-dashed rounded-lg cursor-pointer bg-white hover:bg-black/5 transition-colors">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <ImageIcon className="w-8 h-8 mb-3 text-black" />
-                      {pageFiles.length > 0 ? (
-                        <>
-                          <p className="text-2xl font-black text-black">
-                            {pageFiles.length} IMAGES
-                          </p>
-                          <p className="text-sm font-extrabold text-black mt-2 flex items-center gap-1 underline">
-                            <Plus className="w-4 h-4 text-black" /> Ajouter encore des images
-                          </p>
-                        </>
-                      ) : (
-                        <p className="text-base font-extrabold text-black">Cliquez pour ajouter des images</p>
-                      )}
+          <div>
+            <label className="block text-ink-muted text-sm font-medium mb-1">Titre (optionnel)</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Titre du chapitre"
+              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none"
+            />
+          </div>
+
+          {mode === "pdf" && (
+            <div>
+              <label className="block text-ink-muted text-sm font-medium mb-1">Fichier PDF *</label>
+              <div className="relative border-2 border-dashed border-ink-border rounded-lg p-6 text-center hover:border-accent/50 transition-colors">
+                {pdfFile ? (
+                  <p className="text-white text-sm">{pdfFile.name}</p>
+                ) : (
+                  <>
+                    <FileText className="w-10 h-10 text-ink-muted/50 mx-auto mb-2" />
+                    <p className="text-ink-muted text-sm">Cliquez pour choisir un PDF</p>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handlePdfChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </div>
+            </div>
+          )}
+
+          {mode === "photos" && (
+            <div>
+              <label className="block text-ink-muted text-sm font-medium mb-1">
+                Photos * ({photoFiles.length} sélectionnée{photoFiles.length > 1 ? "s" : ""})
+              </label>
+              <div className="relative border-2 border-dashed border-ink-border rounded-lg p-6 text-center hover:border-accent/50 transition-colors mb-3">
+                <ImageIcon className="w-10 h-10 text-ink-muted/50 mx-auto mb-2" />
+                <p className="text-ink-muted text-sm">Ajouter des photos (une ou plusieurs)</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handlePhotosChange}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </div>
+
+              {photoFiles.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {photoFiles.map((file, index) => (
+                    <div key={index} className="relative rounded-lg overflow-hidden border border-ink-border">
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`Page ${index + 1}`}
+                        className="w-full h-24 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(index)}
+                        className="absolute top-1 right-1 p-1 rounded-full bg-red-500 text-white"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleFree(index)}
+                        className={`absolute bottom-1 left-1 right-1 py-1 rounded text-[10px] font-medium ${
+                          freeIndexes.has(index) ? "bg-green-500 text-white" : "bg-black/60 text-ink-muted"
+                        }`}
+                      >
+                        {freeIndexes.has(index) ? "Gratuite" : "Payante"}
+                      </button>
                     </div>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleImageSelection}
-                      className="hidden"
-                    />
-                  </label>
-                  
-                  {pageFiles.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setPageFiles([])}
-                      className="flex items-center justify-center gap-2 p-3 border-2 border-black rounded-lg text-black font-extrabold hover:bg-black/5 transition-colors"
-                    >
-                      <Trash2 className="w-5 h-5 text-black" />
-                      VIDER LA SÉLECTION (RECOMMENCER)
-                    </button>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
+          )}
+
+          <div>
+            <label className="block text-ink-muted text-sm font-medium mb-1">Prix (USD, optionnel)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="0.99"
+              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none"
+            />
           </div>
+
+          <label className="flex items-center gap-2 text-sm text-ink-muted">
+            <input
+              type="checkbox"
+              checked={isDraft}
+              onChange={(e) => setIsDraft(e.target.checked)}
+              className="w-4 h-4"
+            />
+            Enregistrer comme brouillon (non publié)
+          </label>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-5 border-2 border-black bg-white text-black text-xl rounded-lg font-black uppercase tracking-widest hover:bg-black hover:text-white disabled:opacity-50 transition-all flex items-center justify-center gap-3 mt-8 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[6px] hover:translate-y-[6px]"
+            className="w-full py-3 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {loading ? (
-              <>
-                <div className="w-6 h-6 border-4 border-current border-t-transparent rounded-full animate-spin" />
-                <span>PUBLICATION...</span>
-              </>
+              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                <Upload className="w-7 h-7" />
-                <span>PUBLIER (0.55 $)</span>
+                <Upload className="w-4 h-4" /> Publier le chapitre
               </>
             )}
           </button>
         </form>
-
-      </div>
+      </main>
     </div>
   );
 }
