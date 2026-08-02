@@ -3,24 +3,27 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Check, Palette } from "lucide-react";
+import { ArrowLeft, Check, Sparkles } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-type Color = {
-  id?: string;
+type ColorOption = {
+  id: string;
   name: string;
   value: string;
+  isPremium?: boolean;
 };
 
 export default function BadgeColorPage() {
   const router = useRouter();
-  const [colors, setColors] = useState<Color[]>([]);
-  const [selectedColor, setSelectedColor] = useState<string>("gold");
+  const [freeColors, setFreeColors] = useState<ColorOption[]>([]);
+  const [premiumColors, setPremiumColors] = useState<ColorOption[]>([]);
+  const [selectedColor, setSelectedColor] = useState<string>("");
+  const [isCertified, setIsCertified] = useState(false);
+  const [isUserPremium, setIsUserPremium] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [isCertified, setIsCertified] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -31,23 +34,30 @@ export default function BadgeColorPage() {
       }
 
       try {
-        // 1. Récupérer les couleurs disponibles
-        const colorsRes = await fetch(`${API_URL}/certification/colors`, {
+        // 1. Récupérer les couleurs depuis l'endpoint validé du backend
+        const res = await fetch(`${API_URL}/users/badge-colors/list`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const colorsData = await colorsRes.json();
-        const colorList = Array.isArray(colorsData) ? colorsData : colorsData.colors || [];
-        setColors(colorList);
+        const data = await res.json();
 
-        // 2. Récupérer le statut de certification
-        const statusRes = await fetch(`${API_URL}/certification/status`, {
+        if (res.ok) {
+          setFreeColors(data.freeColors || []);
+          setPremiumColors(data.premiumColors || []);
+          setIsUserPremium(data.isUserPremium || false);
+        }
+
+        // 2. Récupérer le profil utilisateur pour connaître son statut et sa couleur actuelle
+        const profileRes = await fetch(`${API_URL}/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const statusData = await statusRes.json();
-        setIsCertified(statusData.isCertified);
-        setSelectedColor(statusData.badgeColor ? statusData.badgeColor.toLowerCase() : "gold");
+        const profileData = await profileRes.json();
+
+        if (profileRes.ok) {
+          setIsCertified(profileData.isCertified || false);
+          setSelectedColor(profileData.badgeColor || "");
+        }
       } catch (error) {
-        console.error("Erreur:", error);
+        console.error("Erreur de chargement:", error);
       } finally {
         setLoading(false);
       }
@@ -56,9 +66,9 @@ export default function BadgeColorPage() {
     fetchData();
   }, [router]);
 
-  const handleSelectColor = async (color: Color) => {
+  const handleSelectColor = async (colorKey: string) => {
     if (!isCertified) {
-      setMessage("❌ Vous devez être certifié pour changer la couleur du badge");
+      setMessage("❌ Vous devez être certifié pour changer la couleur du badge.");
       return;
     }
 
@@ -66,13 +76,10 @@ export default function BadgeColorPage() {
     setMessage("");
 
     const token = localStorage.getItem("token");
-    
-    // Normalise le nom de la couleur (minuscules, sans espaces) pour correspondre au backend
-    const colorKey = (color.id || color.name).toLowerCase().trim();
 
     try {
-      const res = await fetch(`${API_URL}/certification/badge-color`, {
-        method: "POST",
+      const res = await fetch(`${API_URL}/users/badge-color`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
@@ -83,11 +90,11 @@ export default function BadgeColorPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur lors du changement de couleur");
+        throw new Error(data.message || "Erreur lors du changement de couleur.");
       }
 
       setSelectedColor(colorKey);
-      setMessage("✅ Couleur du badge mise à jour avec succès !");
+      setMessage("✅ Couleur du badge mise à jour avec succès ! 🔥");
     } catch (err: any) {
       setMessage(err.message);
     } finally {
@@ -97,86 +104,100 @@ export default function BadgeColorPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white">
-        <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-screen bg-black">
+        <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-white pb-20">
-
+    <div className="flex flex-col min-h-screen bg-black text-white pb-20">
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-sm border-b border-white/10 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Link href="/profile" className="text-gray-600 hover:text-black transition-colors flex items-center gap-1">
+          <Link href="/profile" className="text-gray-400 hover:text-white transition-colors flex items-center gap-1">
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm">Retour</span>
           </Link>
-          <span className="text-lg font-bold text-black">Couleur du badge</span>
+          <span className="text-lg font-bold">Couleur du badge</span>
           <div className="w-16" />
         </div>
       </header>
 
       <main className="flex-1 px-4 py-6 max-w-lg mx-auto w-full">
-
         {/* État de certification */}
-        <div className={`p-4 rounded-lg mb-6 text-center ${isCertified ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
+        <div className={`p-4 rounded-xl mb-6 text-center border ${isCertified ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-white/5 border-white/10 text-gray-400'}`}>
           <p className="text-sm font-medium">
-            {isCertified ? (
-              <span className="text-green-700">✅ Vous êtes certifié !</span>
-            ) : (
-              <span className="text-gray-500">❌ Vous n'êtes pas encore certifié</span>
-            )}
+            {isCertified ? "✅ Vous êtes certifié !" : "❌ Vous n'êtes pas encore certifié"}
           </p>
-          {!isCertified && (
-            <Link href="/certification" className="text-sm text-black underline mt-1 inline-block">
-              Voir les conditions de certification
-            </Link>
-          )}
         </div>
 
-        {/* Message */}
+        {/* Message de notification */}
         {message && (
-          <div className={`mb-4 p-3 rounded-lg text-sm ${message.includes('✅') ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-600'}`}>
+          <div className={`mb-4 p-3 rounded-xl text-sm ${message.includes('✅') ? 'bg-green-500/10 border border-green-500/30 text-green-400' : 'bg-red-500/10 border border-red-500/30 text-red-400'}`}>
             {message}
           </div>
         )}
 
-        {/* Couleurs */}
-        <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-          {colors.map((color, index) => {
-            const colorKey = (color.id || color.name).toLowerCase().trim();
-            const isSelected = selectedColor === colorKey;
+        {/* 1. COULEURS GRATUITES */}
+        <div className="mb-8">
+          <h2 className="text-sm font-semibold text-gray-400 mb-3">🎨 Couleurs Gratuites (Shonen Vibes)</h2>
+          <div className="grid grid-cols-4 gap-3">
+            {freeColors.map((color: any) => {
+              const colorValue = typeof color === 'string' ? color : color.value || color;
+              const isSelected = selectedColor === colorValue;
 
-            return (
-              <button
-                key={color.id || index}
-                onClick={() => handleSelectColor(color)}
-                disabled={!isCertified || saving}
-                className={`
-                  relative aspect-square rounded-lg border-2 transition-all shadow-sm
-                  ${isSelected ? 'border-black ring-2 ring-black ring-offset-2 scale-105' : 'border-gray-200 hover:border-gray-400'}
-                  ${!isCertified ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                `}
-                style={{
-                  backgroundColor: color.value,
-                }}
-                title={color.name}
-              >
-                {isSelected && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
-                    <Check className="w-6 h-6 text-white drop-shadow-md" />
-                  </div>
-                )}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={colorValue}
+                  onClick={() => handleSelectColor(colorValue)}
+                  disabled={!isCertified || saving}
+                  className={`relative h-12 rounded-xl border-2 transition-all flex items-center justify-center ${
+                    isSelected ? 'border-white scale-105 ring-2 ring-white/50' : 'border-white/10 hover:border-white/40'
+                  } ${!isCertified ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  style={{ backgroundColor: colorValue.startsWith('#') ? colorValue : undefined }}
+                >
+                  {isSelected && <Check className="w-5 h-5 text-white drop-shadow-md" />}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <p className="text-xs text-gray-400 text-center mt-6">
-          {isCertified ? "Cliquez sur une couleur pour changer instantanément votre badge" : "Certifiez-vous pour personnaliser votre badge"}
-        </p>
+        {/* 2. COULEURS & EFFETS PREMIUM */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-amber-400 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" /> Couleurs & Effets Animés VIP
+            </h2>
+            {!isUserPremium && <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded">🔒 Premium requis</span>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {premiumColors.map((item: any) => {
+              const itemKey = typeof item === 'string' ? item : item.id || item.value;
+              const isSelected = selectedColor === itemKey;
+
+              return (
+                <button
+                  key={itemKey}
+                  onClick={() => isUserPremium && handleSelectColor(itemKey)}
+                  disabled={!isUserPremium || !isCertified || saving}
+                  className={`p-3 rounded-xl border text-xs font-medium transition-all text-left flex items-center justify-between ${
+                    isSelected 
+                      ? 'border-amber-400 bg-amber-400/10 text-amber-300' 
+                      : isUserPremium 
+                        ? 'border-white/10 hover:border-white/40 bg-white/5 text-white' 
+                        : 'border-white/5 opacity-40 cursor-not-allowed bg-black text-gray-500'
+                  }`}
+                >
+                  <span className="truncate capitalize">{itemKey.replace('-', ' ')}</span>
+                  {isSelected && <Check className="w-4 h-4 text-amber-400" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </main>
     </div>
   );
