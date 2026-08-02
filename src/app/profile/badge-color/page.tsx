@@ -8,6 +8,7 @@ import { ArrowLeft, Check, Palette } from "lucide-react";
 const API_URL = "https://ink-backend.vercel.app";
 
 type Color = {
+  id?: string;
   name: string;
   value: string;
 };
@@ -32,10 +33,11 @@ export default function BadgeColorPage() {
       try {
         // 1. Récupérer les couleurs disponibles
         const colorsRes = await fetch(`${API_URL}/certification/colors`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer `token`` },
         });
         const colorsData = await colorsRes.json();
-        setColors(colorsData);
+        // S'assure qu'on récupère bien un tableau
+        setColors(Array.isArray(colorsData) ? colorsData : colorsData.colors || []);
 
         // 2. Récupérer le statut de certification
         const statusRes = await fetch(`${API_URL}/certification/status`, {
@@ -54,7 +56,7 @@ export default function BadgeColorPage() {
     fetchData();
   }, [router]);
 
-  const handleSelectColor = async (colorName: string) => {
+  const handleSelectColor = async (color: Color) => {
     if (!isCertified) {
       setMessage("❌ Vous devez être certifié pour changer la couleur du badge");
       return;
@@ -64,6 +66,10 @@ export default function BadgeColorPage() {
     setMessage("");
 
     const token = localStorage.getItem("token");
+    
+    // On envoie soit l'id, soit le nom selon ce que ton backend utilise
+    const colorIdentifier = color.id || color.name;
+
     try {
       const res = await fetch(`${API_URL}/certification/badge-color`, {
         method: "POST",
@@ -71,7 +77,7 @@ export default function BadgeColorPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ badgeColor: colorName }),
+        body: JSON.stringify({ badgeColor: colorIdentifier }),
       });
 
       const data = await res.json();
@@ -80,8 +86,8 @@ export default function BadgeColorPage() {
         throw new Error(data.message || "Erreur lors du changement de couleur");
       }
 
-      setSelectedColor(colorName);
-      setMessage("✅ Couleur du badge mise à jour !");
+      setSelectedColor(colorIdentifier);
+      setMessage("✅ Couleur du badge mise à jour avec succès !");
     } catch (err: any) {
       setMessage(err.message);
     } finally {
@@ -139,32 +145,37 @@ export default function BadgeColorPage() {
 
         {/* Couleurs */}
         <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-          {colors.map((color) => (
-            <button
-              key={color.name}
-              onClick={() => handleSelectColor(color.name)}
-              disabled={!isCertified || saving}
-              className={`
-                relative aspect-square rounded-lg border-2 transition-all
-                ${selectedColor === color.name ? 'border-black ring-2 ring-black ring-offset-2' : 'border-gray-200 hover:border-gray-400'}
-                ${!isCertified ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-              `}
-              style={{
-                background: color.value,
-              }}
-              title={color.name}
-            >
-              {selectedColor === color.name && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Check className="w-6 h-6 text-white drop-shadow-md" />
-                </div>
-              )}
-            </button>
-          ))}
+          {colors.map((color, index) => {
+            const colorId = color.id || color.name;
+            const isSelected = selectedColor === colorId || selectedColor === color.name;
+
+            return (
+              <button
+                key={color.id || index}
+                onClick={() => handleSelectColor(color)}
+                disabled={!isCertified || saving}
+                className={`
+                  relative aspect-square rounded-lg border-2 transition-all shadow-sm
+                  ${isSelected ? 'border-black ring-2 ring-black ring-offset-2 scale-105' : 'border-gray-200 hover:border-gray-400'}
+                  ${!isCertified ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                `}
+                style={{
+                  backgroundColor: color.value,
+                }}
+                title={color.name}
+              >
+                {isSelected && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-lg">
+                    <Check className="w-6 h-6 text-white drop-shadow-md" />
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        <p className="text-xs text-gray-400 text-center mt-4">
-          {isCertified ? "Cliquez sur une couleur pour changer votre badge" : "Certifiez-vous pour personnaliser votre badge"}
+        <p className="text-xs text-gray-400 text-center mt-6">
+          {isCertified ? "Cliquez sur une couleur pour changer instantanément votre badge" : "Certifiez-vous pour personnaliser votre badge"}
         </p>
       </main>
     </div>
