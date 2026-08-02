@@ -33,11 +33,11 @@ export default function BadgeColorPage() {
       try {
         // 1. Récupérer les couleurs disponibles
         const colorsRes = await fetch(`${API_URL}/certification/colors`, {
-          headers: { Authorization: `Bearer `token`` },
+          headers: { Authorization: `Bearer ${token}` },
         });
         const colorsData = await colorsRes.json();
-        // S'assure qu'on récupère bien un tableau
-        setColors(Array.isArray(colorsData) ? colorsData : colorsData.colors || []);
+        const colorList = Array.isArray(colorsData) ? colorsData : colorsData.colors || [];
+        setColors(colorList);
 
         // 2. Récupérer le statut de certification
         const statusRes = await fetch(`${API_URL}/certification/status`, {
@@ -45,7 +45,7 @@ export default function BadgeColorPage() {
         });
         const statusData = await statusRes.json();
         setIsCertified(statusData.isCertified);
-        setSelectedColor(statusData.badgeColor || "gold");
+        setSelectedColor(statusData.badgeColor ? statusData.badgeColor.toLowerCase() : "gold");
       } catch (error) {
         console.error("Erreur:", error);
       } finally {
@@ -67,8 +67,8 @@ export default function BadgeColorPage() {
 
     const token = localStorage.getItem("token");
     
-    // On envoie soit l'id, soit le nom selon ce que ton backend utilise
-    const colorIdentifier = color.id || color.name;
+    // Normalise le nom de la couleur (minuscules, sans espaces) pour correspondre au backend
+    const colorKey = (color.id || color.name).toLowerCase().trim();
 
     try {
       const res = await fetch(`${API_URL}/certification/badge-color`, {
@@ -77,7 +77,7 @@ export default function BadgeColorPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ badgeColor: colorIdentifier }),
+        body: JSON.stringify({ badgeColor: colorKey }),
       });
 
       const data = await res.json();
@@ -86,7 +86,7 @@ export default function BadgeColorPage() {
         throw new Error(data.message || "Erreur lors du changement de couleur");
       }
 
-      setSelectedColor(colorIdentifier);
+      setSelectedColor(colorKey);
       setMessage("✅ Couleur du badge mise à jour avec succès !");
     } catch (err: any) {
       setMessage(err.message);
@@ -146,8 +146,8 @@ export default function BadgeColorPage() {
         {/* Couleurs */}
         <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
           {colors.map((color, index) => {
-            const colorId = color.id || color.name;
-            const isSelected = selectedColor === colorId || selectedColor === color.name;
+            const colorKey = (color.id || color.name).toLowerCase().trim();
+            const isSelected = selectedColor === colorKey;
 
             return (
               <button
