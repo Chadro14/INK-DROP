@@ -4,25 +4,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { CertificationBadge } from "@/components/badges/certification-badge";
-import { PremiumBadge } from "@/components/badges/premium-badge";
 import { 
+  BadgeCheck,
   BookOpen, 
   Heart, 
   Settings, 
   LogOut,
   Edit,
-  Eye,
-  Mail,
-  Calendar,
-  Plus,
   Share2,
-  Award,
-  Zap,
-  Coins,
   ChevronRight,
-  Shield,
-  Palette
+  Shield
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -35,23 +26,11 @@ type UserProfile = {
   bio: string | null;
   role: string;
   isCertified: boolean;
-  premiumActive: boolean;
-  premiumExpires: string | null;
-  createdAt: string;
-  manas: number;
-  steamPoints: number;
-  steamLevel: number;
   avatarColor: string | null;
   _count: {
     mangas: number;
     followers: number;
     following: number;
-  };
-  mangas?: any[];
-  earnings?: {
-    total: number;
-    pending: number;
-    paid: number;
   };
 };
 
@@ -71,17 +50,12 @@ export default function ProfilePage() {
       }
 
       try {
-        const [profileRes, earningsRes] = await Promise.all([
-          fetch(`${API_URL}/users/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_URL}/dashboard/earnings`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
+        const res = await fetch(`${API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-        if (!profileRes.ok) {
-          if (profileRes.status === 401) {
+        if (!res.ok) {
+          if (res.status === 401) {
             localStorage.removeItem("token");
             router.push("/login");
             return;
@@ -89,17 +63,8 @@ export default function ProfilePage() {
           throw new Error("Erreur lors du chargement du profil");
         }
 
-        const profileData = await profileRes.json();
-
-        let earningsData = null;
-        if (earningsRes.ok) {
-          earningsData = await earningsRes.json();
-        }
-
-        setProfile({
-          ...profileData,
-          earnings: earningsData || { total: 0, pending: 0, paid: 0 },
-        });
+        const profileData = await res.json();
+        setProfile(profileData);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -154,8 +119,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen pb-20 bg-gray-50">
-
+    <div className="flex flex-col min-h-screen pb-20 bg-white">
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-100 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
@@ -181,131 +145,87 @@ export default function ProfilePage() {
       </header>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 max-w-lg mx-auto w-full">
-        
-        {/* AVATAR & INFOS PUBLIQUES */}
-        <section className="bg-white px-4 py-8 mb-2 rounded-b-3xl shadow-sm">
-          <div className="flex flex-col items-center">
-            {/* Avatar */}
-            <div 
-              className="relative w-24 h-24 rounded-full flex items-center justify-center text-3xl text-white font-bold shadow-md mb-4 overflow-hidden"
-              style={{ backgroundColor: profile.avatarColor || "#000000" }}
-            >
-              {profile.avatarUrl ? (
-                <img src={profile.avatarUrl} alt={profile.username} className="w-full h-full object-cover" />
-              ) : (
-                profile.username.charAt(0).toUpperCase()
-              )}
-            </div>
-
-            {/* Username & Badges */}
-            <div className="flex items-center gap-2 mb-2">
-              <h1 className="text-2xl font-bold text-black">{profile.username}</h1>
-              <CertificationBadge isCertified={profile.isCertified} color={profile.avatarColor || "#3b82f6"} />
-              {profile.premiumActive && <PremiumBadge />}
-            </div>
-
-            {/* Email & Bio */}
-            <p className="text-gray-500 text-sm mb-4">{profile.email}</p>
-            {profile.bio && (
-              <p className="text-gray-700 text-center text-sm px-4 mb-4">{profile.bio}</p>
+      <main className="flex-1 max-w-lg mx-auto w-full px-4 py-6">
+        {/* AVATAR & PSEUDO */}
+        <div className="flex flex-col items-center text-center mb-6">
+          <div 
+            className="w-24 h-24 rounded-full flex items-center justify-center text-3xl text-white font-bold shadow-md mb-3 overflow-hidden"
+            style={{ backgroundColor: profile.avatarColor || "#000000" }}
+          >
+            {profile.avatarUrl ? (
+              <img src={profile.avatarUrl} alt={profile.username} className="w-full h-full object-cover" />
+            ) : (
+              profile.username.charAt(0).toUpperCase()
             )}
-
-            {/* Edit Profile Button */}
-            <Link 
-              href="/profile/edit"
-              className="flex items-center gap-2 px-6 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full font-medium transition-colors text-sm"
-            >
-              <Edit className="w-4 h-4" />
-              Modifier le profil
-            </Link>
           </div>
 
-          {/* STATS */}
-          <div className="flex justify-center gap-8 mt-8 border-t border-gray-100 pt-6">
-            <div className="flex flex-col items-center">
-              <span className="font-bold text-xl text-black">{profile._count?.mangas || 0}</span>
-              <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Mangas</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="font-bold text-xl text-black">{profile._count?.followers || 0}</span>
-              <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Abonnés</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="font-bold text-xl text-black">{profile._count?.following || 0}</span>
-              <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Suivis</span>
-            </div>
+          <div className="flex items-center gap-1.5 mb-1">
+            <h1 className="text-2xl font-bold text-black">{profile.username}</h1>
+            {profile.isCertified && (
+              <BadgeCheck 
+                className="w-5 h-5 shrink-0" 
+                fill={profile.avatarColor || "#3b82f6"} 
+                color="white" 
+              />
+            )}
           </div>
-        </section>
 
-        {/* PORTEFEUILLE & NIVEAU */}
-        <section className="px-4 py-4 space-y-4">
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
+          <p className="text-gray-500 text-sm mb-3">{profile.email}</p>
+          {profile.bio && <p className="text-gray-700 text-sm mb-4">{profile.bio}</p>}
+
+          <Link 
+            href="/profile/edit"
+            className="flex items-center gap-2 px-5 py-2 bg-gray-100 hover:bg-gray-200 text-black rounded-full font-medium transition-colors text-sm"
+          >
+            <Edit className="w-4 h-4" />
+            Modifier le profil
+          </Link>
+        </div>
+
+        {/* STATS */}
+        <div className="flex justify-around py-4 border-y border-gray-100 mb-6">
+          <div className="text-center">
+            <span className="block font-bold text-xl text-black">{profile._count?.mangas || 0}</span>
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Mangas</span>
+          </div>
+          <div className="text-center">
+            <span className="block font-bold text-xl text-black">{profile._count?.followers || 0}</span>
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Abonnés</span>
+          </div>
+          <div className="text-center">
+            <span className="block font-bold text-xl text-black">{profile._count?.following || 0}</span>
+            <span className="text-xs text-gray-500 uppercase tracking-wider">Abonnements</span>
+          </div>
+        </div>
+
+        {/* MENU */}
+        <div className="space-y-2">
+          <Link href="/dashboard" className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500">
-                <Coins className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Manas disponibles</p>
-                <p className="font-bold text-lg">{profile.manas}</p>
-              </div>
+              <Shield className="w-5 h-5 text-gray-600" />
+              <span className="font-medium text-black">Tableau de bord</span>
             </div>
-            <button className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center">
-              <Plus className="w-4 h-4" />
-            </button>
-          </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </Link>
 
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center justify-between">
+          <Link href="/library" className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500">
-                <Zap className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Niveau Steam ({profile.steamPoints} pts)</p>
-                <p className="font-bold text-lg">Lvl {profile.steamLevel}</p>
-              </div>
+              <BookOpen className="w-5 h-5 text-gray-600" />
+              <span className="font-medium text-black">Ma bibliothèque</span>
             </div>
-            <Award className="w-6 h-6 text-purple-500" />
-          </div>
-        </section>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </Link>
 
-        {/* MENU ACTIONS */}
-        <section className="px-4 py-2">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <Link href="/dashboard" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-50">
-              <div className="flex items-center gap-3 text-black">
-                <Shield className="w-5 h-5 text-gray-400" />
-                <span className="font-medium">Tableau de bord créateur</span>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-300" />
-            </Link>
-            <Link href="/library" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-50">
-              <div className="flex items-center gap-3 text-black">
-                <BookOpen className="w-5 h-5 text-gray-400" />
-                <span className="font-medium">Ma bibliothèque</span>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-300" />
-            </Link>
-            <Link href="/favorites" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors border-b border-gray-50">
-              <div className="flex items-center gap-3 text-black">
-                <Heart className="w-5 h-5 text-gray-400" />
-                <span className="font-medium">Mes favoris</span>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-300" />
-            </Link>
-            <Link href="/theme" className="flex items-center justify-between p-4 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center gap-3 text-black">
-                <Palette className="w-5 h-5 text-gray-400" />
-                <span className="font-medium">Apparence</span>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-300" />
-            </Link>
-          </div>
-        </section>
-        
+          <Link href="/favorites" className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+            <div className="flex items-center gap-3">
+              <Heart className="w-5 h-5 text-gray-600" />
+              <span className="font-medium text-black">Favoris</span>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </Link>
+        </div>
       </main>
 
-      {/* BOTTOM NAV */}
       <BottomNav />
     </div>
   );
