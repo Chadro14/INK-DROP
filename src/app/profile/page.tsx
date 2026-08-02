@@ -13,7 +13,8 @@ import {
   Edit,
   Share2,
   ChevronRight,
-  Shield
+  Shield,
+  Palette
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -27,6 +28,7 @@ type UserProfile = {
   role: string;
   isCertified: boolean;
   avatarColor: string | null;
+  badgeColor: string | null;
   _count: {
     mangas: number;
     followers: number;
@@ -92,7 +94,7 @@ export default function ProfilePage() {
       }).catch(() => {});
     } else {
       navigator.clipboard.writeText(shareUrl);
-      alert("📋 Lien copié !");
+      alert("Lien copie dans le presse-papier !");
     }
   };
 
@@ -164,7 +166,7 @@ export default function ProfilePage() {
             {profile.isCertified && (
               <BadgeCheck 
                 className="w-5 h-5 shrink-0" 
-                fill={profile.avatarColor || "#3b82f6"} 
+                fill={profile.badgeColor || profile.avatarColor || "#3b82f6"} 
                 color="white" 
               />
             )}
@@ -204,6 +206,14 @@ export default function ProfilePage() {
             <div className="flex items-center gap-3">
               <Shield className="w-5 h-5 text-gray-600" />
               <span className="font-medium text-black">Tableau de bord</span>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400" />
+          </Link>
+
+          <Link href="/profile/badge-color" className="flex items-center justify-between p-3.5 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+            <div className="flex items-center gap-3">
+              <Palette className="w-5 h-5 text-gray-600" />
+              <span className="font-medium text-black">Couleur du badge</span>
             </div>
             <ChevronRight className="w-5 h-5 text-gray-400" />
           </Link>
