@@ -4,13 +4,13 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 3%;
-    --card-foreground: 0 0% 100%;
-    --border: 0 0% 10%;
-    --input: 0 0% 10%;
-    --ring: 0 0% 100%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
   }
 }
 
@@ -37,10 +37,9 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #FFFFFF;
+  background: #000000;
   border-radius: 10px;
 }
-
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -75,55 +74,44 @@
 /* ============================================
    EFFETS & ANIMATIONS DE BADGES (CERTIFICATION)
    ============================================ */
-
 .badge-glow-gold {
   filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
 }
-
 .badge-glow-purple {
   filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.8));
 }
-
 .badge-glow-cyan {
   filter: drop-shadow(0 0 10px rgba(0, 255, 102, 0.8));
 }
-
 @keyframes rainbow-shift {
   0% { filter: hue-rotate(0deg); }
   100% { filter: hue-rotate(360deg); }
 }
-
 .badge-animated-rainbow {
   background: linear-gradient(45deg, #3B82F6, #EC4899, #F59E0B, #10B981, #8B5CF6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: rainbow-shift 4s infinite linear;
 }
-
 @keyframes flame-pulse {
   0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px #EF4444); }
   50% { transform: scale(1.08); filter: drop-shadow(0 0 15px #F97316); }
 }
-
 .badge-animated-fire {
   animation: flame-pulse 1.5s infinite ease-in-out;
 }
-
 @keyframes shimmer {
   0% { opacity: 0.8; }
   50% { opacity: 1; text-shadow: 0 0 12px rgba(255, 255, 255, 0.9); }
   100% { opacity: 0.8; }
 }
-
 .badge-holo-shimmer {
   animation: shimmer 2s infinite ease-in-out;
 }
-
 @keyframes mana-breath {
   0%, 100% { transform: scale(1); opacity: 0.9; }
   50% { transform: scale(1.05); opacity: 1; filter: drop-shadow(0 0 8px currentColor); }
 }
-
 .badge-mana-pulse {
   animation: mana-breath 2.5s infinite ease-in-out;
 }
