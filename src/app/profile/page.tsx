@@ -153,6 +153,10 @@ export default function ProfilePage() {
     );
   }
 
+  // Détermination de la couleur ou du style pour le badge certifié
+  const badgeColorValue = profile.avatarColor || "#FFD700";
+  const isHexColor = badgeColorValue.startsWith("#");
+
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-white">
 
@@ -203,9 +207,10 @@ export default function ProfilePage() {
               {profile.isCertified && (
                 <BadgeCheck
                   className="w-5 h-5 flex-shrink-0"
-                  fill={profile.avatarColor || "#FFD700"}
+                  fill={isHexColor ? badgeColorValue : "currentColor"}
                   color="white"
                   strokeWidth={1.5}
+                  style={!isHexColor ? { color: 'var(--badge-effect)' } : undefined}
                 />
               )}
               {profile.premiumActive && (
@@ -313,18 +318,18 @@ export default function ProfilePage() {
           <Link
             href="/profile/badge-color"
             className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-black transition-colors"
-          >
+        >
             <div className="flex items-center gap-3">
               <Palette className="w-5 h-5 text-gray-600" />
               <span className="text-sm font-medium text-black">Couleur du badge</span>
               <div
                 className="w-4 h-4 rounded-full border border-gray-300"
-                style={{ backgroundColor: profile.avatarColor || '#FFD700' }}
+                style={{ backgroundColor: isHexColor ? badgeColorValue : '#FFD700' }}
               />
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400" />
-          </Link>
-        </section>
+        </Link>
+      </section>
       )}
 
       {/* 🛡️ ADMIN LINK */}
