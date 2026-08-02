@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ArrowLeft, Upload, X, Plus, Image as ImageIcon } from "lucide-react";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 const API_URL = "https://ink-backend.vercel.app";
 
@@ -52,7 +53,7 @@ export default function UploadMangaPage() {
   };
 
   // ============================================
-  // SOUMISSION
+  // SOUMISSION (Flux direct Supabase en 3 étapes)
   // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,22 +91,44 @@ export default function UploadMangaPage() {
 
       const mangaId = mangaData.id;
 
-      // 2. Upload de la couverture (si présente)
+      // 2. Upload de la couverture (si présente) via le flux direct
       if (coverFile) {
-        const formData = new FormData();
-        formData.append("cover", coverFile);
-
-        const coverRes = await fetch(`${API_URL}/mangas/${mangaId}/cover`, {
+        // Demander l'URL signée au backend
+        const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/cover/upload-url`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          body: formData,
         });
 
-        // ✅ On gère la réponse même si elle n'est pas parfaite
-        if (!coverRes.ok) {
-          console.warn("⚠️ La couverture n'a pas pu être uploadée, mais le manga est créé");
+        if (!urlRes.ok) {
+          throw new Error("Échec de l'obtention de l'URL d'upload pour la couverture");
+        }
+
+        const { key, path, token: uploadToken } = await urlRes.json();
+
+        // Uploader directement vers Supabase Storage
+        const supabase = createClientComponentClient();
+        const { error: uploadError } = await supabase.storage
+          .from("chapters")
+          .uploadToSignedUrl(path, uploadToken, coverFile);
+
+        if (uploadError) {
+          throw new Error(`Échec de l'upload Supabase: ${uploadError.message}`);
+        }
+
+        // Finaliser l'enregistrement de la couverture sur le backend
+        const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/cover/finalize`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ key }),
+        });
+
+        if (!finalizeRes.ok) {
+          console.warn("⚠️ La couverture n'a pas pu être finalisée, mais le manga est créé");
         }
       }
 
