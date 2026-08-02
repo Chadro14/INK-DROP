@@ -5,9 +5,15 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ArrowLeft, Upload, X, Plus, Image as ImageIcon } from "lucide-react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createClient } from "@supabase/supabase-js";
 
 const API_URL = "https://ink-backend.vercel.app";
+
+// Initialisation du client Supabase (utilise tes variables publiques habituelles)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://slbosebjvnotrifwhbrl.supabase.co",
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsYm9zZWJqdm5vdHJpZndoYnJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyNjI5NTUsImV4cCI6MjA5ODgzODk1NX0.x7-IEmg4r4IY_bl2-uJZlEs9jsSCS5lnpnx9GycpYos"
+);
 
 export default function UploadMangaPage() {
   const router = useRouter();
@@ -108,7 +114,6 @@ export default function UploadMangaPage() {
         const { key, path, token: uploadToken } = await urlRes.json();
 
         // Uploader directement vers Supabase Storage
-        const supabase = createClientComponentClient();
         const { error: uploadError } = await supabase.storage
           .from("chapters")
           .uploadToSignedUrl(path, uploadToken, coverFile);
