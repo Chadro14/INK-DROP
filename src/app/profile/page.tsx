@@ -1,16 +1,16 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { CertificationBadge } from "@/components/badges/certification-badge";
+import { PremiumBadge } from "@/components/badges/premium-badge";
 import { 
   BookOpen, 
   Heart, 
   Settings, 
   LogOut,
-  Star,
   Edit,
   Eye,
   Mail,
@@ -21,7 +21,6 @@ import {
   Zap,
   Coins,
   ChevronRight,
-  BadgeCheck,
   Shield,
   Palette
 } from "lucide-react";
@@ -183,265 +182,27 @@ export default function ProfilePage() {
 
       {/* AVATAR & INFOS PUBLIQUES */}
       <section className="px-4 py-6">
-        <div className="flex items-start gap-4">
-          <div className="relative flex-shrink-0">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-3xl font-bold text-black overflow-hidden border-2 border-black">
-              {profile.avatarUrl ? (
-                <img 
-                  src={profile.avatarUrl} 
-                  alt={profile.username} 
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                profile.username?.charAt(0).toUpperCase() || "?"
-              )}
-            </div>
-          </div>
+        <div classNameC'est parfaitement clair. Isoler la logique visuelle et comportementale dans des composants dédiés est exactement la bonne approche pour garder une interface propre et éviter le code "plat de spaghettis" dans la page principale. 
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-black truncate">{profile.username}</h1>
-              {profile.isCertified && (
-                <BadgeCheck
-                  className="w-5 h-5 flex-shrink-0"
-                  fill={profile.avatarColor || "#FFD700"}
-                  color="white"
-                  strokeWidth={1.5}
-                />
-              )}
-              {profile.premiumActive && (
-                <span className="px-2 py-0.5 rounded-full bg-black text-white text-[10px] font-bold">
-                  PRO
-                </span>
-              )}
-            </div>
-            <p className="text-gray-500 text-sm truncate">{profile.bio || "Aucune bio"}</p>
-            <div className="flex items-center gap-1 text-gray-400 text-xs mt-1">
-              <Mail className="w-3 h-3" />
-              <span className="truncate">{profile.email}</span>
-            </div>
-            <div className="flex items-center gap-1 text-gray-400 text-xs">
-              <Calendar className="w-3 h-3" />
-              <span>Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
-            </div>
-          </div>
-        </div>
+Voici l'implémentation stricte de tes règles, avec un focus sur la lisibilité, l'accessibilité (`prefers-reduced-motion`) et la séparation des responsabilités.
 
-        {/* Boutons d'action */}
-        <div className="flex gap-3 mt-4">
-          <Link
-            href="/profile/edit"
-            className="flex-1 py-2 rounded-lg bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
-          >
-            <Edit className="w-4 h-4" />
-            Modifier
-          </Link>
-          <button
-            onClick={handleShare}
-            className="px-4 py-2 rounded-lg bg-gray-100 text-black text-sm font-semibold hover:bg-gray-200 transition-colors flex items-center gap-2"
-          >
-            <Share2 className="w-4 h-4" />
-            Partager
-          </button>
-        </div>
-      </section>
+### 1. Composant : Badge de Certification
+Ce composant fait exactement ce qui est demandé : une taille fixe, aucune animation, et retourne `null` si l'utilisateur n'est pas certifié. L'utilisation de `lucide-react` est respectée.
 
-      {/* STATS & MANAS */}
-      <section className="px-4 py-3 border-t border-b border-gray-100">
-        <div className="grid grid-cols-4 gap-2 max-w-lg mx-auto">
-          <div className="text-center">
-            <p className="text-lg font-bold text-black">{profile._count?.mangas || 0}</p>
-            <p className="text-xs text-gray-500">Mangas</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-black">{profile._count?.followers || 0}</p>
-            <p className="text-xs text-gray-500">Abonnés</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-black">{profile._count?.following || 0}</p>
-            <p className="text-xs text-gray-500">Abonnements</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-black">{profile.manas || 0}</p>
-            <p className="text-xs text-gray-500">MANAS</p>
-          </div>
-        </div>
-      </section>
+**Fichier :** `src/components/badges/certification-badge.tsx`
 
-      {/* STEAM & REVENUS */}
-      <section className="px-4 py-3 border-b border-gray-100">
-        <div className="grid grid-cols-3 gap-2 max-w-lg mx-auto">
-          <div className="text-center bg-gray-50 rounded-lg p-2">
-            <Zap className="w-4 h-4 mx-auto text-yellow-500" />
-            <p className="text-sm font-bold text-black">{profile.steamPoints || 0}</p>
-            <p className="text-[10px] text-gray-500">Points Steam</p>
-          </div>
-          <div className="text-center bg-gray-50 rounded-lg p-2">
-            <Award className="w-4 h-4 mx-auto text-purple-500" />
-            <p className="text-sm font-bold text-black">Niv. {profile.steamLevel || 1}</p>
-            <p className="text-[10px] text-gray-500">Niveau</p>
-          </div>
-          <div className="text-center bg-gray-50 rounded-lg p-2">
-            <Coins className="w-4 h-4 mx-auto text-green-500" />
-            <p className="text-sm font-bold text-black">{profile.earnings?.total || 0}$</p>
-            <p className="text-[10px] text-gray-500">Revenus</p>
-          </div>
-        </div>
-      </section>
+```tsx
+import { BadgeCheck } from "lucide-react";
 
-      {/* 📌 LIEN VERS LA CERTIFICATION */}
-      <section className="px-4 py-3 border-b border-gray-100">
-        <Link
-          href="/certification"
-          className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-black transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <Award className="w-5 h-5 text-gray-600" />
-            <span className="text-sm font-medium text-black">Certification</span>
-            {profile.isCertified && (
-              <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-semibold">
-                ✅ Certifié
-              </span>
-            )}
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-        </Link>
-      </section>
+interface CertificationBadgeProps {
+  isCertified: boolean;
+  color: string;
+}
 
-      {/* 🎨 LIEN VERS COULEUR DU BADGE */}
-      {profile.isCertified && (
-        <section className="px-4 py-2 border-b border-gray-100">
-          <Link
-            href="/profile/badge-color"
-            className="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-black transition-colors"
-        >
-            <div className="flex items-center gap-3">
-              <Palette className="w-5 h-5 text-gray-600" />
-              <span className="text-sm font-medium text-black">Couleur du badge</span>
-              <div
-                className="w-4 h-4 rounded-full border border-gray-300"
-                style={{ backgroundColor: profile.avatarColor || '#FFD700' }}
-              />
-            </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-        </Link>
-      </section>
-      )}
+export function CertificationBadge({ isCertified, color }: CertificationBadgeProps) {
+  if (!isCertified) return null;
 
-      {/* 🛡️ ADMIN LINK */}
-      {profile.role === 'ADMIN' && (
-        <section className="px-4 py-2 border-b border-gray-100">
-          <Link
-            href="/admin/certify"
-            className="flex items-center justify-between py-3 px-4 bg-gray-100 rounded-lg border border-gray-200 hover:border-black transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <Shield className="w-5 h-5 text-gray-600" />
-              <span className="text-sm font-medium text-black">Admin - Certification</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-          </Link>
-        </section>
-      )}
-
-      {/* MANGAS PUBLIÉS */}
-      <section className="flex-1 px-4 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-black" />
-            <h2 className="text-sm font-semibold text-black">Mangas publiés</h2>
-          </div>
-          <Link
-            href="/creator/upload"
-            className="flex items-center gap-1 text-sm font-medium text-black hover:underline"
-          >
-            <Plus className="w-4 h-4" />
-            Ajouter
-          </Link>
-        </div>
-
-        {!profile.mangas || profile.mangas.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <BookOpen className="w-12 h-12 text-gray-300" />
-            <p className="text-gray-500 mt-4 text-sm">Aucun manga publié</p>
-            <Link
-              href="/creator/upload"
-              className="mt-4 px-6 py-2 rounded-lg bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
-            >
-              Publier mon premier manga
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {profile.mangas.map((manga: any) => (
-              <Link
-                key={manga.id}
-                href={`/manga/${manga.id}`}
-                className="group relative aspect-[2/3] bg-gray-100 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200"
-              >
-                {manga.coverUrl || manga.imageUrl ? (
-                  <img 
-                    src={manga.coverUrl || manga.imageUrl} 
-                    alt={manga.title} 
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <BookOpen className="w-8 h-8 text-gray-300 group-hover:text-gray-400 transition-colors" />
-                  </div>
-                )}
-
-                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                  <p className="text-white text-xs font-medium truncate">{manga.title}</p>
-                  <div className="flex items-center gap-2 text-white/70 text-[10px]">
-                    <span className="flex items-center gap-0.5">
-                      <Heart className="w-3 h-3" /> {manga.likesCount || 0}
-                    </span>
-                    <span className="flex items-center gap-0.5">
-                      <Eye className="w-3 h-3" /> {manga.viewsCount || 0}
-                    </span>
-                    <span className="flex items-center gap-0.5">
-                      <BookOpen className="w-3 h-3" /> {manga._count?.chapters || 0}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (confirm(`Supprimer "${manga.title}" définitivement ?`)) {
-                      const token = localStorage.getItem("token");
-                      try {
-                        const res = await fetch(`${API_URL}/mangas/${manga.id}`, {
-                          method: "DELETE",
-                          headers: { Authorization: `Bearer ${token}` },
-                        });
-                        if (res.ok) {
-                          window.location.reload();
-                        } else {
-                          alert("Erreur lors de la suppression");
-                        }
-                      } catch (error) {
-                        alert("Erreur réseau");
-                      }
-                    }
-                  }}
-                  className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-red-600 text-white shadow-md hover:bg-red-700 transition-all"
-                  title="Supprimer le manga"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <BottomNav />
-    </div>
+  return (
+    <BadgeCheck className="w-5 h-5 shrink-0" color="white" fill="{color}"/>
   );
 }
