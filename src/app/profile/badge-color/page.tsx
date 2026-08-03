@@ -21,14 +21,14 @@ export default function BadgeColorPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // À remplacer par ton AuthContext si disponible
+  // À remplacer par les données de ton utilisateur / AuthContext si nécessaire
   const username = "Altesse";
 
   const handleSave = async () => {
     setLoading(true);
     setMessage('');
 
-    // 1. Récupération du token JWT stocké au login
+    // 1. Récupération du token JWT stocké au moment du login
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
     if (!token) {
@@ -38,14 +38,14 @@ export default function BadgeColorPage() {
     }
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      // 2. Pointage vers le port 4000 du Backend NestJS
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
-      // 2. Appel PUT sur l'URL exacte du backend NestJS
       const response = await fetch(`${baseUrl}/users/badge-color`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`, // Header JWT obligatoire
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({ badgeColor: selectedColor }),
       });
@@ -53,7 +53,6 @@ export default function BadgeColorPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Affiche le message de sécurité exact du backend (ex: "Seuls les utilisateurs certifiés...")
         throw new Error(data.message || 'Erreur lors de la mise à jour');
       }
 
@@ -107,6 +106,7 @@ export default function BadgeColorPage() {
 
       {/* BOUTON D'ENREGISTREMENT */}
       <button
+        type="button"
         onClick={handleSave}
         disabled={loading}
         className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition disabled:opacity-50"
