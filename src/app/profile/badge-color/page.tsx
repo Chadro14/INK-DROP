@@ -21,29 +21,45 @@ export default function BadgeColorPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // Remplacer par les données réelles de ton utilisateur / AuthContext
+  // À remplacer par ton AuthContext si disponible
   const username = "Altesse";
 
   const handleSave = async () => {
     setLoading(true);
     setMessage('');
 
+    // 1. Récupération du token JWT stocké au login
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
+    if (!token) {
+      setMessage('Session expirée. Veuillez vous reconnecter.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Appel API vers ton backend NestJS
-      const response = await fetch('/api/users/profile', {
-        method: 'PATCH',
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+      // 2. Appel PUT sur l'URL exacte du backend NestJS
+      const response = await fetch(`${baseUrl}/users/badge-color`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          // Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`, // Header JWT obligatoire
         },
         body: JSON.stringify({ badgeColor: selectedColor }),
       });
 
-      if (!response.ok) throw new Error('Erreur de mise à jour');
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Affiche le message de sécurité exact du backend (ex: "Seuls les utilisateurs certifiés...")
+        throw new Error(data.message || 'Erreur lors de la mise à jour');
+      }
 
       setMessage('Couleur du badge enregistrée avec succès !');
-    } catch (err) {
-      setMessage('Impossible de sauvegarder la couleur.');
+    } catch (err: any) {
+      setMessage(err.message || 'Impossible de sauvegarder la couleur.');
     } finally {
       setLoading(false);
     }
@@ -72,6 +88,7 @@ export default function BadgeColorPage() {
         {BADGE_COLORS.map((c) => (
           <button
             key={c.hex}
+            type="button"
             onClick={() => setSelectedColor(c.hex)}
             className={`p-3 rounded-lg border flex flex-col items-center gap-2 transition-all ${
               selectedColor === c.hex
