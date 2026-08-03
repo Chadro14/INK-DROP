@@ -2,110 +2,88 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, Check } from "lucide-react";
+import { ArrowLeft, Save, BadgeCheck, Check } from "lucide-react";
+import { BottomNav } from "@/components/layout/bottom-nav";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-type ColorOption = {
-  id: string;
-  name?: string;
-  value: string;
-};
+// 10 COULEURS CLASSIQUES / NORMALES
+const NORMAL_COLORS = [
+  { name: "Noir", hex: "#000000" },
+  { name: "Bleu", hex: "#2563EB" },
+  { name: "Rouge", hex: "#DC2626" },
+  { name: "Vert", hex: "#16A34A" },
+  { name: "Jaune", hex: "#CA8A04" },
+  { name: "Violet", hex: "#9333EA" },
+  { name: "Orange", hex: "#EA580C" },
+  { name: "Rose", hex: "#DB2777" },
+  { name: "Cyan", hex: "#0891B2" },
+  { name: "Gris Foncé", hex: "#4B5563" },
+];
 
-type NotificationMessage = {
-  text: string;
-  isError: boolean;
+type UserProfile = {
+  id: string;
+  username: string;
+  isCertified: boolean;
+  avatarColor: string | null; // Couleur utilisée pour le badge
 };
 
 export default function BadgeColorPage() {
   const router = useRouter();
-  const [colors, setColors] = useState<ColorOption[]>([]);
-  const [selectedColor, setSelectedColor] = useState<string>("");
-  const [isCertified, setIsCertified] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string>("#2563EB");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<NotificationMessage | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchProfile = async () => {
       const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
+      if (!token) return router.push("/login");
 
       try {
-        const [colorsRes, profileRes] = await Promise.all([
-          fetch(`${API_URL}/users/badge-colors/list`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_URL}/users/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
+        const res = await fetch(`${API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-        if (colorsRes.ok) {
-          const data = await colorsRes.json();
-          const list = data.colors || data.freeColors || (Array.isArray(data) ? data : []);
-          setColors(list);
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data);
+          if (data.avatarColor) {
+            setSelectedColor(data.avatarColor);
+          }
         }
-
-        if (profileRes.ok) {
-          const profileData = await profileRes.json();
-          setIsCertified(profileData.isCertified || false);
-          setSelectedColor(profileData.badgeColor || profileData.avatarColor || "");
-        }
-      } catch (error) {
-        console.error("Erreur de chargement:", error);
+      } catch (err) {
+        console.error("Erreur lors de la recuperation du profil", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchProfile();
   }, [router]);
 
-  const handleSelectColor = async (colorValue: string) => {
-    if (!isCertified) {
-      setMessage({
-        text: "Vous devez être certifié pour changer la couleur du badge.",
-        isError: true,
-      });
-      return;
-    }
-
+  const handleSaveColor = async () => {
     setSaving(true);
-    setMessage(null);
-
     const token = localStorage.getItem("token");
 
     try {
-      const res = await fetch(`${API_URL}/users/badge-color`, {
-        method: "PUT",
+      const res = await fetch(`${API_URL}/users/me`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ badgeColor: colorValue }),
+        body: JSON.stringify({ avatarColor: selectedColor }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Erreur lors du changement de couleur.");
+      if (res.ok) {
+        alert("Couleur du badge enregistree !");
+        router.push("/profile");
+      } else {
+        alert("Erreur lors de la sauvegarde.");
       }
-
-      setSelectedColor(colorValue);
-      setMessage({
-        text: "Couleur du badge mise à jour avec succès.",
-        isError: false,
-      });
-    } catch (err: any) {
-      setMessage({
-        text: err.message,
-        isError: true,
-      });
+    } catch (err) {
+      alert("Erreur reseau.");
     } finally {
       setSaving(false);
     }
@@ -113,66 +91,82 @@ export default function BadgeColorPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-black">
-        <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-screen bg-white">
+        <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-black text-white pb-20">
+    <div className="flex flex-col min-h-screen pb-24 bg-white text-black">
+      
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-sm border-b border-white/10 px-4 py-3">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Link href="/profile" className="text-gray-400 hover:text-white transition-colors flex items-center gap-1">
+      <header className="sticky top-0 z-40 bg-white border-b border-gray-100 px-4 py-4">
+        <div className="flex items-center justify-between max-w-xl mx-auto">
+          <button 
+            onClick={() => router.back()} 
+            className="flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-black transition-colors"
+          >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm">Retour</span>
-          </Link>
-          <span className="text-lg font-bold">Couleur du badge</span>
-          <div className="w-16" />
+            Retour
+          </button>
+          <span className="text-base font-bold">Couleur de la Certification</span>
+          <div className="w-16"></div>
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-6 max-w-lg mx-auto w-full">
-        {/* Statut de certification */}
-        <div className={`p-4 rounded-xl mb-6 text-center border ${isCertified ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-white/5 border-white/10 text-gray-400'}`}>
-          <p className="text-sm font-medium">
-            {isCertified ? "Vous êtes certifié." : "Vous n'êtes pas encore certifié."}
-          </p>
-        </div>
-
-        {/* Message de notification */}
-        {message && (
-          <div className={`mb-4 p-3 rounded-xl text-sm ${!message.isError ? 'bg-green-500/10 border border-green-500/30 text-green-400' : 'bg-red-500/10 border border-red-500/30 text-red-400'}`}>
-            {message.text}
-          </div>
-        )}
-
-        {/* SELECTION DE COULEUR */}
-        <div>
-          <h2 className="text-sm font-semibold text-gray-400 mb-3">Choisissez une couleur</h2>
-          <div className="grid grid-cols-4 gap-3">
-            {colors.map((color: any) => {
-              const colorValue = typeof color === 'string' ? color : color.value || color.id || color;
-              const isSelected = selectedColor === colorValue;
-
-              return (
-                <button
-                  key={colorValue}
-                  onClick={() => handleSelectColor(colorValue)}
-                  disabled={!isCertified || saving}
-                  className={`relative h-12 rounded-xl border-2 transition-all flex items-center justify-center ${
-                    isSelected ? 'border-white scale-105 ring-2 ring-white/50' : 'border-white/10 hover:border-white/40'
-                  } ${!isCertified ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                  style={{ backgroundColor: colorValue.startsWith('#') ? colorValue : undefined }}
-                >
-                  {isSelected && <Check className="w-5 h-5 text-white drop-shadow-md" />}
-                </button>
-              );
-            })}
+      {/* CONTENU PRINCIPAL */}
+      <main className="flex-1 max-w-xl mx-auto w-full px-4 pt-8 space-y-8">
+        
+        {/* APERÇU DU BADGE */}
+        <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-2xl border border-gray-100 text-center">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Aperçu du badge</p>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold">@{profile?.username}</span>
+            <BadgeCheck 
+              className="w-7 h-7 shrink-0 transition-colors duration-200"
+              fill={selectedColor}
+              color="white"
+              strokeWidth={1.5}
+            />
           </div>
         </div>
+
+        {/* GRILLE DES 10 COULEURS */}
+        <div className="space-y-4">
+          <h2 className="text-sm font-bold text-gray-700">Choisir une couleur classique :</h2>
+          
+          <div className="grid grid-cols-5 gap-3">
+            {NORMAL_COLORS.map((color) => (
+              <button
+                key={color.hex}
+                onClick={() => setSelectedColor(color.hex)}
+                className="group relative aspect-square rounded-xl flex items-center justify-center border border-black/10 transition-transform active:scale-95"
+                style={{ backgroundColor: color.hex }}
+                title={color.name}
+              >
+                {selectedColor.toLowerCase() === color.hex.toLowerCase() && (
+                  <Check className="w-6 h-6 text-white drop-shadow-sm" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* BOUTON D'ENREGISTREMENT */}
+        <button
+          onClick={handleSaveColor}
+          disabled={saving}
+          className="w-full py-3.5 rounded-xl bg-black text-white font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          <Save className="w-5 h-5" />
+          {saving ? "Enregistrement..." : "Appliquer la couleur"}
+        </button>
+
       </main>
+
+      <BottomNav />
     </div>
   );
 }
