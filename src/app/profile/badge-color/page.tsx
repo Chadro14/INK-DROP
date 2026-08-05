@@ -28,7 +28,7 @@ export default function BadgeColorPage() {
     setLoading(true);
     setMessage('');
 
-    // 1. Récupération du token JWT stocké au moment du login
+    // 1. Récupération du token JWT
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
     if (!token) {
@@ -37,11 +37,13 @@ export default function BadgeColorPage() {
       return;
     }
 
-    try {
-      // 2. Pointage vers le port 4000 du Backend NestJS
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    // 2. Normalisation de l'URL Backend (127.0.0.1 par défaut pour éviter les conflits IPv6)
+    const rawUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:4000';
+    const baseUrl = rawUrl.replace(/\/$/, '');
+    const targetUrl = `${baseUrl}/users/badge-color`;
 
-      const response = await fetch(`${baseUrl}/users/badge-color`, {
+    try {
+      const response = await fetch(targetUrl, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -58,7 +60,8 @@ export default function BadgeColorPage() {
 
       setMessage('Couleur du badge enregistrée avec succès !');
     } catch (err: any) {
-      setMessage(err.message || 'Impossible de sauvegarder la couleur.');
+      console.error(`[BadgeColor] Échec de la requête vers : ${targetUrl}`, err);
+      setMessage(err.message || 'Impossible de contacter le serveur backend.');
     } finally {
       setLoading(false);
     }
