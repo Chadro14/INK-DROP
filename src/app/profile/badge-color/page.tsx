@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ArrowLeft, BadgeCheck, Sparkles, Check, Loader2 } from "lucide-react";
 
-// 🔴 CORRECTION DU BUG "Failed to fetch" : URL backend directement en dur
+// URL backend
 const baseUrl = "https://ink-backend.vercel.app";
 
 const PRESET_COLORS = [
@@ -45,7 +45,10 @@ export default function BadgeColorPage() {
 
         if (res.ok) {
           const data = await res.json();
-          if (data.avatarColor) {
+          // ✅ CORRECTION : Récupérer badgeColor en priorité
+          if (data.badgeColor) {
+            setSelectedColor(data.badgeColor);
+          } else if (data.avatarColor) {
             setSelectedColor(data.avatarColor);
           }
         }
@@ -76,7 +79,8 @@ export default function BadgeColorPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ avatarColor: selectedColor }),
+        // ✅ CORRECTION : Envoyer badgeColor au serveur
+        body: JSON.stringify({ badgeColor: selectedColor, avatarColor: selectedColor }),
       });
 
       if (!res.ok) {
