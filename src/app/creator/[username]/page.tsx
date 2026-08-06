@@ -20,7 +20,7 @@ type UserProfile = {
   isCertified: boolean;
   premiumActive: boolean;
   createdAt: string;
-  badgeColor?: string | null; // Optionnel au cas où le backend ne l'envoie pas encore
+  badgeColor?: string | null;
   _count: {
     mangas: number;
     followers: number;
@@ -38,19 +38,13 @@ export default function PublicProfilePage() {
   // Récupération du username depuis l'URL
   const username = params.username as string;
 
-  // ============================================
-  // EFFET DE CHARGEMENT DES DONNÉES (CORRIGÉ)
-  // ============================================
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        // --- LA CORRECTION EST ICI ---
-        // 1. Ajout de ?t=[timestamp] pour forcer une URL unique
-        // 2. Ajout de cache: "no-store" pour désactiver le cache Next.js
         const res = await fetch(`${API_URL}/users/username/${username}?t=${Date.now()}`, {
           cache: "no-store",
           headers: {
-            "Cache-Control": "no-cache", // Instruction supplémentaire pour le navigateur
+            "Cache-Control": "no-cache",
           },
         });
 
@@ -72,7 +66,6 @@ export default function PublicProfilePage() {
     }
   }, [username]);
 
-  // État de chargement
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-white">
@@ -81,7 +74,6 @@ export default function PublicProfilePage() {
     );
   }
 
-  // État d'erreur ou profil introuvable
   if (error || !profile) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-white px-4">
@@ -93,8 +85,9 @@ export default function PublicProfilePage() {
     );
   }
 
-  // Couleur active du badge (priorité à badgeColor, puis avatarColor, puis jaune par défaut)
+  // Application dynamique de la couleur du badge et de l'avatar
   const activeBadgeColor = profile.badgeColor || profile.avatarColor || "#FFD700";
+  const themeColor = profile.avatarColor || "#000000";
 
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-white selection:bg-black selection:text-white">
@@ -109,18 +102,28 @@ export default function PublicProfilePage() {
           <span className="text-lg font-extrabold text-black truncate max-w-[150px]">
             @{profile.username.toLowerCase()}
           </span>
-          <div className="w-16" /> {/* Spacer pour centrer le titre */}
+          <div className="w-16" />
         </div>
       </header>
 
-      {/* BANNIÈRE MINIMALISTE */}
-      <div className="h-24 w-full bg-gray-50 border-b border-gray-100" />
+      {/* BANNIÈRE DYNAMIQUE (Utilise avatarColor) */}
+      <div 
+        className="h-28 w-full border-b border-gray-100 transition-colors duration-300"
+        style={{ backgroundColor: profile.avatarColor || "#F9FAFB" }}
+      />
 
       {/* AVATAR & INFOS */}
-      <section className="px-4 -mt-10 mb-6">
+      <section className="px-4 -mt-12 mb-6">
         <div className="flex items-end gap-4 max-w-lg mx-auto">
           <div className="relative flex-shrink-0">
-            <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center text-3xl font-black text-black overflow-hidden border-4 border-white shadow-md">
+            {/* AVATAR DYNAMIQUE (Fond de la couleur choisie si pas de photo) */}
+            <div 
+              className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-black overflow-hidden border-4 border-white shadow-md transition-colors duration-300"
+              style={{ 
+                backgroundColor: profile.avatarUrl ? "#F3F4F6" : themeColor,
+                color: profile.avatarUrl ? "#000000" : "#FFFFFF"
+              }}
+            >
               {profile.avatarUrl ? (
                 <img 
                   src={profile.avatarUrl} 
@@ -131,16 +134,17 @@ export default function PublicProfilePage() {
                 profile.username?.charAt(0).toUpperCase() || "?"
               )}
             </div>
+
             {/* Badge de certification sur l'avatar */}
             {profile.isCertified && (
-                <div className="absolute bottom-0 right-0 bg-white p-0.5 rounded-full shadow-sm">
-                    <BadgeCheck
-                        className="w-7 h-7"
-                        fill={activeBadgeColor}
-                        color="black"
-                        strokeWidth={1.5}
-                    />
-                </div>
+              <div className="absolute bottom-0 right-0 bg-white p-0.5 rounded-full shadow-sm">
+                <BadgeCheck
+                  className="w-7 h-7"
+                  fill={activeBadgeColor}
+                  color="black"
+                  strokeWidth={1.5}
+                />
+              </div>
             )}
           </div>
 
@@ -154,17 +158,17 @@ export default function PublicProfilePage() {
               )}
             </div>
             <div className="flex flex-col gap-1 text-gray-500 text-sm">
-                <p className="font-medium">{profile.bio || "Aucune bio disponible..."}</p>
-                <div className="flex flex-col text-gray-400 text-xs">
-                    <div className="flex items-center gap-1">
-                        <Mail className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="truncate">{profile.email}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        <span>Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
-                    </div>
+              <p className="font-medium">{profile.bio || "Aucune bio disponible..."}</p>
+              <div className="flex flex-col text-gray-400 text-xs">
+                <div className="flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="truncate">{profile.email}</span>
                 </div>
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                  <span>Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -218,10 +222,8 @@ export default function PublicProfilePage() {
                     <BookOpen className="w-8 h-8 text-gray-300" />
                   </div>
                 )}
-                {/* Overlay gradient pour la lisibilité */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-100 transition-opacity" />
                 
-                {/* Infos du manga sur l'image */}
                 <div className="absolute bottom-0 left-0 right-0 p-2 md:p-3">
                   <p className="text-white text-xs md:text-sm font-bold truncate group-hover:text-yellow-400">{manga.title}</p>
                   <div className="flex items-center gap-2.5 text-white/80 text-[10px] md:text-xs font-semibold mt-0.5">
