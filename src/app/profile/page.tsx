@@ -43,6 +43,7 @@ type UserProfile = {
   steamPoints: number;
   steamLevel: number;
   avatarColor: string | null;
+  badgeColor?: string | null; // ✅ CORRECTION : Ajout de badgeColor
   _count: {
     mangas: number;
     followers: number;
@@ -155,10 +156,13 @@ export default function ProfilePage() {
     );
   }
 
+  // Couleur du badge sécurisée
+  const activeBadgeColor = profile.badgeColor || profile.avatarColor || "#3B82F6";
+
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
-      {/* HEADER FIXE MINIMALISTE (Largeur adaptative PC/Mobile) */}
+      {/* HEADER FIXE MINIMALISTE */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <span className="text-base font-bold tracking-tight text-white/90">
@@ -203,9 +207,10 @@ export default function ProfilePage() {
           </div>
           {profile.isCertified && (
             <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
+              {/* ✅ CORRECTION : Utilisation de activeBadgeColor */}
               <BadgeCheck
                 className="w-6 h-6 md:w-7 md:h-7"
-                fill={profile.avatarColor || "#3B82F6"}
+                fill={activeBadgeColor}
                 color="black"
                 strokeWidth={1.5}
               />
@@ -234,7 +239,7 @@ export default function ProfilePage() {
           <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-blue-400" /> Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
         </div>
 
-        {/* COMPTEURS DE STATS STYLE TIKTOK (Adaptatif) */}
+        {/* COMPTEURS DE STATS */}
         <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
           <div className="text-center">
             <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
@@ -252,7 +257,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* BOUTONS D'ACTION STYLE TIKTOK */}
+        {/* BOUTONS D'ACTION */}
         <div className="flex gap-2.5 w-full max-w-md md:max-w-lg mb-8">
           <Link
             href="/profile/edit"
@@ -277,7 +282,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* BARRE D'ONGLETS TYPE TIKTOK */}
+        {/* BARRE D'ONGLETS */}
         <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
           <button
             onClick={() => setActiveTab("mangas")}
@@ -314,7 +319,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* --- ONGLET 1 : GRILLE DES MANGAS (3 col sur Mobile, 5/6 col sur PC) --- */}
+        {/* --- ONGLET 1 : GRILLE DES MANGAS --- */}
         {activeTab === "mangas" && (
           <div className="w-full">
             {!profile.mangas || profile.mangas.length === 0 ? (
@@ -348,7 +353,6 @@ export default function ProfilePage() {
                       </div>
                     )}
 
-                    {/* OVERLAY VUES/LIKES TIKTOK */}
                     <div className="absolute bottom-0 left-0 right-0 p-1.5 md:p-2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end justify-between">
                       <span className="flex items-center gap-1 text-white text-[10px] md:text-xs font-bold drop-shadow">
                         <Eye className="w-3 h-3 text-sky-400" /> {manga.viewsCount || 0}
@@ -358,7 +362,6 @@ export default function ProfilePage() {
                       </span>
                     </div>
 
-                    {/* BOUTON SUPPRESSION */}
                     <button
                       onClick={async (e) => {
                         e.preventDefault();
@@ -444,9 +447,10 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   <Palette className="w-5 h-5 text-purple-400" />
                   <span className="text-sm font-semibold text-white">Couleur du Badge</span>
+                  {/* ✅ CORRECTION : Pastille de couleur mise à jour */}
                   <div
-                    className="w-4.5 h-4.5 rounded-full border border-zinc-700"
-                    style={{ backgroundColor: profile.avatarColor || '#3B82F6' }}
+                    className="w-4.5 h-4.5 rounded-full border border-zinc-700 shadow-inner"
+                    style={{ backgroundColor: activeBadgeColor }}
                   />
                 </div>
                 <ChevronRight className="w-4 h-4 text-zinc-500" />
