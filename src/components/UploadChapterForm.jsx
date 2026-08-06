@@ -10,7 +10,7 @@ export default function UploadChapterForm({ mangaId, token }) {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const API_BASE_URL = 'https://TON_URL_VERCEL'; // ⚠️ Remplace par ton URL Vercel réelle
+  const API_BASE_URL = 'https://ink-backend.vercel.app/'; // ⚠️ Remplace par ton URL Vercel réelle
 
   const handleSubmit = async (e) => {
     e.preventDefault();
