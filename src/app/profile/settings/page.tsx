@@ -7,15 +7,13 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { 
   ArrowLeft, 
   Lock, 
-  Bell, 
   Shield, 
-  Users, 
-  Moon, 
   LogOut, 
   Trash2,
   Eye,
   EyeOff,
-  Save
+  AlertCircle,
+  CheckCircle2
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -31,9 +29,6 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [privateProfile, setPrivateProfile] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -102,95 +97,108 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white">
-        <div className="w-8 h-8 border-4 border-black border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-screen bg-zinc-950 text-white">
+        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen pb-20 bg-white">
+    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Link href="/profile" className="text-gray-500 hover:text-black transition-colors flex items-center gap-1">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm">Retour</span>
+      {/* HEADER FIXE MINIMALISTE */}
+      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
+        <div className="flex items-center justify-between max-w-xl mx-auto">
+          <Link href="/profile" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium">
+            <ArrowLeft className="w-4 h-4" />
+            <span>Retour</span>
           </Link>
-          <span className="text-lg font-bold text-black">Paramètres</span>
-          <div className="w-16" />
+          <span className="text-base font-bold text-white tracking-tight">Paramètres</span>
+          <div className="w-12" /> {/* Espace d'équilibrage */}
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-6 max-w-lg mx-auto w-full">
+      <main className="flex-1 px-4 md:px-8 py-6 max-w-xl mx-auto w-full space-y-8">
 
+        {/* ALERTE ERREUR */}
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-600 text-sm">
-            {error}
+          <div className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-sm flex items-center gap-2 shadow-lg">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <span>{error}</span>
           </div>
         )}
 
+        {/* ALERTE SUCCÈS */}
         {success && (
-          <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 text-green-600 text-sm">
-            {success}
+          <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-sm flex items-center gap-2 shadow-lg">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            <span>{success}</span>
           </div>
         )}
 
-        {/* Mot de passe */}
-        <section className="mb-8">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-            <Lock className="w-4 h-4" />
+        {/* SECTION : SÉCURITÉ & MOT DE PASSE */}
+        <section className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 md:p-6 backdrop-blur-md shadow-lg">
+          <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2 tracking-wide uppercase">
+            <Lock className="w-4 h-4 text-blue-400" />
             Changer le mot de passe
           </h2>
 
-          <form onSubmit={handlePasswordChange} className="space-y-3">
+          <form onSubmit={handlePasswordChange} className="space-y-4">
             <div>
-              <label className="block text-gray-600 text-sm font-medium mb-1">Mot de passe actuel</label>
+              <label className="block text-zinc-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">
+                Mot de passe actuel
+              </label>
               <input
                 type={showPassword ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-black focus:border-black outline-none transition-colors"
+                className="w-full px-4 py-3 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-gray-600 text-sm font-medium mb-1">Nouveau mot de passe</label>
+              <label className="block text-zinc-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">
+                Nouveau mot de passe
+              </label>
               <input
                 type={showPassword ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-black focus:border-black outline-none transition-colors"
+                className="w-full px-4 py-3 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
                 required
                 minLength={6}
               />
             </div>
 
             <div>
-              <label className="block text-gray-600 text-sm font-medium mb-1">Confirmer le mot de passe</label>
+              <label className="block text-zinc-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">
+                Confirmer le mot de passe
+              </label>
               <input
                 type={showPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-black focus:border-black outline-none transition-colors"
+                className="w-full px-4 py-3 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
                 required
               />
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="text-sm text-gray-500 hover:text-black transition-colors flex items-center gap-1"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              {showPassword ? "Masquer" : "Afficher"} les mots de passe
-            </button>
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-xs text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 font-medium"
+              >
+                {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                {showPassword ? "Masquer" : "Afficher"} les mots de passe
+              </button>
+            </div>
 
             <button
               type="submit"
               disabled={saving}
-              className="w-full py-2 rounded-lg bg-black text-white font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50"
+              className="w-full py-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99] mt-2"
             >
               {saving ? (
                 <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
@@ -201,18 +209,18 @@ export default function SettingsPage() {
           </form>
         </section>
 
-        {/* Compte */}
-        <section>
-          <h2 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
-            <Shield className="w-4 h-4" />
-            Compte
+        {/* SECTION : GESTION DU COMPTE */}
+        <section className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 md:p-6 backdrop-blur-md shadow-lg space-y-3">
+          <h2 className="text-sm font-bold text-white mb-2 flex items-center gap-2 tracking-wide uppercase">
+            <Shield className="w-4 h-4 text-blue-400" />
+            Compte & Action
           </h2>
 
           <button
             onClick={handleLogout}
-            className="w-full py-3 rounded-lg bg-gray-100 text-black font-semibold hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 mb-3"
+            className="w-full py-3 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-bold border border-zinc-800 transition-all flex items-center justify-center gap-2 shadow-sm"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4 text-zinc-400" />
             Se déconnecter
           </button>
 
@@ -222,7 +230,7 @@ export default function SettingsPage() {
                 // Logique de suppression
               }
             }}
-            className="w-full py-3 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+            className="w-full py-3 rounded-full bg-rose-950/30 hover:bg-rose-900/40 text-rose-400 border border-rose-500/20 text-sm font-bold transition-all flex items-center justify-center gap-2"
           >
             <Trash2 className="w-4 h-4" />
             Supprimer mon compte
