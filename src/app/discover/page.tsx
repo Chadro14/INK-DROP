@@ -4,15 +4,21 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { Heart, Eye, Search, Filter, X } from "lucide-react";
+import { 
+  Heart, 
+  Eye, 
+  Search, 
+  SlidersHorizontal, 
+  X, 
+  BookOpen, 
+  Sparkles,
+  RotateCcw
+} from "lucide-react";
 
 const IconManga = () => (
-  <svg className="w-8 h-8 text-ink-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <line x1="7" y1="7" x2="17" y2="7" />
-    <line x1="7" y1="11" x2="17" y2="11" />
-    <line x1="7" y1="15" x2="13" y2="15" />
-  </svg>
+  <div className="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800/80 text-blue-400 shadow-inner">
+    <BookOpen className="w-7 h-7" />
+  </div>
 );
 
 export default function DiscoverPage() {
@@ -100,116 +106,151 @@ export default function DiscoverPage() {
     }
   };
 
+  const activeFiltersCount = (genre ? 1 : 0) + (status ? 1 : 0) + (sort !== "recent" ? 1 : 0);
+
   return (
-    <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
+    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
       {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
+      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+        <div className="flex items-center gap-2 max-w-lg mx-auto">
           <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher un manga..."
-              className="flex-1 px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none transition-colors"
-            />
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Rechercher un manga..."
+                className="w-full pl-10 pr-4 py-2 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
+              />
+              <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            </div>
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors"
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-md shadow-blue-900/20 shrink-0"
             >
-              <Search className="w-4 h-4" />
+              Chercher
             </button>
           </form>
+
           <button
             onClick={() => setShowFilters(true)}
-            className="text-ink-muted hover:text-white ml-2"
+            className="relative p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all shrink-0"
+            title="Filtres"
           >
-            <Filter className="w-5 h-5" />
+            <SlidersHorizontal className="w-4 h-4" />
+            {activeFiltersCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-zinc-950">
+                {activeFiltersCount}
+              </span>
+            )}
           </button>
-          <Link href="/" className="text-ink-muted hover:text-white ml-1">
-            <X className="w-5 h-5" />
+
+          <Link 
+            href="/" 
+            className="p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700 transition-all shrink-0"
+          >
+            <X className="w-4 h-4" />
           </Link>
         </div>
       </header>
 
-      {/* ===== FILTRES (overlay) ===== */}
+      {/* ===== FILTRES (Overlay Modernisé) ===== */}
       {showFilters && (
-        <div className="fixed inset-0 z-50 bg-ink-bg/95 backdrop-blur-sm animate-fade-in overflow-y-auto">
-          <div className="max-w-lg mx-auto px-4 py-6 min-h-screen">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-white">Filtres</h2>
-              <button onClick={() => setShowFilters(false)} className="text-ink-muted hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 bg-zinc-950/90 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="max-w-lg mx-auto px-4 py-6 min-h-screen flex flex-col justify-between">
+            <div className="space-y-6">
+              
+              <div className="flex items-center justify-between border-b border-zinc-800/80 pb-4">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-5 h-5 text-blue-400" />
+                  <h2 className="text-lg font-extrabold text-white">Filtres de recherche</h2>
+                </div>
+                <button 
+                  onClick={() => setShowFilters(false)} 
+                  className="p-2 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-            {/* Genre */}
-            <div className="mb-4">
-              <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Genre</label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {genres.map((g) => (
-                  <button
-                    key={g}
-                    onClick={() => setGenre(g === genre ? "" : g)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      genre === g
-                        ? "bg-accent text-white"
-                        : "bg-ink-card border border-ink-border text-ink-muted hover:text-white"
-                    }`}
-                  >
-                    {g}
-                  </button>
-                ))}
+              {/* Genre */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                  Genre
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {genres.map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setGenre(g === genre ? "" : g)}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                        genre === g
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-900/30"
+                          : "bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Statut */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                  Statut
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {statuses.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setStatus(s === status ? "" : s)}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                        status === s
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-900/30"
+                          : "bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700"
+                      }`}
+                    >
+                      {s.toLowerCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tri */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                  Trier par
+                </label>
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                >
+                  {sortOptions.map((s) => (
+                    <option key={s.value} value={s.value} className="bg-zinc-900 text-white">
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* Statut */}
-            <div className="mb-4">
-              <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Statut</label>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {statuses.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setStatus(s === status ? "" : s)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                      status === s
-                        ? "bg-accent text-white"
-                        : "bg-ink-card border border-ink-border text-ink-muted hover:text-white"
-                    }`}
-                  >
-                    {s.toLowerCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tri */}
-            <div className="mb-6">
-              <label className="text-ink-muted text-xs font-medium uppercase tracking-wider">Trier par</label>
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                className="w-full mt-1 px-4 py-2 rounded-lg bg-ink-card border border-ink-border text-white focus:border-accent outline-none transition-colors"
-              >
-                {sortOptions.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-3">
+            {/* Boutons d'action Modal */}
+            <div className="flex gap-3 pt-6 border-t border-zinc-800/80 mt-6">
               <button
                 onClick={applyFilters}
-                className="flex-1 py-3 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors"
+                className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-lg shadow-blue-900/30"
               >
-                Appliquer
+                Appliquer les filtres
               </button>
               <button
                 onClick={clearFilters}
-                className="px-6 py-3 rounded-lg bg-ink-card border border-ink-border text-ink-muted font-semibold hover:text-white transition-colors"
+                className="px-5 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold text-sm hover:text-white transition-all flex items-center gap-1.5"
               >
-                Réinitialiser
+                <RotateCcw className="w-4 h-4" />
+                Reset
               </button>
             </div>
           </div>
@@ -217,56 +258,75 @@ export default function DiscoverPage() {
       )}
 
       {/* ===== RÉSULTATS ===== */}
-      <main className="flex-1 px-4 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold text-white">Découvrir</h1>
-          <span className="text-ink-muted text-sm">{mangas.length} résultats</span>
+      <main className="flex-1 px-4 md:px-8 py-5 max-w-lg mx-auto w-full space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-blue-400" />
+            Découvrir
+          </h1>
+          <span className="text-xs font-semibold text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
+            {mangas.length} {mangas.length > 1 ? "résultats" : "résultat"}
+          </span>
         </div>
 
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="aspect-[2/3] bg-ink-card rounded-xl animate-pulse" />
+              <div 
+                key={i} 
+                className="aspect-[2/3] bg-zinc-900/60 border border-zinc-800/50 rounded-2xl animate-pulse" 
+              />
             ))}
           </div>
         ) : mangas.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
+          <div className="flex flex-col items-center justify-center py-16 text-center bg-zinc-900/20 border border-zinc-800/60 rounded-2xl p-6">
             <IconManga />
-            <p className="text-ink-muted mt-4">Aucun manga trouvé</p>
+            <p className="text-zinc-400 text-sm font-medium mt-4">Aucun manga ne correspond à votre recherche</p>
             <button
               onClick={clearFilters}
-              className="mt-4 px-6 py-2 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors"
+              className="mt-4 px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md shadow-blue-900/20"
             >
               Réinitialiser les filtres
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3.5">
             {mangas.map((manga: any) => (
               <Link
                 key={manga.id}
                 href={`/manga/${manga.id}`}
-                className="bg-ink-card border border-ink-border rounded-xl overflow-hidden hover:border-accent transition-all active:scale-[0.97]"
+                className="group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col justify-between"
               >
-                <div className="aspect-[2/3] bg-gradient-to-br from-accent/20 to-accent-dark/20 flex items-center justify-center relative">
+                <div className="aspect-[2/3] bg-gradient-to-br from-blue-950/30 to-zinc-900 flex items-center justify-center relative overflow-hidden">
                   <IconManga />
-                  <div className="absolute top-2 left-2 flex gap-1">
+                  <div className="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[90%]">
                     {manga.genre?.slice(0, 2).map((g: string) => (
-                      <span key={g} className="text-[8px] font-medium px-1.5 py-0.5 rounded bg-black/50 text-white backdrop-blur-sm">
+                      <span 
+                        key={g} 
+                        className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-zinc-950/80 text-blue-300 backdrop-blur-md border border-blue-500/20"
+                      >
                         {g}
                       </span>
                     ))}
                   </div>
                 </div>
-                <div className="p-2">
-                  <h3 className="text-sm font-semibold truncate text-white">{manga.title}</h3>
-                  <p className="text-ink-muted text-[10px] truncate">{manga.author?.username || "Inconnu"}</p>
-                  <div className="flex items-center gap-3 mt-0.5 text-ink-muted text-[10px]">
-                    <span className="flex items-center gap-0.5">
-                      <Heart className="w-3 h-3 text-accent" /> {manga.likesCount || 0}
+
+                <div className="p-3 space-y-1">
+                  <h3 className="text-sm font-bold truncate text-white group-hover:text-blue-400 transition-colors">
+                    {manga.title}
+                  </h3>
+                  <p className="text-zinc-500 text-xs truncate font-medium">
+                    {manga.author?.username || "Inconnu"}
+                  </p>
+                  
+                  <div className="flex items-center gap-3 pt-1 text-zinc-400 text-[11px] font-semibold border-t border-zinc-800/60">
+                    <span className="flex items-center gap-1">
+                      <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/20" /> 
+                      {manga.likesCount || 0}
                     </span>
-                    <span className="flex items-center gap-0.5">
-                      <Eye className="w-3 h-3 text-accent" /> {manga.viewsCount || 0}
+                    <span className="flex items-center gap-1">
+                      <Eye className="w-3.5 h-3.5 text-blue-400" /> 
+                      {manga.viewsCount || 0}
                     </span>
                   </div>
                 </div>
