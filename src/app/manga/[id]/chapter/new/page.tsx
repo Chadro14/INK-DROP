@@ -1,80 +1,61 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Upload, X, FileText, Image as ImageIcon } from "lucide-react";
-import { supabaseClient } from "@/lib/supabase-client";
+import { BottomNav } from "@/components/layout/bottom-nav";
+import {
+  ArrowLeft,
+  Upload,
+  FileText,
+  Image as ImageIcon,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Sparkles,
+  Plus,
+  X,
+  BookOpen,
+} from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-export default function NewChapterPage() {
+export default function ChapterUploadPage() {
   const router = useRouter();
   const params = useParams();
-  const mangaId = params.id as string;
+  const mangaId = params?.mangaId as string;
 
-  const [mode, setMode] = useState<"pdf" | "photos">("pdf");
+  // États du formulaire
+  const [mode, setMode] = useState<"images" | "pdf">("images");
   const [number, setNumber] = useState("");
   const [title, setTitle] = useState("");
-  const [price, setPrice] = useState("");
-  const [isDraft, setIsDraft] = useState(false);
-
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
-  const [freeIndexes, setFreeIndexes] = useState<Set<number>>(new Set());
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
+  // États de chargement et d'erreur
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setPdfFile(file);
+  // Gestion de la sélection d'images
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selected = Array.from(e.target.files);
+      setPhotoFiles((prev) => [...prev, ...selected]);
+    }
   };
 
-  const handlePhotosChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setPhotoFiles((prev) => [...prev, ...files]);
-  };
-
+  // Suppression d'une image sélectionnée
   const removePhoto = (index: number) => {
     setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
-    setFreeIndexes((prev) => {
-      const next = new Set<number>();
-      prev.forEach((i) => {
-        if (i < index) next.add(i);
-        else if (i > index) next.add(i - 1);
-      });
-      return next;
-    });
   };
 
-  const toggleFree = (index: number) => {
-    setFreeIndexes((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  };
-
+  // Soumission du formulaire
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    if (!number.trim()) {
-      setError("Le numéro du chapitre est requis");
-      return;
-    }
-    if (mode === "pdf" && !pdfFile) {
-      setError("Sélectionnez un fichier PDF");
-      return;
-    }
-    if (mode === "photos" && photoFiles.length === 0) {
-      setError("Sélectionnez au moins une photo");
-      return;
-    }
+    setSuccess(false);
 
     const token = localStorage.getItem("token");
     if (!token) {
@@ -82,13 +63,31 @@ export default function NewChapterPage() {
       return;
     }
 
-    setLoading(true);
+    if (!number || isNaN(parseInt(number, 10))) {
+      setError("Veuillez entrer un numéro de chapitre valide.");
+      return;
+    }
+
+    const filesToUpload = mode === "pdf" ? (pdfFile ? [pdfFile] : []) : photoFiles;
+    if (filesToUpload.length === 0) {
+      setError(
+        mode === "pdf"
+          ? "Veuillez sélectionner un fichier PDF."
+          : "Veuillez sélectionner au moins une image."
+      );
+      return;
+    }
 
     try {
-      // ===== ÉTAPE 1 : demander les URLs d'upload signées =====
-      setProgress("Préparation de l'upload...");
-      const count = mode === "pdf" ? 1 : photoFiles.length;
+      setLoading(true);
 
+      // ===== ÉTAPE 1 : Demander les URLs d'upload au backend =====
+      setProgress("Préparation de l'upload...");
+
+      // Extraction des noms de fichiers
+      const filenames = filesToUpload.map((file) => file.name);
+
+      // ✅ CORRECTION : Envoi de `filenames` au backend
       const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/upload-urls`, {
         method: "POST",
         headers: {
@@ -96,68 +95,49 @@ export default function NewChapterPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
+          filenames,
           mode,
-          count,
           chapterNumber: parseInt(number, 10),
+          title: title.trim() || undefined,
         }),
       });
 
-      const urlData = await urlRes.json();
       if (!urlRes.ok) {
-        throw new Error(urlData.message || "Erreur lors de la préparation de l'upload");
+        const errorData = await urlRes.json().catch(() => ({}));
+        throw new Error(errorData.message || "Erreur lors de la préparation de l'upload.");
       }
 
-      const uploadTargets: { key: string; path: string; token: string }[] = urlData.files;
+      const { uploadUrls, chapterId } = await urlRes.json();
 
-      // ===== ÉTAPE 2 : uploader directement vers Supabase =====
-      const filesToUpload = mode === "pdf" ? [pdfFile!] : photoFiles;
-
-      for (let i = 0; i < uploadTargets.length; i++) {
-        setProgress(`Envoi du fichier ${i + 1}/${uploadTargets.length}...`);
-        const target = uploadTargets[i];
+      // ===== ÉTAPE 2 : Upload des fichiers vers les URLs signées Supabase =====
+      for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i];
+        const targetUrl = Array.isArray(uploadUrls) ? uploadUrls[i] : uploadUrls;
 
-        const { error: uploadError } = await supabaseClient.storage
-          .from("chapters")
-          .uploadToSignedUrl(target.path, target.token, file);
+        setProgress(`Upload de ${i + 1}/${filesToUpload.length} : ${file.name}`);
 
-        if (uploadError) {
-          throw new Error(`Échec de l'envoi du fichier ${i + 1} : ${uploadError.message}`);
+        const uploadRes = await fetch(targetUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+          },
+          body: file,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error(`Échec de l'upload du fichier ${file.name}`);
         }
       }
 
-      // ===== ÉTAPE 3 : finaliser le chapitre (métadonnées uniquement) =====
-      setProgress("Finalisation...");
-      const keys = uploadTargets.map((t) => t.key);
-
-      const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/finalize`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          mode,
-          keys,
-          number: parseInt(number, 10),
-          title: title.trim() || undefined,
-          price: price.trim() ? parseFloat(price) : undefined,
-          isDraft,
-          freePageIndexes: mode === "photos" ? JSON.stringify(Array.from(freeIndexes)) : undefined,
-        }),
-      });
-
-      const finalizeData = await finalizeRes.json();
-      if (!finalizeRes.ok) {
-        throw new Error(finalizeData.message || "Erreur lors de la création du chapitre");
-      }
-
+      // ===== ÉTAPE 3 : Finalisation =====
+      setProgress("Finalisation du chapitre...");
       setSuccess(true);
       setTimeout(() => {
         router.push(`/manga/${mangaId}`);
-      }, 1200);
+      }, 1500);
+
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Une erreur est survenue lors de l'upload.");
     } finally {
       setLoading(false);
       setProgress("");
@@ -165,193 +145,216 @@ export default function NewChapterPage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen pb-20 bg-ink-bg">
-
-      <header className="sticky top-0 z-40 bg-ink-bg/80 backdrop-blur-sm border-b border-ink-border px-4 py-3">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          <Link href={`/manga/${mangaId}`} className="text-ink-muted hover:text-white transition-colors flex items-center gap-1">
+    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
+      
+      {/* HEADER FIXE MINIMALISTE */}
+      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <button
+            onClick={() => router.back()}
+            className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all flex items-center gap-2"
+          >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm">Retour</span>
-          </Link>
-          <span className="text-lg font-bold text-white">Ajouter un chapitre</span>
-          <div className="w-16" />
+            <span className="text-sm font-medium hidden sm:inline">Retour</span>
+          </button>
+          <span className="text-base font-bold tracking-tight text-white/90">
+            Nouveau Chapitre
+          </span>
+          <div className="w-9" /> {/* Spacer équilibré */}
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-4 max-w-lg mx-auto w-full">
+      {/* BANNIÈRE SUPÉRIEURE DÉCORATIVE */}
+      <div className="h-24 md:h-32 w-full bg-gradient-to-r from-zinc-950 via-blue-950/30 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
+      </div>
 
-        {success && (
-          <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-500 text-sm text-center">
-            ✅ Chapitre ajouté ! Redirection...
-          </div>
-        )}
+      {/* CONTENU PRINCIPAL CENTRÉ */}
+      <main className="max-w-2xl mx-auto w-full px-4 md:px-8 -mt-10 flex flex-col gap-6">
 
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-500 text-sm">
-            {error}
-          </div>
-        )}
-
-        {loading && progress && (
-          <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 text-sm text-center">
-            {progress}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setMode("pdf")}
-              className={`py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                mode === "pdf" ? "bg-accent text-white" : "bg-ink-card border border-ink-border text-ink-muted"
-              }`}
-            >
-              <FileText className="w-4 h-4" /> PDF
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("photos")}
-              className={`py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
-                mode === "photos" ? "bg-accent text-white" : "bg-ink-card border border-ink-border text-ink-muted"
-              }`}
-            >
-              <ImageIcon className="w-4 h-4" /> Photos
-            </button>
-          </div>
-
-          <div>
-            <label className="block text-ink-muted text-sm font-medium mb-1">Numéro du chapitre *</label>
-            <input
-              type="number"
-              value={number}
-              onChange={(e) => setNumber(e.target.value)}
-              placeholder="1"
-              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-ink-muted text-sm font-medium mb-1">Titre (optionnel)</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Titre du chapitre"
-              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none"
-            />
-          </div>
-
-          {mode === "pdf" && (
-            <div>
-              <label className="block text-ink-muted text-sm font-medium mb-1">Fichier PDF *</label>
-              <div className="relative border-2 border-dashed border-ink-border rounded-lg p-6 text-center hover:border-accent/50 transition-colors">
-                {pdfFile ? (
-                  <p className="text-white text-sm">{pdfFile.name}</p>
-                ) : (
-                  <>
-                    <FileText className="w-10 h-10 text-ink-muted/50 mx-auto mb-2" />
-                    <p className="text-ink-muted text-sm">Cliquez pour choisir un PDF</p>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={handlePdfChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
-              </div>
+        {/* CARTE FORMULAIRE */}
+        <form onSubmit={handleSubmit} className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 md:p-7 backdrop-blur-md shadow-xl space-y-6">
+          
+          {/* SÉLECTEUR DE MODE (IMAGES OU PDF) */}
+          <div className="space-y-2">
+            <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-400" />
+              Format d'importation
+            </label>
+            <div className="grid grid-cols-2 gap-2.5 p-1 bg-zinc-950/60 border border-zinc-800/80 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setMode("images")}
+                className={`py-2.5 px-4 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                  mode === "images"
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <ImageIcon className="w-4 h-4" />
+                Images (PNG/JPG)
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("pdf")}
+                className={`py-2.5 px-4 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                  mode === "pdf"
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Document PDF
+              </button>
             </div>
-          )}
+          </div>
 
-          {mode === "photos" && (
-            <div>
-              <label className="block text-ink-muted text-sm font-medium mb-1">
-                Photos * ({photoFiles.length} sélectionnée{photoFiles.length > 1 ? "s" : ""})
+          {/* INFORMATIONS DU CHAPITRE */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2 md:col-span-1">
+              <label className="text-xs md:text-sm font-bold text-zinc-300">
+                N° Chapitre <span className="text-blue-400">*</span>
               </label>
-              <div className="relative border-2 border-dashed border-ink-border rounded-lg p-6 text-center hover:border-accent/50 transition-colors mb-3">
-                <ImageIcon className="w-10 h-10 text-ink-muted/50 mx-auto mb-2" />
-                <p className="text-ink-muted text-sm">Ajouter des photos (une ou plusieurs)</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePhotosChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                />
-              </div>
+              <input
+                type="number"
+                min="1"
+                placeholder="Ex: 1"
+                value={number}
+                onChange={(e) => setNumber(e.target.value)}
+                required
+                className="w-full px-4 py-2.5 bg-zinc-950/80 border border-zinc-800/80 rounded-xl text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-xs md:text-sm font-bold text-zinc-300">
+                Titre du chapitre <span className="text-zinc-500 font-normal">(optionnel)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Le Début d'une Aventure"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-4 py-2.5 bg-zinc-950/80 border border-zinc-800/80 rounded-xl text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
+              />
+            </div>
+          </div>
 
-              {photoFiles.length > 0 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {photoFiles.map((file, index) => (
-                    <div key={index} className="relative rounded-lg overflow-hidden border border-ink-border">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`Page ${index + 1}`}
-                        className="w-full h-24 object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(index)}
-                        className="absolute top-1 right-1 p-1 rounded-full bg-red-500 text-white"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleFree(index)}
-                        className={`absolute bottom-1 left-1 right-1 py-1 rounded text-[10px] font-medium ${
-                          freeIndexes.has(index) ? "bg-green-500 text-white" : "bg-black/60 text-ink-muted"
-                        }`}
-                      >
-                        {freeIndexes.has(index) ? "Gratuite" : "Payante"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
+          {/* SÉLECTION DES FICHIERS */}
+          <div className="space-y-3">
+            <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center justify-between">
+              <span>Contenu du chapitre <span className="text-blue-400">*</span></span>
+              {mode === "images" && photoFiles.length > 0 && (
+                <span className="text-xs text-blue-400 font-semibold">
+                  {photoFiles.length} page(s) ajoutée(s)
+                </span>
               )}
+            </label>
+
+            {mode === "images" ? (
+              <div className="space-y-4">
+                {/* Zone de drop/sélection */}
+                <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-800 hover:border-blue-500/50 rounded-2xl cursor-pointer bg-zinc-950/40 hover:bg-zinc-900/40 transition-all group">
+                  <div className="p-3 rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/30 text-blue-400 mb-2 transition-all">
+                    <Plus className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs md:text-sm font-bold text-white">Sélectionner des images</p>
+                  <p className="text-[11px] text-zinc-500 mt-1">PNG, JPG, WEBP • Glisser plusieurs pages</p>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* Prévisualisation des images */}
+                {photoFiles.length > 0 && (
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 bg-zinc-950/60 rounded-xl border border-zinc-800/60">
+                    {photoFiles.map((file, idx) => (
+                      <div key={idx} className="relative aspect-[2/3] bg-zinc-900 rounded-lg overflow-hidden group border border-zinc-800">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Page ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute bottom-1 left-1 bg-black/80 px-1.5 py-0.5 rounded text-[9px] font-bold text-white">
+                          #{idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(idx)}
+                          className="absolute top-1 right-1 p-1 bg-red-600/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-md"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Sélection PDF */
+              <div>
+                <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-800 hover:border-blue-500/50 rounded-2xl cursor-pointer bg-zinc-950/40 hover:bg-zinc-900/40 transition-all group">
+                  <div className="p-3 rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/30 text-blue-400 mb-2 transition-all">
+                    <FileText className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs md:text-sm font-bold text-white">
+                    {pdfFile ? pdfFile.name : "Sélectionner un fichier PDF"}
+                  </p>
+                  <p className="text-[11px] text-zinc-500 mt-1">Un fichier PDF contenant tout le chapitre</p>
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* ALERTE ERREUR */}
+          {error && (
+            <div className="flex items-center gap-2 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-xs md:text-sm font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>{error}</span>
             </div>
           )}
 
-          <div>
-            <label className="block text-ink-muted text-sm font-medium mb-1">Prix (USD, optionnel)</label>
-            <input
-              type="number"
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="0.99"
-              className="w-full px-4 py-3 rounded-lg bg-ink-card border border-ink-border text-white placeholder-ink-muted focus:border-accent outline-none"
-            />
+          {/* ALERTE SUCCÈS */}
+          {success && (
+            <div className="flex items-center gap-2 p-3.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs md:text-sm font-medium">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              <span>Chapitre publié avec succès ! Redirection en cours...</span>
+            </div>
+          )}
+
+          {/* BOUTON D'ACTION & PROGRESSION */}
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={loading || success}
+              className="w-full py-3.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{progress || "Traitement en cours..."}</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  <span>Publier le Chapitre</span>
+                </>
+              )}
+            </button>
           </div>
-
-          <label className="flex items-center gap-2 text-sm text-ink-muted">
-            <input
-              type="checkbox"
-              checked={isDraft}
-              onChange={(e) => setIsDraft(e.target.checked)}
-              className="w-4 h-4"
-            />
-            Enregistrer comme brouillon (non publié)
-          </label>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-lg bg-accent text-white font-semibold hover:bg-accent-dark transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {loading ? (
-              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <Upload className="w-4 h-4" /> Publier le chapitre
-              </>
-            )}
-          </button>
         </form>
       </main>
+
+      <BottomNav />
     </div>
   );
 }
