@@ -343,7 +343,7 @@ export default function MangaPage() {
                     <div>
                       <p className="text-sm font-medium text-black">{chapter.title || `Chapitre ${chapter.number}`}</p>
                       <p className="text-xs text-gray-400">
-                        {chapter.pageCount || 0} pages
+                        {chapter.pageCount ? `${chapter.pageCount} pages` : 'Pages inconnues'}
                       </p>
                     </div>
                   </div>
