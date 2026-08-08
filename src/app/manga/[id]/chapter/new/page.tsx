@@ -21,7 +21,7 @@ const API_URL = "https://ink-backend.vercel.app";
 export default function ChapterUploadPage() {
   const router = useRouter();
   const params = useParams();
-  
+
   // ✅ CORRECTION : utiliser "id" au lieu de "mangaId"
   const mangaId = params?.id as string;
 
@@ -49,6 +49,27 @@ export default function ChapterUploadPage() {
   // Suppression d'une image sélectionnée
   const removePhoto = (index: number) => {
     setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ✅ Fonction pour détecter le type MIME correct (pour mobile)
+  const getMimeType = (file: File): string => {
+    // 1. Utiliser le type du fichier s'il existe
+    if (file.type && file.type !== "") {
+      return file.type;
+    }
+    
+    // 2. Sinon, détecter par l'extension
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'webp': 'image/webp',
+      'gif': 'image/gif',
+      'bmp': 'image/bmp',
+      'pdf': 'application/pdf',
+    };
+    return mimeTypes[ext || ''] || 'application/octet-stream';
   };
 
   // Soumission du formulaire
@@ -106,7 +127,7 @@ export default function ChapterUploadPage() {
       }
 
       const responseData = await urlRes.json();
-      
+
       // Extraction adaptative des URLs/keys renvoyées par le backend
       const uploadUrls: string[] = Array.isArray(responseData)
         ? responseData
@@ -123,16 +144,31 @@ export default function ChapterUploadPage() {
 
         setProgress(`Upload vers Supabase (${i + 1}/${filesToUpload.length}) : ${file.name}`);
 
-        const uploadRes = await fetch(targetUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": file.type || "application/octet-stream",
-          },
-          body: file,
-        });
+        // ✅ Créer un controller avec timeout pour mobile
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
 
-        if (!uploadRes.ok) {
-          throw new Error(`Échec du transfert vers Supabase pour le fichier : ${file.name}`);
+        try {
+          const uploadRes = await fetch(targetUrl, {
+            method: "PUT",
+            headers: {
+              "Content-Type": getMimeType(file), // ✅ Type MIME corrigé pour mobile
+            },
+            body: file,
+            signal: controller.signal, // ✅ Timeout
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!uploadRes.ok) {
+            throw new Error(`Échec du transfert vers Supabase pour le fichier : ${file.name}`);
+          }
+        } catch (err: any) {
+          clearTimeout(timeoutId);
+          if (err.name === "AbortError") {
+            throw new Error(`Le fichier ${file.name} a pris trop de temps à uploader (timeout)`);
+          }
+          throw err;
         }
       }
 
@@ -141,11 +177,6 @@ export default function ChapterUploadPage() {
       // ==========================================
       setProgress("Enregistrement du chapitre en base de données...");
 
-      // ✅ CORRECTION : format attendu par le backend
-      // - mode : "PHOTOS" ou "PDF" (majuscules)
-      // - keys : toujours un tableau ([] si vide)
-      // - isFree : supprimé (non accepté par le DTO)
-      // - isDraft : false pour publication immédiate
       const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/finalize`, {
         method: "POST",
         headers: {
@@ -189,7 +220,7 @@ export default function ChapterUploadPage() {
 
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
-      
+
       {/* HEADER FIXE MINIMALISTE */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
@@ -218,7 +249,7 @@ export default function ChapterUploadPage() {
 
         {/* CARTE FORMULAIRE */}
         <form onSubmit={handleSubmit} className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 md:p-7 backdrop-blur-md shadow-xl space-y-6">
-          
+
           {/* FORMAT D'IMPORTATION */}
           <div className="space-y-2">
             <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center gap-2">
