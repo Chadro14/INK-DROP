@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import {
   ArrowLeft,
@@ -15,7 +14,6 @@ import {
   Sparkles,
   Plus,
   X,
-  BookOpen,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -63,7 +61,8 @@ export default function ChapterUploadPage() {
       return;
     }
 
-    if (!number || isNaN(parseInt(number, 10))) {
+    const chapterNum = parseInt(number, 10);
+    if (!number || isNaN(chapterNum)) {
       setError("Veuillez entrer un numéro de chapitre valide.");
       return;
     }
@@ -81,13 +80,13 @@ export default function ChapterUploadPage() {
     try {
       setLoading(true);
 
-      // ===== ÉTAPE 1 : Demander les URLs d'upload au backend =====
-      setProgress("Préparation de l'upload...");
+      // ==========================================
+      // ÉTAPE 1 : Obtenir les URLs signées du Backend
+      // ==========================================
+      setProgress("Obtention des liens de stockage...");
 
-      // Extraction des noms de fichiers
       const filenames = filesToUpload.map((file) => file.name);
 
-      // ✅ CORRECTION : Envoi de `filenames` au backend
       const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/upload-urls`, {
         method: "POST",
         headers: {
@@ -96,9 +95,6 @@ export default function ChapterUploadPage() {
         },
         body: JSON.stringify({
           filenames,
-          mode,
-          chapterNumber: parseInt(number, 10),
-          title: title.trim() || undefined,
         }),
       });
 
@@ -107,14 +103,23 @@ export default function ChapterUploadPage() {
         throw new Error(errorData.message || "Erreur lors de la préparation de l'upload.");
       }
 
-      const { uploadUrls, chapterId } = await urlRes.json();
+      const responseData = await urlRes.json();
+      
+      // Extraction adaptative des URLs/keys renvoyées par le backend
+      const uploadUrls: string[] = Array.isArray(responseData)
+        ? responseData
+        : responseData.uploadUrls || responseData.urls || [responseData.uploadUrl];
 
-      // ===== ÉTAPE 2 : Upload des fichiers vers les URLs signées Supabase =====
+      const keys: string[] = responseData.keys || responseData.fileKeys || [];
+
+      // ==========================================
+      // ÉTAPE 2 : Upload direct des fichiers vers Supabase
+      // ==========================================
       for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i];
-        const targetUrl = Array.isArray(uploadUrls) ? uploadUrls[i] : uploadUrls;
+        const targetUrl = uploadUrls[i] || uploadUrls[0];
 
-        setProgress(`Upload de ${i + 1}/${filesToUpload.length} : ${file.name}`);
+        setProgress(`Upload vers Supabase (${i + 1}/${filesToUpload.length}) : ${file.name}`);
 
         const uploadRes = await fetch(targetUrl, {
           method: "PUT",
@@ -125,16 +130,47 @@ export default function ChapterUploadPage() {
         });
 
         if (!uploadRes.ok) {
-          throw new Error(`Échec de l'upload du fichier ${file.name}`);
+          throw new Error(`Échec du transfert vers Supabase pour le fichier : ${file.name}`);
         }
       }
 
-      // ===== ÉTAPE 3 : Finalisation =====
-      setProgress("Finalisation du chapitre...");
+      // ==========================================
+      // ÉTAPE 3 : Finaliser et enregistrer le chapitre dans la BDD
+      // ==========================================
+      setProgress("Enregistrement du chapitre en base de données...");
+
+      const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/finalize`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          number: chapterNum,
+          title: title.trim() || undefined,
+          keys: keys.length > 0 ? keys : undefined,
+          mode,
+          isFree: true,
+        }),
+      });
+
+      if (!finalizeRes.ok) {
+        const finalizeErr = await finalizeRes.json().catch(() => ({}));
+        throw new Error(finalizeErr.message || "Erreur lors de la création du chapitre en base de données.");
+      }
+
+      // ==========================================
+      // ÉTAPE 4 : Rafraîchissement & Redirection
+      // ==========================================
+      setProgress("Finalisation...");
       setSuccess(true);
+
+      // Invalide le cache du routeur Next.js pour afficher directement le nouveau chapitre
+      router.refresh();
+
       setTimeout(() => {
         router.push(`/manga/${mangaId}`);
-      }, 1500);
+      }, 1200);
 
     } catch (err: any) {
       setError(err.message || "Une erreur est survenue lors de l'upload.");
@@ -151,6 +187,7 @@ export default function ChapterUploadPage() {
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <button
+            type="button"
             onClick={() => router.back()}
             className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all flex items-center gap-2"
           >
@@ -160,22 +197,22 @@ export default function ChapterUploadPage() {
           <span className="text-base font-bold tracking-tight text-white/90">
             Nouveau Chapitre
           </span>
-          <div className="w-9" /> {/* Spacer équilibré */}
+          <div className="w-9" />
         </div>
       </header>
 
-      {/* BANNIÈRE SUPÉRIEURE DÉCORATIVE */}
+      {/* BANNIÈRE DECORATIVE */}
       <div className="h-24 md:h-32 w-full bg-gradient-to-r from-zinc-950 via-blue-950/30 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
       </div>
 
-      {/* CONTENU PRINCIPAL CENTRÉ */}
+      {/* CONTENU PRINCIPAL */}
       <main className="max-w-2xl mx-auto w-full px-4 md:px-8 -mt-10 flex flex-col gap-6">
 
         {/* CARTE FORMULAIRE */}
         <form onSubmit={handleSubmit} className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 md:p-7 backdrop-blur-md shadow-xl space-y-6">
           
-          {/* SÉLECTEUR DE MODE (IMAGES OU PDF) */}
+          {/* FORMAT D'IMPORTATION */}
           <div className="space-y-2">
             <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-blue-400" />
@@ -239,26 +276,25 @@ export default function ChapterUploadPage() {
             </div>
           </div>
 
-          {/* SÉLECTION DES FICHIERS */}
+          {/* SÉLECTION FICHIERS */}
           <div className="space-y-3">
             <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center justify-between">
               <span>Contenu du chapitre <span className="text-blue-400">*</span></span>
               {mode === "images" && photoFiles.length > 0 && (
                 <span className="text-xs text-blue-400 font-semibold">
-                  {photoFiles.length} page(s) ajoutée(s)
+                  {photoFiles.length} page(s) sélectionnée(s)
                 </span>
               )}
             </label>
 
             {mode === "images" ? (
               <div className="space-y-4">
-                {/* Zone de drop/sélection */}
                 <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-800 hover:border-blue-500/50 rounded-2xl cursor-pointer bg-zinc-950/40 hover:bg-zinc-900/40 transition-all group">
                   <div className="p-3 rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/30 text-blue-400 mb-2 transition-all">
                     <Plus className="w-6 h-6" />
                   </div>
-                  <p className="text-xs md:text-sm font-bold text-white">Sélectionner des images</p>
-                  <p className="text-[11px] text-zinc-500 mt-1">PNG, JPG, WEBP • Glisser plusieurs pages</p>
+                  <p className="text-xs md:text-sm font-bold text-white">Sélectionner les pages</p>
+                  <p className="text-[11px] text-zinc-500 mt-1">PNG, JPG, WEBP • Sélection multiple acceptée</p>
                   <input
                     type="file"
                     accept="image/*"
@@ -268,7 +304,7 @@ export default function ChapterUploadPage() {
                   />
                 </label>
 
-                {/* Prévisualisation des images */}
+                {/* Prévisualisation */}
                 {photoFiles.length > 0 && (
                   <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 bg-zinc-950/60 rounded-xl border border-zinc-800/60">
                     {photoFiles.map((file, idx) => (
@@ -294,7 +330,6 @@ export default function ChapterUploadPage() {
                 )}
               </div>
             ) : (
-              /* Sélection PDF */
               <div>
                 <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-800 hover:border-blue-500/50 rounded-2xl cursor-pointer bg-zinc-950/40 hover:bg-zinc-900/40 transition-all group">
                   <div className="p-3 rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/30 text-blue-400 mb-2 transition-all">
@@ -303,7 +338,7 @@ export default function ChapterUploadPage() {
                   <p className="text-xs md:text-sm font-bold text-white">
                     {pdfFile ? pdfFile.name : "Sélectionner un fichier PDF"}
                   </p>
-                  <p className="text-[11px] text-zinc-500 mt-1">Un fichier PDF contenant tout le chapitre</p>
+                  <p className="text-[11px] text-zinc-500 mt-1">Fichier unique contenant l'intégralité du chapitre</p>
                   <input
                     type="file"
                     accept="application/pdf"
@@ -315,7 +350,7 @@ export default function ChapterUploadPage() {
             )}
           </div>
 
-          {/* ALERTE ERREUR */}
+          {/* ALERTES ERREUR / SUCCÈS */}
           {error && (
             <div className="flex items-center gap-2 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-xs md:text-sm font-medium">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
@@ -323,15 +358,14 @@ export default function ChapterUploadPage() {
             </div>
           )}
 
-          {/* ALERTE SUCCÈS */}
           {success && (
             <div className="flex items-center gap-2 p-3.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs md:text-sm font-medium">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-              <span>Chapitre publié avec succès ! Redirection en cours...</span>
+              <span>Chapitre créé et publié avec succès ! Redirection...</span>
             </div>
           )}
 
-          {/* BOUTON D'ACTION & PROGRESSION */}
+          {/* BOUTON D'ACTION */}
           <div className="pt-2">
             <button
               type="submit"
