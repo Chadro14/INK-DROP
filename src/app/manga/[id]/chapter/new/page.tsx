@@ -21,7 +21,9 @@ const API_URL = "https://ink-backend.vercel.app";
 export default function ChapterUploadPage() {
   const router = useRouter();
   const params = useParams();
-  const mangaId = params?.mangaId as string;
+  
+  // ✅ CORRECTION : utiliser "id" au lieu de "mangaId"
+  const mangaId = params?.id as string;
 
   // États du formulaire
   const [mode, setMode] = useState<"images" | "pdf">("images");
@@ -139,8 +141,6 @@ export default function ChapterUploadPage() {
       // ==========================================
       setProgress("Enregistrement du chapitre en base de données...");
 
-      // ✅ CORRECTION : Utiliser isDraft: false pour publier immédiatement
-      // Au lieu de isFree: true qui ne contrôle pas la publication
       const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/finalize`, {
         method: "POST",
         headers: {
@@ -152,8 +152,8 @@ export default function ChapterUploadPage() {
           title: title.trim() || undefined,
           keys: keys.length > 0 ? keys : undefined,
           mode,
-          isDraft: false, // ✅ Publier directement le chapitre
-          isFree: true,   // ✅ Le chapitre reste gratuit (pour le modèle économique)
+          isDraft: false, // ✅ Publier directement
+          isFree: true,
         }),
       });
 
