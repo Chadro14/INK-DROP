@@ -16,7 +16,8 @@ import {
   X,
 } from "lucide-react";
 
-const API_URL = "https://ink-backend.vercel.app";
+// ✅ CORRECTION : Utiliser l'URL complète de Vercel pour mobile
+const API_URL = "https://ink-backend-2zuhxtn1j-chadro14s-projects.vercel.app";
 
 export default function ChapterUploadPage() {
   const router = useRouter();
@@ -146,7 +147,7 @@ export default function ChapterUploadPage() {
 
         // ✅ Créer un controller avec timeout pour mobile
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 secondes
+        const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 secondes
 
         try {
           const uploadRes = await fetch(targetUrl, {
