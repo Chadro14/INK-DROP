@@ -141,6 +141,11 @@ export default function ChapterUploadPage() {
       // ==========================================
       setProgress("Enregistrement du chapitre en base de données...");
 
+      // ✅ CORRECTION : format attendu par le backend
+      // - mode : "PHOTOS" ou "PDF" (majuscules)
+      // - keys : toujours un tableau ([] si vide)
+      // - isFree : supprimé (non accepté par le DTO)
+      // - isDraft : false pour publication immédiate
       const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/finalize`, {
         method: "POST",
         headers: {
@@ -150,10 +155,9 @@ export default function ChapterUploadPage() {
         body: JSON.stringify({
           number: chapterNum,
           title: title.trim() || undefined,
-          keys: keys.length > 0 ? keys : undefined,
-          mode,
-          isDraft: false, // ✅ Publier directement
-          isFree: true,
+          keys: keys.length > 0 ? keys : [],
+          mode: mode === "images" ? "PHOTOS" : "PDF",
+          isDraft: false,
         }),
       });
 
