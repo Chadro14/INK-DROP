@@ -122,6 +122,7 @@ export default function DiscoverPage() {
     const coverUrl = getImageUrl(manga.coverUrl);
     const authorAvatar = getImageUrl(manga.author?.avatarUrl);
     const isCertified = manga.author?.isCertified;
+    const badgeColor = manga.author?.badgeColor || "#2563EB"; // Bleu par défaut
 
     return (
       <Link
@@ -173,7 +174,7 @@ export default function DiscoverPage() {
             {manga.title}
           </h3>
           
-          {/* Auteur avec avatar et badge certifié */}
+          {/* Auteur avec avatar et badge certifié personnalisé */}
           <div className="flex items-center gap-2">
             {authorAvatar ? (
               <img
@@ -189,7 +190,17 @@ export default function DiscoverPage() {
             <p className="text-zinc-400 text-xs truncate font-medium flex items-center gap-1">
               {manga.author?.username || "Inconnu"}
               {isCertified && (
-                <CheckCircle className="w-3.5 h-3.5 text-blue-400 fill-blue-400/20" />
+                <span 
+                  className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full border"
+                  style={{
+                    backgroundColor: `${badgeColor}20`,
+                    color: badgeColor,
+                    borderColor: `${badgeColor}40`,
+                  }}
+                >
+                  <CheckCircle className="w-2.5 h-2.5" />
+                  Certifié
+                </span>
               )}
             </p>
           </div>
