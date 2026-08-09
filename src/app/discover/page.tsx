@@ -12,17 +12,21 @@ import {
   X, 
   BookOpen, 
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  CheckCircle
 } from "lucide-react";
 
 // ✅ AJOUT DE L'URL DE L'API
 const API_URL = "https://ink-backend.vercel.app";
 
-const IconManga = () => (
-  <div className="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800/80 text-blue-400 shadow-inner">
-    <BookOpen className="w-7 h-7" />
-  </div>
-);
+// ✅ Fonction pour les URLs d'images
+const getImageUrl = (url?: string | null) => {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    return url;
+  }
+  return `${API_URL}/storage/${url}`;
+};
 
 export default function DiscoverPage() {
   const router = useRouter();
@@ -57,7 +61,6 @@ export default function DiscoverPage() {
           ...(sort && { sort }),
         });
 
-        // ✅ CORRECTION : Utiliser API_URL au lieu de process.env
         const res = await fetch(
           `${API_URL}/mangas?${params}`
         );
@@ -112,6 +115,104 @@ export default function DiscoverPage() {
 
   const activeFiltersCount = (genre ? 1 : 0) + (status ? 1 : 0) + (sort !== "recent" ? 1 : 0);
 
+  // ============================================
+  // COMPOSANT MANGA CARD AMÉLIORÉ
+  // ============================================
+  const MangaCard = ({ manga }: { manga: any }) => {
+    const coverUrl = getImageUrl(manga.coverUrl);
+    const authorAvatar = getImageUrl(manga.author?.avatarUrl);
+    const isCertified = manga.author?.isCertified;
+
+    return (
+      <Link
+        href={`/manga/${manga.id}`}
+        className="group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col"
+      >
+        {/* Couverture */}
+        <div className="aspect-[2/3] bg-gradient-to-br from-blue-950/30 to-zinc-900 flex items-center justify-center relative overflow-hidden">
+          {coverUrl ? (
+            <img
+              src={coverUrl}
+              alt={manga.title}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+          ) : (
+            <BookOpen className="w-12 h-12 text-zinc-700" />
+          )}
+          
+          {/* Tags genre */}
+          <div className="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[90%]">
+            {manga.genre?.slice(0, 2).map((g: string) => (
+              <span 
+                key={g} 
+                className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-zinc-950/80 text-blue-300 backdrop-blur-md border border-blue-500/20"
+              >
+                {g}
+              </span>
+            ))}
+          </div>
+
+          {/* Statut */}
+          <div className="absolute bottom-2 right-2">
+            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md backdrop-blur-md border ${
+              manga.status === 'ONGOING' 
+                ? 'bg-green-950/80 text-green-400 border-green-500/30' 
+                : manga.status === 'COMPLETED'
+                ? 'bg-blue-950/80 text-blue-400 border-blue-500/30'
+                : 'bg-yellow-950/80 text-yellow-400 border-yellow-500/30'
+            }`}>
+              {manga.status === 'ONGOING' ? 'En cours' : manga.status === 'COMPLETED' ? 'Terminé' : 'En pause'}
+            </span>
+          </div>
+        </div>
+
+        {/* Infos */}
+        <div className="p-3 space-y-1.5">
+          <h3 className="text-sm font-bold truncate text-white group-hover:text-blue-400 transition-colors">
+            {manga.title}
+          </h3>
+          
+          {/* Auteur avec avatar et badge certifié */}
+          <div className="flex items-center gap-2">
+            {authorAvatar ? (
+              <img
+                src={authorAvatar}
+                alt={manga.author?.username || "Auteur"}
+                className="w-5 h-5 rounded-full object-cover border border-zinc-700"
+              />
+            ) : (
+              <div className="w-5 h-5 rounded-full bg-zinc-800 flex items-center justify-center text-[10px] text-zinc-500 font-bold">
+                {manga.author?.username?.charAt(0) || "?"}
+              </div>
+            )}
+            <p className="text-zinc-400 text-xs truncate font-medium flex items-center gap-1">
+              {manga.author?.username || "Inconnu"}
+              {isCertified && (
+                <CheckCircle className="w-3.5 h-3.5 text-blue-400 fill-blue-400/20" />
+              )}
+            </p>
+          </div>
+          
+          {/* Stats */}
+          <div className="flex items-center gap-3 pt-1 text-zinc-400 text-[11px] font-semibold border-t border-zinc-800/60">
+            <span className="flex items-center gap-1">
+              <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/20" /> 
+              {manga.likesCount || 0}
+            </span>
+            <span className="flex items-center gap-1">
+              <Eye className="w-3.5 h-3.5 text-blue-400" /> 
+              {manga.viewsCount || 0}
+            </span>
+            <span className="flex items-center gap-1">
+              📖 {manga._count?.chapters || 0}
+            </span>
+          </div>
+        </div>
+      </Link>
+    );
+  };
+
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
@@ -159,7 +260,7 @@ export default function DiscoverPage() {
         </div>
       </header>
 
-      {/* ===== FILTRES (Overlay Modernisé) ===== */}
+      {/* ===== FILTRES ===== */}
       {showFilters && (
         <div className="fixed inset-0 z-50 bg-zinc-950/90 backdrop-blur-md animate-fade-in overflow-y-auto">
           <div className="max-w-lg mx-auto px-4 py-6 min-h-screen flex flex-col justify-between">
@@ -241,7 +342,6 @@ export default function DiscoverPage() {
               </div>
             </div>
 
-            {/* Boutons d'action Modal */}
             <div className="flex gap-3 pt-6 border-t border-zinc-800/80 mt-6">
               <button
                 onClick={applyFilters}
@@ -284,7 +384,7 @@ export default function DiscoverPage() {
           </div>
         ) : mangas.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center bg-zinc-900/20 border border-zinc-800/60 rounded-2xl p-6">
-            <IconManga />
+            <BookOpen className="w-12 h-12 text-zinc-700" />
             <p className="text-zinc-400 text-sm font-medium mt-4">Aucun manga ne correspond à votre recherche</p>
             <button
               onClick={clearFilters}
@@ -296,45 +396,7 @@ export default function DiscoverPage() {
         ) : (
           <div className="grid grid-cols-2 gap-3.5">
             {mangas.map((manga: any) => (
-              <Link
-                key={manga.id}
-                href={`/manga/${manga.id}`}
-                className="group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col justify-between"
-              >
-                <div className="aspect-[2/3] bg-gradient-to-br from-blue-950/30 to-zinc-900 flex items-center justify-center relative overflow-hidden">
-                  <IconManga />
-                  <div className="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[90%]">
-                    {manga.genre?.slice(0, 2).map((g: string) => (
-                      <span 
-                        key={g} 
-                        className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-zinc-950/80 text-blue-300 backdrop-blur-md border border-blue-500/20"
-                      >
-                        {g}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="p-3 space-y-1">
-                  <h3 className="text-sm font-bold truncate text-white group-hover:text-blue-400 transition-colors">
-                    {manga.title}
-                  </h3>
-                  <p className="text-zinc-500 text-xs truncate font-medium">
-                    {manga.author?.username || "Inconnu"}
-                  </p>
-                  
-                  <div className="flex items-center gap-3 pt-1 text-zinc-400 text-[11px] font-semibold border-t border-zinc-800/60">
-                    <span className="flex items-center gap-1">
-                      <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/20" /> 
-                      {manga.likesCount || 0}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-3.5 h-3.5 text-blue-400" /> 
-                      {manga.viewsCount || 0}
-                    </span>
-                  </div>
-                </div>
-              </Link>
+              <MangaCard key={manga.id} manga={manga} />
             ))}
           </div>
         )}
