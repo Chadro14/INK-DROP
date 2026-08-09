@@ -13,7 +13,7 @@ import {
   BookOpen, 
   Sparkles,
   RotateCcw,
-  CheckCircle
+  Star
 } from "lucide-react";
 
 // ✅ AJOUT DE L'URL DE L'API
@@ -116,13 +116,32 @@ export default function DiscoverPage() {
   const activeFiltersCount = (genre ? 1 : 0) + (status ? 1 : 0) + (sort !== "recent" ? 1 : 0);
 
   // ============================================
-  // COMPOSANT MANGA CARD AMÉLIORÉ
+  // COMPOSANT BADGE CERTIFIÉ (comme dans le profil)
+  // ============================================
+  const CertifiedBadge = ({ color = "#2563EB" }: { color?: string }) => {
+    return (
+      <span 
+        className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-sm"
+        style={{
+          backgroundColor: `${color}20`,
+          color: color,
+          borderColor: `${color}40`,
+        }}
+      >
+        <Star className="w-3 h-3 fill-current" />
+        Certifié
+      </span>
+    );
+  };
+
+  // ============================================
+  // COMPOSANT MANGA CARD
   // ============================================
   const MangaCard = ({ manga }: { manga: any }) => {
     const coverUrl = getImageUrl(manga.coverUrl);
     const authorAvatar = getImageUrl(manga.author?.avatarUrl);
     const isCertified = manga.author?.isCertified;
-    const badgeColor = manga.author?.badgeColor || "#2563EB"; // Bleu par défaut
+    const badgeColor = manga.author?.badgeColor || "#2563EB";
 
     return (
       <Link
@@ -174,7 +193,7 @@ export default function DiscoverPage() {
             {manga.title}
           </h3>
           
-          {/* Auteur avec avatar et badge certifié personnalisé */}
+          {/* Auteur avec avatar et badge certifié */}
           <div className="flex items-center gap-2">
             {authorAvatar ? (
               <img
@@ -187,21 +206,9 @@ export default function DiscoverPage() {
                 {manga.author?.username?.charAt(0) || "?"}
               </div>
             )}
-            <p className="text-zinc-400 text-xs truncate font-medium flex items-center gap-1">
+            <p className="text-zinc-400 text-xs truncate font-medium flex items-center gap-1.5">
               {manga.author?.username || "Inconnu"}
-              {isCertified && (
-                <span 
-                  className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full border"
-                  style={{
-                    backgroundColor: `${badgeColor}20`,
-                    color: badgeColor,
-                    borderColor: `${badgeColor}40`,
-                  }}
-                >
-                  <CheckCircle className="w-2.5 h-2.5" />
-                  Certifié
-                </span>
-              )}
+              {isCertified && <CertifiedBadge color={badgeColor} />}
             </p>
           </div>
           
