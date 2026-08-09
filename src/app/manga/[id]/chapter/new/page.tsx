@@ -16,8 +16,8 @@ import {
   X,
 } from "lucide-react";
 
-// ✅ CORRECTION : Utiliser l'URL complète de Vercel pour mobile
-const API_URL = "https://ink-backend-2zuhxtn1j-chadro14s-projects.vercel.app";
+// ✅ URL CORRECTE du backend
+const API_URL = "https://ink-backend.vercel.app";
 
 export default function ChapterUploadPage() {
   const router = useRouter();
@@ -54,12 +54,9 @@ export default function ChapterUploadPage() {
 
   // ✅ Fonction pour détecter le type MIME correct (pour mobile)
   const getMimeType = (file: File): string => {
-    // 1. Utiliser le type du fichier s'il existe
     if (file.type && file.type !== "") {
       return file.type;
     }
-    
-    // 2. Sinon, détecter par l'extension
     const ext = file.name.split('.').pop()?.toLowerCase();
     const mimeTypes: Record<string, string> = {
       'jpg': 'image/jpeg',
@@ -129,7 +126,6 @@ export default function ChapterUploadPage() {
 
       const responseData = await urlRes.json();
 
-      // Extraction adaptative des URLs/keys renvoyées par le backend
       const uploadUrls: string[] = Array.isArray(responseData)
         ? responseData
         : responseData.uploadUrls || responseData.urls || [responseData.uploadUrl];
@@ -145,18 +141,17 @@ export default function ChapterUploadPage() {
 
         setProgress(`Upload vers Supabase (${i + 1}/${filesToUpload.length}) : ${file.name}`);
 
-        // ✅ Créer un controller avec timeout pour mobile
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 secondes
+        const timeoutId = setTimeout(() => controller.abort(), 120000);
 
         try {
           const uploadRes = await fetch(targetUrl, {
             method: "PUT",
             headers: {
-              "Content-Type": getMimeType(file), // ✅ Type MIME corrigé pour mobile
+              "Content-Type": getMimeType(file),
             },
             body: file,
-            signal: controller.signal, // ✅ Timeout
+            signal: controller.signal,
           });
 
           clearTimeout(timeoutId);
@@ -204,7 +199,6 @@ export default function ChapterUploadPage() {
       setProgress("Finalisation...");
       setSuccess(true);
 
-      // Invalide le cache du routeur Next.js pour afficher directement le nouveau chapitre
       router.refresh();
 
       setTimeout(() => {
@@ -222,7 +216,6 @@ export default function ChapterUploadPage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
-      {/* HEADER FIXE MINIMALISTE */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <button
@@ -240,18 +233,14 @@ export default function ChapterUploadPage() {
         </div>
       </header>
 
-      {/* BANNIÈRE DECORATIVE */}
       <div className="h-24 md:h-32 w-full bg-gradient-to-r from-zinc-950 via-blue-950/30 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
       </div>
 
-      {/* CONTENU PRINCIPAL */}
       <main className="max-w-2xl mx-auto w-full px-4 md:px-8 -mt-10 flex flex-col gap-6">
 
-        {/* CARTE FORMULAIRE */}
         <form onSubmit={handleSubmit} className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 md:p-7 backdrop-blur-md shadow-xl space-y-6">
 
-          {/* FORMAT D'IMPORTATION */}
           <div className="space-y-2">
             <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-blue-400" />
@@ -285,7 +274,6 @@ export default function ChapterUploadPage() {
             </div>
           </div>
 
-          {/* INFORMATIONS DU CHAPITRE */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2 md:col-span-1">
               <label className="text-xs md:text-sm font-bold text-zinc-300">
@@ -315,7 +303,6 @@ export default function ChapterUploadPage() {
             </div>
           </div>
 
-          {/* SÉLECTION FICHIERS */}
           <div className="space-y-3">
             <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center justify-between">
               <span>Contenu du chapitre <span className="text-blue-400">*</span></span>
@@ -343,7 +330,6 @@ export default function ChapterUploadPage() {
                   />
                 </label>
 
-                {/* Prévisualisation */}
                 {photoFiles.length > 0 && (
                   <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 bg-zinc-950/60 rounded-xl border border-zinc-800/60">
                     {photoFiles.map((file, idx) => (
@@ -389,7 +375,6 @@ export default function ChapterUploadPage() {
             )}
           </div>
 
-          {/* ALERTES ERREUR / SUCCÈS */}
           {error && (
             <div className="flex items-center gap-2 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-xs md:text-sm font-medium">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
@@ -404,7 +389,6 @@ export default function ChapterUploadPage() {
             </div>
           )}
 
-          {/* BOUTON D'ACTION */}
           <div className="pt-2">
             <button
               type="submit"
