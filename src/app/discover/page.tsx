@@ -15,6 +15,9 @@ import {
   RotateCcw
 } from "lucide-react";
 
+// ✅ AJOUT DE L'URL DE L'API
+const API_URL = "https://ink-backend.vercel.app";
+
 const IconManga = () => (
   <div className="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800/80 text-blue-400 shadow-inner">
     <BookOpen className="w-7 h-7" />
@@ -54,8 +57,9 @@ export default function DiscoverPage() {
           ...(sort && { sort }),
         });
 
+        // ✅ CORRECTION : Utiliser API_URL au lieu de process.env
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/mangas?${params}`
+          `${API_URL}/mangas?${params}`
         );
         const data = await res.json();
         setMangas(data.data || []);
