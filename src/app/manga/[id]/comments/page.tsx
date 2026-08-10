@@ -66,20 +66,29 @@ export default function CommentsPage() {
 
   const mangaId = params.id as string;
 
+  // ✅ Fonction pour charger les commentaires
+  const fetchComments = async () => {
+    try {
+      const res = await fetch(`${API_URL}/social/comments/${mangaId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setComments(data.data || []);
+      }
+    } catch (error) {
+      console.error("Erreur chargement:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
         const mangaRes = await fetch(`${API_URL}/mangas/${mangaId}`);
         if (mangaRes.ok) {
           const mangaData = await mangaRes.json();
           setMangaTitle(mangaData.title || "Manga");
         }
-
-        const commentsRes = await fetch(`${API_URL}/social/comments/${mangaId}`);
-        if (commentsRes.ok) {
-          const data = await commentsRes.json();
-          setComments(data.data || []);
-        }
+        await fetchComments();
       } catch (error) {
         console.error("Erreur:", error);
       } finally {
@@ -113,8 +122,7 @@ export default function CommentsPage() {
       });
 
       if (res.ok) {
-        const newCommentData = await res.json();
-        setComments((prev) => [newCommentData, ...prev]);
+        await fetchComments(); // ✅ Recharger après ajout
         setNewComment("");
       }
     } catch (error) {
@@ -146,6 +154,26 @@ export default function CommentsPage() {
       }
     } catch (error) {
       console.error("Erreur like:", error);
+    }
+  };
+
+  const handleDelete = async (commentId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    if (!confirm("Supprimer ce commentaire ?")) return;
+
+    try {
+      const res = await fetch(`${API_URL}/social/comment/${commentId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        await fetchComments(); // ✅ Recharger après suppression
+      }
+    } catch (error) {
+      console.error("Erreur suppression:", error);
     }
   };
 
