@@ -65,7 +65,7 @@ export default function AiChatbot() {
   };
 
   // ============================================
-  // CRÉER NOUVELLE CONVERSATION AVEC MESSAGES D'ACCUEIL
+  // CRÉER NOUVELLE CONVERSATION
   // ============================================
   const createNewConversation = () => {
     const newConv: Conversation = {
@@ -138,17 +138,36 @@ export default function AiChatbot() {
   const messages = currentConversation?.messages || [];
 
   // ============================================
-  // ENVOYER UN MESSAGE
+  // RÉCUPÉRER LE NOM DE L'UTILISATEUR
+  // ============================================
+  const getUserName = (): string => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.username) {
+          return payload.username.replace(/^@/, '');
+        }
+      }
+    } catch (error) {
+      console.error("Erreur lecture token:", error);
+    }
+    return "Utilisateur";
+  };
+
+  // ============================================
+  // ENVOYER UN MESSAGE (CORRIGÉ)
   // ============================================
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
     const userMessage = input.trim();
+    const userName = getUserName();
     setInput("");
 
-    // ✅ AJOUTER LE MESSAGE USER
+    // ✅ 1. AJOUTER LE MESSAGE USER
     const userMsgId = `msg-${Date.now()}`;
-    const updatedConversations = conversations.map(c => {
+    const updatedWithUser = conversations.map(c => {
       if (c.id === currentConversationId) {
         const newMessages = [
           ...c.messages,
@@ -168,8 +187,9 @@ export default function AiChatbot() {
       }
       return c;
     });
-    saveConversations(updatedConversations);
-
+    
+    // ✅ Sauvegarder immédiatement le message user
+    saveConversations(updatedWithUser);
     setLoading(true);
 
     try {
@@ -188,15 +208,17 @@ export default function AiChatbot() {
         body: JSON.stringify({
           message: userMessage,
           history: history,
-          firstName: "Utilisateur",
+          firstName: userName,
         }),
       });
 
       const data = await res.json();
 
-      // ✅ AJOUTER LA RÉPONSE IA
+      // ✅ 2. AJOUTER LA RÉPONSE IA (en utilisant l'état fraîchement sauvegardé)
       const assistantMsgId = `msg-${Date.now() + 1}`;
-      const finalConversations = conversations.map(c => {
+      
+      // ✅ Utiliser updatedWithUser comme base (qui contient déjà le message user)
+      const finalWithAssistant = updatedWithUser.map(c => {
         if (c.id === currentConversationId) {
           return {
             ...c,
@@ -214,11 +236,14 @@ export default function AiChatbot() {
         }
         return c;
       });
-      saveConversations(finalConversations);
+      
+      // ✅ Sauvegarder avec le message user + réponse IA
+      saveConversations(finalWithAssistant);
 
     } catch (error) {
+      // ✅ En cas d'erreur, ajouter un message d'erreur
       const errorMsgId = `msg-${Date.now() + 2}`;
-      const errorConversations = conversations.map(c => {
+      const errorWithAssistant = updatedWithUser.map(c => {
         if (c.id === currentConversationId) {
           return {
             ...c,
@@ -236,7 +261,7 @@ export default function AiChatbot() {
         }
         return c;
       });
-      saveConversations(errorConversations);
+      saveConversations(errorWithAssistant);
     } finally {
       setLoading(false);
     }
@@ -506,7 +531,7 @@ export default function AiChatbot() {
             </button>
           )}
 
-               {/* INPUT */}
+          {/* INPUT */}
           <div className="p-3 border-t border-zinc-800 flex gap-2 bg-zinc-900/95 rounded-b-2xl">
             <input
               type="text"
