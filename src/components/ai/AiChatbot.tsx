@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Send, Minimize2, Maximize2, Trash2, MessageSquare, ChevronDown } from "lucide-react";
+import { X, Send, Minimize2, Maximize2, Trash2, MessageSquare, ChevronDown, Sparkles } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
@@ -34,7 +34,7 @@ export default function AiChatbot() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // ============================================
-  // CHARGER LES CONVERSATIONS DEPUIS localStorage
+  // CHARGER LES CONVERSATIONS
   // ============================================
   useEffect(() => {
     const saved = localStorage.getItem("xelira_conversations");
@@ -57,7 +57,7 @@ export default function AiChatbot() {
   }, []);
 
   // ============================================
-  // SAUVEGARDER LES CONVERSATIONS
+  // SAUVEGARDER
   // ============================================
   const saveConversations = (newConversations: Conversation[]) => {
     setConversations(newConversations);
@@ -65,7 +65,7 @@ export default function AiChatbot() {
   };
 
   // ============================================
-  // CRÉER UNE NOUVELLE CONVERSATION
+  // CRÉER NOUVELLE CONVERSATION AVEC MESSAGES D'ACCUEIL
   // ============================================
   const createNewConversation = () => {
     const newConv: Conversation = {
@@ -75,7 +75,7 @@ export default function AiChatbot() {
         {
           id: `msg-${Date.now()}`,
           role: "assistant",
-          content: "👋 Bonjour ! Je suis XELIRA, ta modératrice INKDROP. Comment puis-je t'aider ?",
+          content: "👋 Bonjour ! Je suis XELIRA, ta modératrice INKDROP.\n\n🔹 Comment puis-je t'aider ?\n🔹 Pose-moi une question sur la plateforme !",
           timestamp: Date.now(),
         },
       ],
@@ -97,20 +97,18 @@ export default function AiChatbot() {
     const updated = conversations.filter(c => c.id !== id);
     saveConversations(updated);
     
-    if (currentConversationId === id) {
-      if (updated.length > 0) {
-        setCurrentConversationId(updated[0].id);
-        localStorage.setItem("xelira_active_conversation", updated[0].id);
-      } else {
-        setCurrentConversationId(null);
-        localStorage.removeItem("xelira_active_conversation");
-        createNewConversation();
-      }
+    if (updated.length > 0) {
+      setCurrentConversationId(updated[0].id);
+      localStorage.setItem("xelira_active_conversation", updated[0].id);
+    } else {
+      setCurrentConversationId(null);
+      localStorage.removeItem("xelira_active_conversation");
+      createNewConversation();
     }
   };
 
   // ============================================
-  // SUPPRIMER UN MESSAGE SPÉCIFIQUE
+  // SUPPRIMER UN MESSAGE
   // ============================================
   const deleteMessage = (conversationId: string, messageId: string) => {
     const updatedConversations = conversations.map(c => {
@@ -136,9 +134,6 @@ export default function AiChatbot() {
     setIsHistoryOpen(false);
   };
 
-  // ============================================
-  // OBTENIR LA CONVERSATION ACTUELLE
-  // ============================================
   const currentConversation = conversations.find(c => c.id === currentConversationId);
   const messages = currentConversation?.messages || [];
 
@@ -151,7 +146,7 @@ export default function AiChatbot() {
     const userMessage = input.trim();
     setInput("");
 
-    // ✅ Ajouter le message user avec ID unique
+    // ✅ AJOUTER LE MESSAGE USER
     const userMsgId = `msg-${Date.now()}`;
     const updatedConversations = conversations.map(c => {
       if (c.id === currentConversationId) {
@@ -199,7 +194,7 @@ export default function AiChatbot() {
 
       const data = await res.json();
 
-      // ✅ Ajouter la réponse de l'assistant
+      // ✅ AJOUTER LA RÉPONSE IA
       const assistantMsgId = `msg-${Date.now() + 1}`;
       const finalConversations = conversations.map(c => {
         if (c.id === currentConversationId) {
@@ -274,9 +269,6 @@ export default function AiChatbot() {
     setShowScrollButton(false);
   };
 
-  // ============================================
-  // RACCOURCIS CLAVIER
-  // ============================================
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen) {
@@ -286,17 +278,6 @@ export default function AiChatbot() {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
-
-  const quickSuggestions = [
-    "Comment publier un manga ?",
-    "Comment gagner de l'argent ?",
-    "Comment devenir certifié ?",
-    "C'est quoi INKDROP ?",
-    "Comment lire un manga ?",
-    "Comment créer un compte ?",
-    "C'est quoi le Premium ?",
-    "Comment contacter un créateur ?",
-  ];
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -310,15 +291,15 @@ export default function AiChatbot() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-28 right-4 z-50 p-0 rounded-full shadow-lg shadow-blue-500/30 transition-all hover:scale-110 group"
+        className="fixed bottom-28 right-4 z-50 p-0 rounded-full shadow-lg shadow-blue-500/30 transition-all hover:scale-110 hover:shadow-blue-500/50 animate-pulse-slow group"
       >
         <img 
           src="https://files.catbox.moe/9kf0u4.png" 
           alt="XELIRA" 
-          className="w-14 h-14 rounded-full object-cover border-2 border-blue-500/50 shadow-lg"
+          className="w-14 h-14 rounded-full object-cover border-2 border-blue-500/50 shadow-lg group-hover:border-blue-400 transition-all"
         />
         {conversations.length > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-zinc-950">
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-zinc-950 animate-bounce">
             {conversations.length}
           </span>
         )}
@@ -330,29 +311,32 @@ export default function AiChatbot() {
   // FENÊTRE CHAT
   // ============================================
   return (
-    <div className={`fixed z-50 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl shadow-blue-500/10 transition-all ${
+    <div className={`fixed z-50 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl shadow-blue-500/10 transition-all duration-300 ease-in-out ${
       isMinimized 
         ? "bottom-28 right-4 w-72 h-14" 
-        : "bottom-4 right-4 w-[95vw] max-w-md h-[85vh] max-h-[700px]"
+        : "bottom-4 right-4 w-[95vw] max-w-md h-[85vh] max-h-[700px] animate-fade-in-up"
     }`}>
       
       {/* HEADER */}
-      <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-zinc-900/95 rounded-t-2xl">
+      <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-950 rounded-t-2xl">
         <div className="flex items-center gap-3">
           <img 
             src="https://files.catbox.moe/9kf0u4.png" 
             alt="XELIRA" 
-            className="w-9 h-9 rounded-full object-cover border border-blue-500/30"
+            className="w-9 h-9 rounded-full object-cover border-2 border-blue-500/30 shadow-lg shadow-blue-500/20"
           />
           <div>
-            <span className="font-bold text-white text-sm block">XELIRA</span>
-            <span className="text-[10px] text-green-400 font-semibold">Modératrice INKDROP</span>
+            <span className="font-bold text-white text-sm flex items-center gap-1.5">
+              XELIRA
+              <Sparkles className="w-3 h-3 text-blue-400" />
+            </span>
+            <span className="text-[10px] text-green-400 font-medium">● Modératrice</span>
           </div>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-            className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all duration-200"
             title="Historique"
           >
             <MessageSquare className="w-4 h-4" />
@@ -363,20 +347,20 @@ export default function AiChatbot() {
                 createNewConversation();
               }
             }}
-            className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all duration-200"
             title="Nouvelle conversation"
           >
             <Send className="w-4 h-4 rotate-180" />
           </button>
           <button
             onClick={() => setIsMinimized(!isMinimized)}
-            className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all duration-200"
           >
             {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
           </button>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition"
+            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all duration-200"
           >
             <X className="w-4 h-4" />
           </button>
@@ -387,16 +371,16 @@ export default function AiChatbot() {
         <>
           {/* HISTORIQUE */}
           {isHistoryOpen && (
-            <div className="absolute top-14 left-0 right-0 bg-zinc-900 border-b border-zinc-800 p-2 z-10 max-h-40 overflow-y-auto rounded-b-2xl">
+            <div className="absolute top-14 left-0 right-0 bg-zinc-900 border-b border-zinc-800 p-2 z-10 max-h-40 overflow-y-auto rounded-b-2xl animate-fade-in">
               {conversations.length === 0 ? (
                 <p className="text-zinc-500 text-sm text-center py-2">Aucune conversation</p>
               ) : (
                 conversations.map((conv) => (
                   <div
                     key={conv.id}
-                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition ${
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all duration-200 ${
                       conv.id === currentConversationId
-                        ? "bg-zinc-800 text-white"
+                        ? "bg-blue-600/20 text-white border border-blue-500/30"
                         : "hover:bg-zinc-800/50 text-zinc-400"
                     }`}
                   >
@@ -408,7 +392,7 @@ export default function AiChatbot() {
                     </span>
                     <button
                       onClick={() => deleteConversation(conv.id)}
-                      className="p-1 rounded hover:bg-red-600/20 text-zinc-500 hover:text-red-400 transition"
+                      className="p-1 rounded hover:bg-red-600/20 text-zinc-500 hover:text-red-400 transition-all duration-200"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -422,29 +406,58 @@ export default function AiChatbot() {
           <div 
             ref={chatContainerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto p-4 space-y-3 h-[calc(100%-130px)] bg-zinc-950/50"
+            className="flex-1 overflow-y-auto p-4 space-y-3 h-[calc(100%-130px)] bg-gradient-to-b from-zinc-950/80 to-zinc-900/50"
           >
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="flex flex-col items-center justify-center h-full text-center animate-fade-in">
                 <img 
                   src="https://files.catbox.moe/9kf0u4.png" 
                   alt="XELIRA" 
-                  className="w-20 h-20 rounded-full object-cover mb-3 border-2 border-blue-500/30"
+                  className="w-20 h-20 rounded-full object-cover mb-4 border-2 border-blue-500/30 shadow-xl shadow-blue-500/20"
                 />
-                <p className="text-zinc-400 text-sm font-medium">Bonjour ! Je suis XELIRA 🤖</p>
+                <p className="text-zinc-300 text-sm font-medium">Bonjour ! Je suis XELIRA 🤖</p>
                 <p className="text-zinc-500 text-xs mt-1">Ta modératrice INKDROP</p>
+                <div className="mt-6 flex flex-wrap justify-center gap-2">
+                  <button
+                    onClick={() => {
+                      setInput("Comment publier sur INKDROP ?");
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    className="px-3 py-1.5 rounded-full bg-zinc-800/70 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all duration-200"
+                  >
+                    Comment publier ?
+                  </button>
+                  <button
+                    onClick={() => {
+                      setInput("INKDROP est fiable ?");
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    className="px-3 py-1.5 rounded-full bg-zinc-800/70 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all duration-200"
+                  >
+                    INKDROP est fiable ?
+                  </button>
+                  <button
+                    onClick={() => {
+                      setInput("Je suis débutant, par où commencer ?");
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    className="px-3 py-1.5 rounded-full bg-zinc-800/70 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all duration-200"
+                  >
+                    Je suis débutant
+                  </button>
+                </div>
               </div>
             ) : (
               messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} group`}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} group animate-fade-in`}
                 >
                   <div
-                    className={`max-w-[85%] p-3 rounded-2xl text-sm relative ${
+                    className={`max-w-[85%] p-3 rounded-2xl text-sm relative transition-all duration-200 ${
                       msg.role === "user"
-                        ? "bg-blue-600 text-white rounded-br-none"
-                        : "bg-zinc-800 text-zinc-200 rounded-bl-none"
+                        ? "bg-blue-600 text-white rounded-br-none shadow-lg shadow-blue-500/20"
+                        : "bg-zinc-800 text-zinc-200 rounded-bl-none shadow-lg shadow-black/20"
                     }`}
                   >
                     {msg.content}
@@ -459,7 +472,7 @@ export default function AiChatbot() {
                               deleteMessage(currentConversationId, msg.id);
                             }
                           }}
-                          className="opacity-0 group-hover:opacity-100 transition hover:text-red-400"
+                          className="opacity-0 group-hover:opacity-100 transition-all duration-200 hover:text-red-400"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
@@ -470,12 +483,12 @@ export default function AiChatbot() {
               ))
             )}
             {loading && (
-              <div className="flex justify-start">
-                <div className="bg-zinc-800 p-3 rounded-2xl rounded-bl-none">
+              <div className="flex justify-start animate-fade-in">
+                <div className="bg-zinc-800 p-3 rounded-2xl rounded-bl-none shadow-lg shadow-black/20">
                   <div className="flex gap-1">
-                    <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "200ms" }} />
-                    <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "400ms" }} />
+                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "200ms" }} />
+                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "400ms" }} />
                   </div>
                 </div>
               </div>
@@ -483,32 +496,11 @@ export default function AiChatbot() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* SUGGESTIONS RAPIDES - TOUTES VISIBLES */}
-          {messages.length < 3 && (
-            <div className="px-4 py-3 bg-zinc-950/50 border-t border-zinc-800/50">
-              <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider mb-2">Suggestions rapides</p>
-              <div className="flex flex-wrap gap-1.5">
-                {quickSuggestions.map((suggestion, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setInput(suggestion);
-                      setTimeout(() => sendMessage(), 100);
-                    }}
-                    className="px-3 py-1.5 rounded-full bg-zinc-800/70 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-zinc-700 hover:text-white hover:border-zinc-600 transition-all whitespace-nowrap"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* BOUTON SCROLL */}
           {showScrollButton && (
             <button
               onClick={scrollToBottom}
-              className="absolute bottom-24 right-4 p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/30 transition-all"
+              className="absolute bottom-24 right-4 p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/30 transition-all duration-200 animate-fade-in hover:scale-110"
             >
               <ChevronDown className="w-4 h-4" />
             </button>
@@ -521,19 +513,5 @@ export default function AiChatbot() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Pose ta question..."
-              className="flex-1 px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-all text-sm"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={loading || !input.trim()}
-              className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
+              placeholder="Écris ton message..."
+              className="flex-1 px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring
