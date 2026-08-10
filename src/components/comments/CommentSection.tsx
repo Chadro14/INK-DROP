@@ -50,7 +50,7 @@ type Comment = {
     avatarUrl: string;
     isCertified: boolean;
     avatarColor: string;
-    badgeColor?: string;
+    badgeColor?: string; // ✅ AJOUT DE badgeColor
   };
   replies?: Comment[];
 };
@@ -252,6 +252,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
 
   const CommentItem = ({ comment, isReply = false }: { comment: Comment; isReply?: boolean }) => {
     const isAuthor = userId === comment.user.id;
+    // ✅ Utiliser la couleur personnalisée du badge de l'utilisateur
     const badgeColor = comment.user.badgeColor || "#2563EB";
 
     return (
@@ -275,6 +276,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-sm text-white">{comment.user.username}</span>
               {comment.user.isCertified && (
+                // ✅ Utiliser la couleur personnalisée
                 <CertifiedBadge color={badgeColor} size={18} />
               )}
               <span className="text-xs text-zinc-500">{formatDate(comment.createdAt)}</span>
