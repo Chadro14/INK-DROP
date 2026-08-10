@@ -34,6 +34,32 @@ export default function AiChatbot() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // ============================================
+  // RÉCUPÉRER LE NOM DE L'UTILISATEUR
+  // ============================================
+  const getUserName = (): string => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.username) {
+          return payload.username.replace(/^@/, '');
+        }
+        if (payload.firstName) {
+          return payload.firstName;
+        }
+      }
+    } catch (error) {
+      console.error("Erreur lecture token:", error);
+    }
+    
+    // Si pas de token, essayer de récupérer depuis localStorage
+    const storedName = localStorage.getItem("user_name");
+    if (storedName) return storedName;
+    
+    return "Utilisateur";
+  };
+
+  // ============================================
   // CHARGER LES CONVERSATIONS
   // ============================================
   useEffect(() => {
@@ -75,7 +101,7 @@ export default function AiChatbot() {
         {
           id: `msg-${Date.now()}`,
           role: "assistant",
-          content: "👋 Bonjour ! Je suis XELIRA, ta modératrice INKDROP.\n\n🔹 Comment puis-je t'aider ?\n🔹 Pose-moi une question sur la plateforme !",
+          content: `👋 Bonjour ${getUserName()} ! Je suis XELIRA, ta modératrice INKDROP.\n\n🔹 Comment puis-je t'aider ?\n🔹 Pose-moi une question sur la plateforme !`,
           timestamp: Date.now(),
         },
       ],
@@ -138,34 +164,16 @@ export default function AiChatbot() {
   const messages = currentConversation?.messages || [];
 
   // ============================================
-  // RÉCUPÉRER LE NOM DE L'UTILISATEUR
-  // ============================================
-  const getUserName = (): string => {
-    try {
-      const token = localStorage.getItem("token");
-      if (token) {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.username) {
-          return payload.username.replace(/^@/, '');
-        }
-      }
-    } catch (error) {
-      console.error("Erreur lecture token:", error);
-    }
-    return "Utilisateur";
-  };
-
-  // ============================================
-  // ENVOYER UN MESSAGE (CORRIGÉ)
+  // ENVOYER UN MESSAGE
   // ============================================
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
     const userMessage = input.trim();
-    const userName = getUserName();
+    const userName = getUserName(); // ✅ RÉCUPÉRER LE NOM
     setInput("");
 
-    // ✅ 1. AJOUTER LE MESSAGE USER
+    // Ajouter le message user
     const userMsgId = `msg-${Date.now()}`;
     const updatedWithUser = conversations.map(c => {
       if (c.id === currentConversationId) {
@@ -187,8 +195,6 @@ export default function AiChatbot() {
       }
       return c;
     });
-    
-    // ✅ Sauvegarder immédiatement le message user
     saveConversations(updatedWithUser);
     setLoading(true);
 
@@ -208,16 +214,13 @@ export default function AiChatbot() {
         body: JSON.stringify({
           message: userMessage,
           history: history,
-          firstName: userName,
+          firstName: userName, // ✅ ENVOYER LE NOM AU BACKEND
         }),
       });
 
       const data = await res.json();
 
-      // ✅ 2. AJOUTER LA RÉPONSE IA (en utilisant l'état fraîchement sauvegardé)
       const assistantMsgId = `msg-${Date.now() + 1}`;
-      
-      // ✅ Utiliser updatedWithUser comme base (qui contient déjà le message user)
       const finalWithAssistant = updatedWithUser.map(c => {
         if (c.id === currentConversationId) {
           return {
@@ -236,12 +239,9 @@ export default function AiChatbot() {
         }
         return c;
       });
-      
-      // ✅ Sauvegarder avec le message user + réponse IA
       saveConversations(finalWithAssistant);
 
     } catch (error) {
-      // ✅ En cas d'erreur, ajouter un message d'erreur
       const errorMsgId = `msg-${Date.now() + 2}`;
       const errorWithAssistant = updatedWithUser.map(c => {
         if (c.id === currentConversationId) {
@@ -440,7 +440,7 @@ export default function AiChatbot() {
                   alt="XELIRA" 
                   className="w-20 h-20 rounded-full object-cover mb-4 border-2 border-blue-500/30 shadow-xl shadow-blue-500/20"
                 />
-                <p className="text-zinc-300 text-sm font-medium">Bonjour ! Je suis XELIRA 🤖</p>
+                <p className="text-zinc-300 text-sm font-medium">Bonjour {getUserName()} ! Je suis XELIRA 🤖</p>
                 <p className="text-zinc-500 text-xs mt-1">Ta modératrice INKDROP</p>
                 <div className="mt-6 flex flex-wrap justify-center gap-2">
                   <button
@@ -454,21 +454,21 @@ export default function AiChatbot() {
                   </button>
                   <button
                     onClick={() => {
-                      setInput("INKDROP est fiable ?");
+                      setInput("Donne-moi des tags pour mon manga");
                       setTimeout(() => sendMessage(), 100);
                     }}
                     className="px-3 py-1.5 rounded-full bg-zinc-800/70 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all duration-200"
                   >
-                    INKDROP est fiable ?
+                    Tags pour mon manga
                   </button>
                   <button
                     onClick={() => {
-                      setInput("Je suis débutant, par où commencer ?");
+                      setInput("Analyse mon manga et donne-moi des conseils");
                       setTimeout(() => sendMessage(), 100);
                     }}
                     className="px-3 py-1.5 rounded-full bg-zinc-800/70 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all duration-200"
                   >
-                    Je suis débutant
+                    Analyse mon manga
                   </button>
                 </div>
               </div>
@@ -521,7 +521,7 @@ export default function AiChatbot() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* BOUTON SCROLL */}
+               {/* BOUTON SCROLL */}
           {showScrollButton && (
             <button
               onClick={scrollToBottom}
