@@ -43,7 +43,7 @@ type UserProfile = {
   steamPoints: number;
   steamLevel: number;
   avatarColor: string | null;
-  badgeColor?: string | null; // ✅ CORRECTION : Ajout de badgeColor
+  badgeColor?: string | null;
   _count: {
     mangas: number;
     followers: number;
@@ -156,13 +156,11 @@ export default function ProfilePage() {
     );
   }
 
-  // Couleur du badge sécurisée
   const activeBadgeColor = profile.badgeColor || profile.avatarColor || "#3B82F6";
 
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
-      {/* HEADER FIXE MINIMALISTE */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <span className="text-base font-bold tracking-tight text-white/90">
@@ -182,15 +180,12 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      {/* BANNIÈRE BLEUE HAUTE DÉFINITION */}
       <div className="h-32 md:h-48 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
       </div>
 
-      {/* CONTENU PROFIL CENTRÉ ET RESPONSIVE */}
       <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
-        
-        {/* AVATAR AVEC GLOW BLEU */}
+
         <div className="relative mb-3 group">
           <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 overflow-hidden border-4 border-zinc-950 shadow-2xl ring-2 ring-blue-500/30 shrink-0">
             {profile.avatarUrl ? (
@@ -207,7 +202,6 @@ export default function ProfilePage() {
           </div>
           {profile.isCertified && (
             <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
-              {/* ✅ CORRECTION : Utilisation de activeBadgeColor */}
               <BadgeCheck
                 className="w-6 h-6 md:w-7 md:h-7"
                 fill={activeBadgeColor}
@@ -218,7 +212,6 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* TITRE & BADGES */}
         <div className="flex items-center gap-2 mb-1">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
           {profile.premiumActive && (
@@ -228,7 +221,6 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {/* BIO & METADATA */}
         <p className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal">
           {profile.bio || "Créateur sur INKDROP 🎨"}
         </p>
@@ -239,7 +231,6 @@ export default function ProfilePage() {
           <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-blue-400" /> Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
         </div>
 
-        {/* COMPTEURS DE STATS */}
         <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
           <div className="text-center">
             <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
@@ -257,7 +248,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* BOUTONS D'ACTION */}
         <div className="flex gap-2.5 w-full max-w-md md:max-w-lg mb-8">
           <Link
             href="/profile/edit"
@@ -282,7 +272,6 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* BARRE D'ONGLETS */}
         <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
           <button
             onClick={() => setActiveTab("mangas")}
@@ -319,7 +308,6 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* --- ONGLET 1 : GRILLE DES MANGAS --- */}
         {activeTab === "mangas" && (
           <div className="w-full">
             {!profile.mangas || profile.mangas.length === 0 ? (
@@ -397,7 +385,6 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* --- ONGLET 2 : NIVEAU & REVENUS --- */}
         {activeTab === "stats" && (
           <div className="w-full max-w-xl mx-auto space-y-3">
             <div className="grid grid-cols-3 gap-2.5">
@@ -420,7 +407,6 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* --- ONGLET 3 : AVANTAGES & PANNEAU ADMIN --- */}
         {activeTab === "menu" && (
           <div className="w-full max-w-xl mx-auto space-y-2.5">
             <Link
@@ -447,7 +433,6 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   <Palette className="w-5 h-5 text-purple-400" />
                   <span className="text-sm font-semibold text-white">Couleur du Badge</span>
-                  {/* ✅ CORRECTION : Pastille de couleur mise à jour */}
                   <div
                     className="w-4.5 h-4.5 rounded-full border border-zinc-700 shadow-inner"
                     style={{ backgroundColor: activeBadgeColor }}
