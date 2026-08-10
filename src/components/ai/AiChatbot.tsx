@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Send, Bot, Minimize2, Maximize2, Trash2, MessageSquare } from "lucide-react";
+import { X, Send, Bot, Minimize2, Maximize2, Trash2, MessageSquare, ChevronDown } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
 type Message = {
+  id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: number;
@@ -20,7 +21,6 @@ type Conversation = {
 };
 
 export default function AiChatbot() {
-  // États principaux
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -28,8 +28,10 @@ export default function AiChatbot() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // ============================================
   // CHARGER LES CONVERSATIONS DEPUIS localStorage
@@ -41,7 +43,6 @@ export default function AiChatbot() {
         const parsed = JSON.parse(saved);
         setConversations(parsed);
         
-        // Charger la dernière conversation active
         const lastActive = parsed.find((c: Conversation) => c.id === localStorage.getItem("xelira_active_conversation"));
         if (lastActive) {
           setCurrentConversationId(lastActive.id);
@@ -72,6 +73,7 @@ export default function AiChatbot() {
       title: `Conversation ${conversations.length + 1}`,
       messages: [
         {
+          id: `msg-${Date.now()}`,
           role: "assistant",
           content: "👋 Bonjour ! Je suis XELIRA, ton guide INKDROP. Comment puis-je t'aider ?",
           timestamp: Date.now(),
@@ -102,10 +104,27 @@ export default function AiChatbot() {
       } else {
         setCurrentConversationId(null);
         localStorage.removeItem("xelira_active_conversation");
-        // Créer une nouvelle conversation automatiquement
         createNewConversation();
       }
     }
+  };
+
+  // ============================================
+  // SUPPRIMER UN MESSAGE SPÉCIFIQUE
+  // ============================================
+  const deleteMessage = (conversationId: string, messageId: string) => {
+    const updatedConversations = conversations.map(c => {
+      if (c.id === conversationId) {
+        const filteredMessages = c.messages.filter(m => m.id !== messageId);
+        return {
+          ...c,
+          messages: filteredMessages,
+          updatedAt: Date.now(),
+        };
+      }
+      return c;
+    });
+    saveConversations(updatedConversations);
   };
 
   // ============================================
@@ -132,18 +151,23 @@ export default function AiChatbot() {
     const userMessage = input.trim();
     setInput("");
 
-    // Ajouter le message utilisateur
+    // Ajouter le message utilisateur avec un ID unique
+    const userMsgId = `msg-${Date.now()}`;
     const updatedConversations = conversations.map(c => {
       if (c.id === currentConversationId) {
         const newMessages = [
           ...c.messages,
-          { role: "user" as const, content: userMessage, timestamp: Date.now() },
+          { 
+            id: userMsgId,
+            role: "user" as const, 
+            content: userMessage, 
+            timestamp: Date.now() 
+          },
         ];
         return { 
           ...c, 
           messages: newMessages, 
           updatedAt: Date.now(),
-          // Mettre à jour le titre avec le premier message
           title: c.messages.length === 1 ? userMessage.slice(0, 30) + "..." : c.title,
         };
       }
@@ -176,6 +200,7 @@ export default function AiChatbot() {
       const data = await res.json();
 
       // Ajouter la réponse de l'assistant
+      const assistantMsgId = `msg-${Date.now() + 1}`;
       const finalConversations = conversations.map(c => {
         if (c.id === currentConversationId) {
           return {
@@ -183,6 +208,7 @@ export default function AiChatbot() {
             messages: [
               ...c.messages,
               { 
+                id: assistantMsgId,
                 role: "assistant" as const, 
                 content: data.reply || "Désolé, je n'ai pas pu répondre.", 
                 timestamp: Date.now() 
@@ -196,7 +222,8 @@ export default function AiChatbot() {
       saveConversations(finalConversations);
 
     } catch (error) {
-      // En cas d'erreur, ajouter un message d'erreur
+      // En cas d'erreur
+      const errorMsgId = `msg-${Date.now() + 2}`;
       const errorConversations = conversations.map(c => {
         if (c.id === currentConversationId) {
           return {
@@ -204,6 +231,7 @@ export default function AiChatbot() {
             messages: [
               ...c.messages,
               { 
+                id: errorMsgId,
                 role: "assistant" as const, 
                 content: "❌ Désolé, une erreur est survenue. Réessaie plus tard.",
                 timestamp: Date.now() 
@@ -224,8 +252,31 @@ export default function AiChatbot() {
   // AUTO-SCROLL
   // ============================================
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 100;
+      
+      if (isAtBottom) {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+    }
   }, [messages]);
+
+  // ============================================
+  // GESTION DU SCROLL
+  // ============================================
+  const handleScroll = () => {
+    if (chatContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+      const isAtBottom = scrollHeight - scrollTop <= clientHeight + 100;
+      setShowScrollButton(!isAtBottom);
+    }
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setShowScrollButton(false);
+  };
 
   // ============================================
   // RACCOURCIS CLAVIER
@@ -240,7 +291,6 @@ export default function AiChatbot() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
-  // Suggestions rapides
   const quickSuggestions = [
     "Comment publier un manga ?",
     "Comment gagner de l'argent ?",
@@ -250,15 +300,27 @@ export default function AiChatbot() {
   ];
 
   // ============================================
-  // AFFICHAGE BOUTON FLOTTANT (fermé)
+  // FORMATER L'HEURE
+  // ============================================
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // ============================================
+  // BOUTON FLOTTANT (fermé)
   // ============================================
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-28 right-4 z-50 p-4 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/30 transition-all hover:scale-110 group"
+        className="fixed bottom-28 right-4 z-50 p-3 rounded-full bg-gradient-to-br from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-500/30 transition-all hover:scale-110 group"
       >
-        <Bot className="w-6 h-6" />
+        <img 
+          src="https://files.catbox.moe/9kf0u4.png" 
+          alt="XELIRA" 
+          className="w-8 h-8 object-contain"
+        />
         {conversations.length > 0 && (
           <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-zinc-950">
             {conversations.length}
@@ -269,21 +331,25 @@ export default function AiChatbot() {
   }
 
   // ============================================
-  // AFFICHAGE FENÊTRE CHAT
+  // FENÊTRE CHAT
   // ============================================
   return (
     <div className={`fixed z-50 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl shadow-blue-500/10 transition-all ${
       isMinimized 
         ? "bottom-28 right-4 w-72 h-14" 
-        : "bottom-4 right-4 w-[95vw] max-w-md h-[80vh] max-h-[600px]"
+        : "bottom-4 right-4 w-[95vw] max-w-md h-[85vh] max-h-[700px]"
     }`}>
       
       {/* HEADER */}
-      <div className="flex items-center justify-between p-3 border-b border-zinc-800">
+      <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-zinc-900/95 rounded-t-2xl">
         <div className="flex items-center gap-2">
-          <Bot className="w-5 h-5 text-blue-400" />
+          <img 
+            src="https://files.catbox.moe/9kf0u4.png" 
+            alt="XELIRA" 
+            className="w-7 h-7 object-contain"
+          />
           <span className="font-bold text-white text-sm">XELIRA</span>
-          <span className="text-[10px] text-green-400 font-semibold px-2 py-0.5 bg-green-500/10 rounded-full">En ligne</span>
+          <span className="text-[10px] text-green-400 font-semibold px-2 py-0.5 bg-green-500/10 rounded-full">Modératrice</span>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -355,27 +421,52 @@ export default function AiChatbot() {
           )}
 
           {/* MESSAGES */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 h-[calc(100%-110px)]">
+          <div 
+            ref={chatContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto p-4 space-y-3 h-[calc(100%-120px)] bg-zinc-950/50"
+          >
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
-                <Bot className="w-12 h-12 text-zinc-700 mb-3" />
-                <p className="text-zinc-400 text-sm">Bonjour ! Je suis XELIRA.</p>
-                <p className="text-zinc-500 text-xs">Pose-moi une question sur INKDROP.</p>
+                <img 
+                  src="https://files.catbox.moe/9kf0u4.png" 
+                  alt="XELIRA" 
+                  className="w-16 h-16 object-contain mb-3 opacity-70"
+                />
+                <p className="text-zinc-400 text-sm font-medium">Bonjour ! Je suis XELIRA 🤖</p>
+                <p className="text-zinc-500 text-xs mt-1">Ta modératrice INKDROP</p>
               </div>
             ) : (
               messages.map((msg, idx) => (
                 <div
-                  key={idx}
-                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  key={msg.id || idx}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} group`}
                 >
                   <div
-                    className={`max-w-[85%] p-3 rounded-2xl text-sm ${
+                    className={`max-w-[85%] p-3 rounded-2xl text-sm relative ${
                       msg.role === "user"
                         ? "bg-blue-600 text-white rounded-br-none"
                         : "bg-zinc-800 text-zinc-200 rounded-bl-none"
                     }`}
                   >
                     {msg.content}
+                    <div className={`text-[10px] mt-1 opacity-50 flex items-center gap-2 ${
+                      msg.role === "user" ? "text-right text-blue-200" : "text-zinc-400"
+                    }`}>
+                      <span>{formatTime(msg.timestamp)}</span>
+                      {msg.role === "user" && (
+                        <button
+                          onClick={() => {
+                            if (currentConversationId && confirm("Supprimer ce message ?")) {
+                              deleteMessage(currentConversationId, msg.id);
+                            }
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition hover:text-red-400"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))
@@ -396,7 +487,7 @@ export default function AiChatbot() {
 
           {/* SUGGESTIONS RAPIDES */}
           {messages.length < 3 && (
-            <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+            <div className="px-4 pb-2 flex flex-wrap gap-1.5 bg-zinc-950/50">
               {quickSuggestions.map((suggestion, idx) => (
                 <button
                   key={idx}
@@ -412,8 +503,18 @@ export default function AiChatbot() {
             </div>
           )}
 
+          {/* BOUTON SCROLL VERS LE BAS */}
+          {showScrollButton && (
+            <button
+              onClick={scrollToBottom}
+              className="absolute bottom-24 right-4 p-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/30 transition-all"
+            >
+              <ChevronDown className="w-4 h-4" />
+            </button>
+          )}
+
           {/* INPUT */}
-          <div className="p-3 border-t border-zinc-800 flex gap-2">
+          <div className="p-3 border-t border-zinc-800 flex gap-2 bg-zinc-900/95 rounded-b-2xl">
             <input
               type="text"
               value={input}
