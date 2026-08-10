@@ -2,9 +2,42 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, Trash2, User, CheckCircle, MessageCircle, Send } from "lucide-react";
+import { Heart, Trash2, MessageCircle, Send } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
+
+// ✅ VRAI BADGE SVG CERTIFIÉ (identique au profil)
+const CertifiedBadge = ({ color = "#2563EB", size = 16 }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className="inline-block flex-shrink-0"
+  >
+    <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="1.5" />
+    <circle cx="12" cy="12" r="7" fill={color} opacity="0.15" />
+    <path 
+      d="M12 4L14.5 9.5L20.5 10.5L16.5 14.5L17.5 20.5L12 17.5L6.5 20.5L7.5 14.5L3.5 10.5L9.5 9.5L12 4Z" 
+      fill={color} 
+      stroke="white" 
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+    />
+    <circle cx="12" cy="5" r="1.2" fill="white" />
+    <circle cx="8" cy="8" r="1" fill="white" />
+    <circle cx="16" cy="8" r="1" fill="white" />
+    <circle cx="6" cy="12" r="1" fill="white" />
+    <circle cx="18" cy="12" r="1" fill="white" />
+    <path 
+      d="M12 9L12.8 11.2L15 11.5L13.5 13L13.8 15.2L12 14L10.2 15.2L10.5 13L9 11.5L11.2 11.2L12 9Z" 
+      fill="white" 
+      opacity="0.9"
+    />
+    <ellipse cx="9" cy="9" rx="2" ry="1.5" fill="white" opacity="0.2" transform="rotate(-30 9 9)" />
+  </svg>
+);
 
 type Comment = {
   id: string;
@@ -17,6 +50,7 @@ type Comment = {
     avatarUrl: string;
     isCertified: boolean;
     avatarColor: string;
+    badgeColor?: string;
   };
   replies?: Comment[];
 };
@@ -36,7 +70,6 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
   const [replyContent, setReplyContent] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
 
-  // Récupérer l'utilisateur
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -49,7 +82,6 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
   }, []);
 
-  // Récupérer les commentaires
   useEffect(() => {
     const fetchComments = async () => {
       setLoading(true);
@@ -70,7 +102,6 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     fetchComments();
   }, [mangaId, chapterId]);
 
-  // Ajouter un commentaire
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
 
@@ -106,7 +137,6 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
   };
 
-  // Ajouter une réponse
   const handleAddReply = async (parentId: string) => {
     if (!replyContent.trim()) return;
 
@@ -147,7 +177,6 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
   };
 
-  // Liker un commentaire
   const handleLike = async (commentId: string) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -190,7 +219,6 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
   };
 
-  // Supprimer un commentaire
   const handleDelete = async (commentId: string) => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -211,7 +239,6 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
   };
 
-  // Formater la date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("fr-FR", {
@@ -223,14 +250,13 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     });
   };
 
-  // Composant CommentItem
   const CommentItem = ({ comment, isReply = false }: { comment: Comment; isReply?: boolean }) => {
     const isAuthor = userId === comment.user.id;
+    const badgeColor = comment.user.badgeColor || "#2563EB";
 
     return (
       <div className={`${isReply ? "ml-8" : ""} border-b border-zinc-800/60 py-4`}>
         <div className="flex items-start gap-3">
-          {/* Avatar */}
           <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-700">
             {comment.user.avatarUrl ? (
               <img
@@ -245,27 +271,23 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
             )}
           </div>
 
-          {/* Contenu */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-sm text-white">{comment.user.username}</span>
               {comment.user.isCertified && (
-                <CheckCircle className="w-3.5 h-3.5 text-blue-400 fill-blue-400/20" />
+                <CertifiedBadge color={badgeColor} size={18} />
               )}
               <span className="text-xs text-zinc-500">{formatDate(comment.createdAt)}</span>
             </div>
 
             <p className="text-sm text-zinc-300 mt-1">{comment.content}</p>
 
-            {/* Actions */}
             <div className="flex items-center gap-4 mt-2">
               <button
                 onClick={() => handleLike(comment.id)}
-                className={`flex items-center gap-1 text-xs transition-colors ${
-                  "text-zinc-500 hover:text-rose-500"
-                }`}
+                className="flex items-center gap-1 text-xs text-zinc-500 hover:text-rose-500 transition-colors"
               >
-                <Heart className={`w-3.5 h-3.5 ${"text-zinc-500"}`} />
+                <Heart className="w-3.5 h-3.5" />
                 <span>{comment.likesCount || 0}</span>
               </button>
 
@@ -288,7 +310,6 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
               )}
             </div>
 
-            {/* Formulaire de réponse */}
             {replyTo === comment.id && !isReply && (
               <div className="mt-3 flex gap-2">
                 <input
@@ -309,7 +330,6 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
           </div>
         </div>
 
-        {/* Réponses */}
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-2 space-y-2">
             {comment.replies.map((reply) => (
@@ -329,7 +349,6 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
         <span className="text-xs text-zinc-500">({comments.length})</span>
       </div>
 
-      {/* Ajouter un commentaire */}
       <div className="flex gap-2 mb-4">
         <input
           type="text"
@@ -348,7 +367,6 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
         </button>
       </div>
 
-      {/* Liste des commentaires */}
       {loading ? (
         <div className="flex justify-center py-8">
           <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
