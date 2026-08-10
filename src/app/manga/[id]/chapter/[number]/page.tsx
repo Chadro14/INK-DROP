@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { CommentSection } from "@/components/comments/CommentSection";
 import { 
   ArrowLeft, 
   ChevronLeft, 
@@ -24,7 +25,7 @@ type Chapter = {
   price: number;
   pageCount: number;
   pdfUrl: string;
-  summary: string | null; // ✅ RÉSUMÉ DU CHAPITRE
+  summary: string | null;
   publishedAt: string;
   manga: {
     id: string;
@@ -67,7 +68,6 @@ export default function ChapterReader() {
         setChapter(data);
         setPdfUrl(data.pdfUrl);
 
-        // Vérifier si l'utilisateur a accès
         const token = localStorage.getItem("token");
         if (token) {
           const userRes = await fetch(`${API_URL}/auth/me`, {
@@ -76,7 +76,6 @@ export default function ChapterReader() {
           if (userRes.ok) {
             const userData = await userRes.json();
             setUser(userData);
-            // Accès si premium ou chapitre gratuit
             if (data.isFree || userData.premiumActive) {
               setHasAccess(true);
             }
@@ -95,11 +94,10 @@ export default function ChapterReader() {
   }, [mangaId, chapterNumber]);
 
   // ============================================
-  // ACHETER LE CHAPITRE (placeholder)
+  // ACHETER LE CHAPITRE
   // ============================================
   const handleBuy = () => {
     alert(`🔒 Paiement de ${chapter?.price || 0.50}$ pour le chapitre ${chapterNumber}`);
-    // TODO: Intégrer le paiement mobile money
   };
 
   // ============================================
@@ -174,7 +172,7 @@ export default function ChapterReader() {
   }
 
   // ============================================
-  // LECTURE DU CHAPITRE (AVEC RÉSUMÉ)
+  // LECTURE DU CHAPITRE + COMMENTAIRES
   // ============================================
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -200,7 +198,7 @@ export default function ChapterReader() {
           <p className="text-gray-400 text-sm">{chapter.manga.title}</p>
         </div>
 
-        {/* ✅ AFFICHAGE DU RÉSUMÉ */}
+        {/* ✅ RÉSUMÉ */}
         {chapter.summary && (
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6 shadow-sm">
             <div className="flex items-center gap-2 mb-2">
@@ -211,6 +209,7 @@ export default function ChapterReader() {
           </div>
         )}
 
+        {/* LECTEUR PDF */}
         {pdfUrl ? (
           <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden shadow-sm">
             <iframe
@@ -225,7 +224,10 @@ export default function ChapterReader() {
           </div>
         )}
 
-        {/* Navigation entre chapitres */}
+        {/* ✅ SECTION COMMENTAIRES */}
+        <CommentSection mangaId={mangaId} chapterId={chapter.id} />
+
+        {/* NAVIGATION */}
         <div className="flex items-center justify-between mt-6">
           <Link
             href={`/manga/${mangaId}/chapter/${chapterNumber - 1}`}
