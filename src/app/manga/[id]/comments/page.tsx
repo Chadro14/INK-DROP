@@ -18,11 +18,8 @@ const CertifiedBadge = ({ color = "#2563EB", size = 16 }) => (
     xmlns="http://www.w3.org/2000/svg"
     className="inline-block flex-shrink-0"
   >
-    {/* Cercle extérieur */}
     <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="1.5" />
-    {/* Cercle intérieur rempli */}
     <circle cx="12" cy="12" r="7" fill={color} opacity="0.15" />
-    {/* Étoile principale */}
     <path 
       d="M12 4L14.5 9.5L20.5 10.5L16.5 14.5L17.5 20.5L12 17.5L6.5 20.5L7.5 14.5L3.5 10.5L9.5 9.5L12 4Z" 
       fill={color} 
@@ -30,19 +27,16 @@ const CertifiedBadge = ({ color = "#2563EB", size = 16 }) => (
       strokeWidth="1.2"
       strokeLinejoin="round"
     />
-    {/* Points de la couronne */}
     <circle cx="12" cy="5" r="1.2" fill="white" />
     <circle cx="8" cy="8" r="1" fill="white" />
     <circle cx="16" cy="8" r="1" fill="white" />
     <circle cx="6" cy="12" r="1" fill="white" />
     <circle cx="18" cy="12" r="1" fill="white" />
-    {/* Petite étoile centrale */}
     <path 
       d="M12 9L12.8 11.2L15 11.5L13.5 13L13.8 15.2L12 14L10.2 15.2L10.5 13L9 11.5L11.2 11.2L12 9Z" 
       fill="white" 
       opacity="0.9"
     />
-    {/* Reflet lumineux */}
     <ellipse cx="9" cy="9" rx="2" ry="1.5" fill="white" opacity="0.2" transform="rotate(-30 9 9)" />
   </svg>
 );
@@ -57,6 +51,7 @@ type Comment = {
     username: string;
     avatarUrl: string;
     isCertified: boolean;
+    badgeColor?: string;
   };
 };
 
@@ -216,45 +211,49 @@ export default function CommentsPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {comments.map((comment) => (
-              <div key={comment.id} className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-700">
-                    {comment.user.avatarUrl ? (
-                      <img
-                        src={comment.user.avatarUrl}
-                        alt={comment.user.username}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-white font-bold text-sm">
-                        {comment.user.username?.charAt(0).toUpperCase() || "?"}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-sm text-white">{comment.user.username}</span>
-                      {comment.user.isCertified && (
-                        <CertifiedBadge color="#2563EB" size={18} />
+            {comments.map((comment) => {
+              const badgeColor = comment.user.badgeColor || "#2563EB";
+              
+              return (
+                <div key={comment.id} className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-700">
+                      {comment.user.avatarUrl ? (
+                        <img
+                          src={comment.user.avatarUrl}
+                          alt={comment.user.username}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-bold text-sm">
+                          {comment.user.username?.charAt(0).toUpperCase() || "?"}
+                        </span>
                       )}
-                      <span className="text-xs text-zinc-500">{formatDate(comment.createdAt)}</span>
                     </div>
 
-                    <p className="text-sm text-zinc-300 mt-1">{comment.content}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-white">{comment.user.username}</span>
+                        {comment.user.isCertified && (
+                          <CertifiedBadge color={badgeColor} size={18} />
+                        )}
+                        <span className="text-xs text-zinc-500">{formatDate(comment.createdAt)}</span>
+                      </div>
 
-                    <button
-                      onClick={() => handleLike(comment.id)}
-                      className="flex items-center gap-1 mt-2 text-xs text-zinc-500 hover:text-rose-500 transition-colors"
-                    >
-                      <Heart className="w-3.5 h-3.5" />
-                      <span>{comment.likesCount || 0}</span>
-                    </button>
+                      <p className="text-sm text-zinc-300 mt-1">{comment.content}</p>
+
+                      <button
+                        onClick={() => handleLike(comment.id)}
+                        className="flex items-center gap-1 mt-2 text-xs text-zinc-500 hover:text-rose-500 transition-colors"
+                      >
+                        <Heart className="w-3.5 h-3.5" />
+                        <span>{comment.likesCount || 0}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
