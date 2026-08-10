@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Send, Bot, Minimize2, Maximize2, Trash2, MessageSquare, ChevronDown } from "lucide-react";
+import { X, Send, Minimize2, Maximize2, Trash2, MessageSquare, ChevronDown } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
@@ -75,7 +75,7 @@ export default function AiChatbot() {
         {
           id: `msg-${Date.now()}`,
           role: "assistant",
-          content: "👋 Bonjour ! Je suis XELIRA, ton guide INKDROP. Comment puis-je t'aider ?",
+          content: "👋 Bonjour ! Je suis XELIRA, ta modératrice INKDROP. Comment puis-je t'aider ?",
           timestamp: Date.now(),
         },
       ],
@@ -151,7 +151,7 @@ export default function AiChatbot() {
     const userMessage = input.trim();
     setInput("");
 
-    // Ajouter le message utilisateur avec un ID unique
+    // ✅ Ajouter le message user avec ID unique
     const userMsgId = `msg-${Date.now()}`;
     const updatedConversations = conversations.map(c => {
       if (c.id === currentConversationId) {
@@ -199,7 +199,7 @@ export default function AiChatbot() {
 
       const data = await res.json();
 
-      // Ajouter la réponse de l'assistant
+      // ✅ Ajouter la réponse de l'assistant
       const assistantMsgId = `msg-${Date.now() + 1}`;
       const finalConversations = conversations.map(c => {
         if (c.id === currentConversationId) {
@@ -222,7 +222,6 @@ export default function AiChatbot() {
       saveConversations(finalConversations);
 
     } catch (error) {
-      // En cas d'erreur
       const errorMsgId = `msg-${Date.now() + 2}`;
       const errorConversations = conversations.map(c => {
         if (c.id === currentConversationId) {
@@ -262,9 +261,6 @@ export default function AiChatbot() {
     }
   }, [messages]);
 
-  // ============================================
-  // GESTION DU SCROLL
-  // ============================================
   const handleScroll = () => {
     if (chatContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
@@ -297,29 +293,29 @@ export default function AiChatbot() {
     "Comment devenir certifié ?",
     "C'est quoi INKDROP ?",
     "Comment lire un manga ?",
+    "Comment créer un compte ?",
+    "C'est quoi le Premium ?",
+    "Comment contacter un créateur ?",
   ];
 
-  // ============================================
-  // FORMATER L'HEURE
-  // ============================================
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   };
 
   // ============================================
-  // BOUTON FLOTTANT (fermé)
+  // BOUTON FLOTTANT
   // ============================================
   if (!isOpen) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-28 right-4 z-50 p-3 rounded-full bg-gradient-to-br from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-500/30 transition-all hover:scale-110 group"
+        className="fixed bottom-28 right-4 z-50 p-0 rounded-full shadow-lg shadow-blue-500/30 transition-all hover:scale-110 group"
       >
         <img 
           src="https://files.catbox.moe/9kf0u4.png" 
           alt="XELIRA" 
-          className="w-8 h-8 object-contain"
+          className="w-14 h-14 rounded-full object-cover border-2 border-blue-500/50 shadow-lg"
         />
         {conversations.length > 0 && (
           <span className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full text-[10px] font-bold flex items-center justify-center border-2 border-zinc-950">
@@ -342,14 +338,16 @@ export default function AiChatbot() {
       
       {/* HEADER */}
       <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-zinc-900/95 rounded-t-2xl">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <img 
             src="https://files.catbox.moe/9kf0u4.png" 
             alt="XELIRA" 
-            className="w-7 h-7 object-contain"
+            className="w-9 h-9 rounded-full object-cover border border-blue-500/30"
           />
-          <span className="font-bold text-white text-sm">XELIRA</span>
-          <span className="text-[10px] text-green-400 font-semibold px-2 py-0.5 bg-green-500/10 rounded-full">Modératrice</span>
+          <div>
+            <span className="font-bold text-white text-sm block">XELIRA</span>
+            <span className="text-[10px] text-green-400 font-semibold">Modératrice INKDROP</span>
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -387,9 +385,9 @@ export default function AiChatbot() {
 
       {!isMinimized && (
         <>
-          {/* HISTORIQUE DES CONVERSATIONS */}
+          {/* HISTORIQUE */}
           {isHistoryOpen && (
-            <div className="absolute top-12 left-0 right-0 bg-zinc-900 border-b border-zinc-800 p-2 z-10 max-h-40 overflow-y-auto rounded-b-2xl">
+            <div className="absolute top-14 left-0 right-0 bg-zinc-900 border-b border-zinc-800 p-2 z-10 max-h-40 overflow-y-auto rounded-b-2xl">
               {conversations.length === 0 ? (
                 <p className="text-zinc-500 text-sm text-center py-2">Aucune conversation</p>
               ) : (
@@ -424,22 +422,22 @@ export default function AiChatbot() {
           <div 
             ref={chatContainerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto p-4 space-y-3 h-[calc(100%-120px)] bg-zinc-950/50"
+            className="flex-1 overflow-y-auto p-4 space-y-3 h-[calc(100%-130px)] bg-zinc-950/50"
           >
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <img 
                   src="https://files.catbox.moe/9kf0u4.png" 
                   alt="XELIRA" 
-                  className="w-16 h-16 object-contain mb-3 opacity-70"
+                  className="w-20 h-20 rounded-full object-cover mb-3 border-2 border-blue-500/30"
                 />
                 <p className="text-zinc-400 text-sm font-medium">Bonjour ! Je suis XELIRA 🤖</p>
                 <p className="text-zinc-500 text-xs mt-1">Ta modératrice INKDROP</p>
               </div>
             ) : (
-              messages.map((msg, idx) => (
+              messages.map((msg) => (
                 <div
-                  key={msg.id || idx}
+                  key={msg.id}
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} group`}
                 >
                   <div
@@ -485,25 +483,28 @@ export default function AiChatbot() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* SUGGESTIONS RAPIDES */}
+          {/* SUGGESTIONS RAPIDES - TOUTES VISIBLES */}
           {messages.length < 3 && (
-            <div className="px-4 pb-2 flex flex-wrap gap-1.5 bg-zinc-950/50">
-              {quickSuggestions.map((suggestion, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setInput(suggestion);
-                    setTimeout(() => sendMessage(), 100);
-                  }}
-                  className="px-3 py-1.5 rounded-full bg-zinc-800/50 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-zinc-700 hover:text-white transition-all"
-                >
-                  {suggestion}
-                </button>
-              ))}
+            <div className="px-4 py-3 bg-zinc-950/50 border-t border-zinc-800/50">
+              <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider mb-2">Suggestions rapides</p>
+              <div className="flex flex-wrap gap-1.5">
+                {quickSuggestions.map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setInput(suggestion);
+                      setTimeout(() => sendMessage(), 100);
+                    }}
+                    className="px-3 py-1.5 rounded-full bg-zinc-800/70 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-zinc-700 hover:text-white hover:border-zinc-600 transition-all whitespace-nowrap"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* BOUTON SCROLL VERS LE BAS */}
+          {/* BOUTON SCROLL */}
           {showScrollButton && (
             <button
               onClick={scrollToBottom}
