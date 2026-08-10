@@ -15,7 +15,10 @@ import {
   ChevronRight,
   Share2,
   Bookmark,
-  Plus
+  Plus,
+  MessageCircle,
+  Check,
+  Copy
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -31,7 +34,6 @@ const getImageUrl = (url?: string | null) => {
   if (url.startsWith("http://") || url.startsWith("https://")) {
     return url;
   }
-  // Si c'est un ancien chemin relatif stocké en BDD
   return `${SUPABASE_STORAGE_URL}/${url}`;
 };
 
@@ -75,6 +77,8 @@ export default function MangaPage() {
   const [isLiked, setIsLiked] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
 
   const mangaId = params.id as string;
 
@@ -90,8 +94,7 @@ export default function MangaPage() {
         }
         const data = await res.json();
         setManga(data);
-        
-        // Vérifier si l'utilisateur a liké ou s'est abonné, et récupérer son ID
+
         const token = localStorage.getItem("token");
         if (token) {
           const [likedRes, subRes, meRes] = await Promise.all([
@@ -178,6 +181,43 @@ export default function MangaPage() {
   };
 
   // ============================================
+  // PARTAGER LE MANGA
+  // ============================================
+  const handleShare = () => {
+    const shareUrl = `https://ink-drop-one.vercel.app/manga/${mangaId}`;
+    const shareText = `📚 Découvre "${manga?.title}" sur INKDROP !`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: `${manga?.title} - INKDROP`,
+        text: shareText,
+        url: shareUrl,
+      }).catch(() => {});
+    } else {
+      setShowShareMenu(!showShareMenu);
+    }
+  };
+
+  const copyLink = async () => {
+    const shareUrl = `https://ink-drop-one.vercel.app/manga/${mangaId}`;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Erreur copie:", err);
+    }
+  };
+
+  // ============================================
+  // ALLER AUX COMMENTAIRES
+  // ============================================
+  const goToComments = () => {
+    // Rediriger vers la page des commentaires du manga
+    router.push(`/manga/${mangaId}/comments`);
+  };
+
+  // ============================================
   // AFFICHAGE
   // ============================================
   if (loading) {
@@ -213,6 +253,7 @@ export default function MangaPage() {
 
   const isAuthor = currentUserId && manga.author.id === currentUserId;
   const fullCoverUrl = getImageUrl(manga.coverUrl);
+  const shareUrl = `https://ink-drop-one.vercel.app/manga/${mangaId}`;
 
   return (
     <div className="flex flex-col min-h-screen pb-20 bg-white">
@@ -225,10 +266,40 @@ export default function MangaPage() {
             <span className="text-sm">Retour</span>
           </Link>
           <span className="text-lg font-bold text-black truncate max-w-[150px]">{manga.title}</span>
-          <button className="text-gray-500 hover:text-black transition-colors">
-            <Share2 className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={handleShare}
+              className="text-gray-500 hover:text-black transition-colors p-2 rounded-full hover:bg-gray-100"
+              title="Partager"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {/* Menu de partage (copie de lien) */}
+        {showShareMenu && (
+          <div className="absolute top-full right-4 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 p-3 z-50 w-64">
+            <p className="text-xs text-gray-500 font-medium mb-2">Partager ce manga</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={shareUrl}
+                readOnly
+                className="flex-1 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg text-gray-600 outline-none"
+              />
+              <button
+                onClick={copyLink}
+                className="p-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+            {copied && (
+              <p className="text-green-600 text-xs mt-2 text-center">✅ Lien copié !</p>
+            )}
+          </div>
+        )}
       </header>
 
       {/* ===== COUVERTURE ===== */}
@@ -294,6 +365,24 @@ export default function MangaPage() {
               ⭐ Premium
             </span>
           )}
+        </div>
+
+        {/* ===== BOUTONS ACTIONS ===== */}
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={goToComments}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-black text-sm font-medium transition-colors"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Commentaires ({manga.commentsCount || 0})
+          </button>
+          <button
+            onClick={handleShare}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-black text-sm font-medium transition-colors"
+          >
+            <Share2 className="w-4 h-4" />
+            Partager
+          </button>
         </div>
       </section>
 
