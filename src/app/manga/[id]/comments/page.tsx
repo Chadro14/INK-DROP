@@ -4,9 +4,48 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { ArrowLeft, MessageCircle, Heart, Trash2, CheckCircle, Send } from "lucide-react";
+import { ArrowLeft, MessageCircle, Heart, Trash2, Send } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
+
+// ✅ VRAI BADGE SVG CERTIFIÉ
+const CertifiedBadge = ({ color = "#2563EB", size = 16 }) => (
+  <svg 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    xmlns="http://www.w3.org/2000/svg"
+    className="inline-block flex-shrink-0"
+  >
+    {/* Cercle extérieur */}
+    <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="1.5" />
+    {/* Cercle intérieur rempli */}
+    <circle cx="12" cy="12" r="7" fill={color} opacity="0.15" />
+    {/* Étoile principale */}
+    <path 
+      d="M12 4L14.5 9.5L20.5 10.5L16.5 14.5L17.5 20.5L12 17.5L6.5 20.5L7.5 14.5L3.5 10.5L9.5 9.5L12 4Z" 
+      fill={color} 
+      stroke="white" 
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+    />
+    {/* Points de la couronne */}
+    <circle cx="12" cy="5" r="1.2" fill="white" />
+    <circle cx="8" cy="8" r="1" fill="white" />
+    <circle cx="16" cy="8" r="1" fill="white" />
+    <circle cx="6" cy="12" r="1" fill="white" />
+    <circle cx="18" cy="12" r="1" fill="white" />
+    {/* Petite étoile centrale */}
+    <path 
+      d="M12 9L12.8 11.2L15 11.5L13.5 13L13.8 15.2L12 14L10.2 15.2L10.5 13L9 11.5L11.2 11.2L12 9Z" 
+      fill="white" 
+      opacity="0.9"
+    />
+    {/* Reflet lumineux */}
+    <ellipse cx="9" cy="9" rx="2" ry="1.5" fill="white" opacity="0.2" transform="rotate(-30 9 9)" />
+  </svg>
+);
 
 type Comment = {
   id: string;
@@ -32,18 +71,15 @@ export default function CommentsPage() {
 
   const mangaId = params.id as string;
 
-  // Récupérer les commentaires
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Récupérer le titre du manga
         const mangaRes = await fetch(`${API_URL}/mangas/${mangaId}`);
         if (mangaRes.ok) {
           const mangaData = await mangaRes.json();
           setMangaTitle(mangaData.title || "Manga");
         }
 
-        // Récupérer les commentaires
         const commentsRes = await fetch(`${API_URL}/social/comments/${mangaId}`);
         if (commentsRes.ok) {
           const data = await commentsRes.json();
@@ -61,7 +97,6 @@ export default function CommentsPage() {
     }
   }, [mangaId]);
 
-  // Ajouter un commentaire
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
 
@@ -94,7 +129,6 @@ export default function CommentsPage() {
     }
   };
 
-  // Liker un commentaire
   const handleLike = async (commentId: string) => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -120,7 +154,6 @@ export default function CommentsPage() {
     }
   };
 
-  // Formater la date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("fr-FR", {
@@ -143,7 +176,6 @@ export default function CommentsPage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
 
-      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center gap-3 max-w-4xl mx-auto">
           <button onClick={() => router.back()} className="text-zinc-400 hover:text-white transition-colors">
@@ -156,7 +188,6 @@ export default function CommentsPage() {
 
       <main className="max-w-4xl mx-auto w-full px-4 py-6 flex-1">
 
-        {/* Ajouter un commentaire */}
         <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4 mb-6">
           <div className="flex gap-2">
             <input
@@ -177,7 +208,6 @@ export default function CommentsPage() {
           </div>
         </div>
 
-        {/* Liste des commentaires */}
         {comments.length === 0 ? (
           <div className="text-center text-zinc-500 py-12">
             <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -189,7 +219,6 @@ export default function CommentsPage() {
             {comments.map((comment) => (
               <div key={comment.id} className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
                 <div className="flex items-start gap-3">
-                  {/* Avatar */}
                   <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-700">
                     {comment.user.avatarUrl ? (
                       <img
@@ -208,7 +237,7 @@ export default function CommentsPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-sm text-white">{comment.user.username}</span>
                       {comment.user.isCertified && (
-                        <CheckCircle className="w-3.5 h-3.5 text-blue-400 fill-blue-400/20" />
+                        <CertifiedBadge color="#2563EB" size={18} />
                       )}
                       <span className="text-xs text-zinc-500">{formatDate(comment.createdAt)}</span>
                     </div>
