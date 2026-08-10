@@ -16,30 +16,24 @@ import {
   X,
 } from "lucide-react";
 
-// ✅ URL CORRECTE du backend
 const API_URL = "https://ink-backend.vercel.app";
 
 export default function ChapterUploadPage() {
   const router = useRouter();
   const params = useParams();
-
-  // ✅ CORRECTION : utiliser "id" au lieu de "mangaId"
   const mangaId = params?.id as string;
 
-  // États du formulaire
   const [mode, setMode] = useState<"images" | "pdf">("images");
   const [number, setNumber] = useState("");
   const [title, setTitle] = useState("");
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
-  // États de chargement et d'erreur
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  // Gestion de la sélection d'images
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selected = Array.from(e.target.files);
@@ -47,12 +41,10 @@ export default function ChapterUploadPage() {
     }
   };
 
-  // Suppression d'une image sélectionnée
   const removePhoto = (index: number) => {
     setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ✅ Fonction pour détecter le type MIME correct (pour mobile)
   const getMimeType = (file: File): string => {
     if (file.type && file.type !== "") {
       return file.type;
@@ -70,7 +62,6 @@ export default function ChapterUploadPage() {
     return mimeTypes[ext || ''] || 'application/octet-stream';
   };
 
-  // Soumission du formulaire
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -101,9 +92,6 @@ export default function ChapterUploadPage() {
     try {
       setLoading(true);
 
-      // ==========================================
-      // ÉTAPE 1 : Obtenir les URLs signées du Backend
-      // ==========================================
       setProgress("Obtention des liens de stockage...");
 
       const filenames = filesToUpload.map((file) => file.name);
@@ -114,9 +102,7 @@ export default function ChapterUploadPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          filenames,
-        }),
+        body: JSON.stringify({ filenames }),
       });
 
       if (!urlRes.ok) {
@@ -132,9 +118,6 @@ export default function ChapterUploadPage() {
 
       const keys: string[] = responseData.keys || responseData.fileKeys || [];
 
-      // ==========================================
-      // ÉTAPE 2 : Upload direct des fichiers vers Supabase
-      // ==========================================
       for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i];
         const targetUrl = uploadUrls[i] || uploadUrls[0];
@@ -147,9 +130,7 @@ export default function ChapterUploadPage() {
         try {
           const uploadRes = await fetch(targetUrl, {
             method: "PUT",
-            headers: {
-              "Content-Type": getMimeType(file),
-            },
+            headers: { "Content-Type": getMimeType(file) },
             body: file,
             signal: controller.signal,
           });
@@ -168,9 +149,6 @@ export default function ChapterUploadPage() {
         }
       }
 
-      // ==========================================
-      // ÉTAPE 3 : Finaliser et enregistrer le chapitre dans la BDD
-      // ==========================================
       setProgress("Enregistrement du chapitre en base de données...");
 
       const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/finalize`, {
@@ -193,9 +171,6 @@ export default function ChapterUploadPage() {
         throw new Error(finalizeErr.message || "Erreur lors de la création du chapitre en base de données.");
       }
 
-      // ==========================================
-      // ÉTAPE 4 : Rafraîchissement & Redirection
-      // ==========================================
       setProgress("Finalisation...");
       setSuccess(true);
 
