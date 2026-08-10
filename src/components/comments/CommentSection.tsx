@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, Trash2, MessageCircle, Send } from "lucide-react";
+import { Heart, Trash2, MessageCircle, Send, Eye } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-// ✅ VRAI BADGE SVG CERTIFIÉ (identique au profil)
+// ✅ VRAI BADGE SVG CERTIFIÉ
 const CertifiedBadge = ({ color = "#2563EB", size = 16 }) => (
   <svg 
     width={size} 
@@ -50,7 +50,7 @@ type Comment = {
     avatarUrl: string;
     isCertified: boolean;
     avatarColor: string;
-    badgeColor?: string; // ✅ AJOUT DE badgeColor
+    badgeColor?: string;
   };
   replies?: Comment[];
 };
@@ -70,6 +70,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
   const [replyContent, setReplyContent] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
 
+  // ✅ Récupérer l'utilisateur
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -82,6 +83,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
   }, []);
 
+  // ✅ Récupérer les commentaires
   useEffect(() => {
     const fetchComments = async () => {
       setLoading(true);
@@ -102,6 +104,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     fetchComments();
   }, [mangaId, chapterId]);
 
+  // ✅ Ajouter un commentaire
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
 
@@ -137,6 +140,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
   };
 
+  // ✅ Ajouter une réponse
   const handleAddReply = async (parentId: string) => {
     if (!replyContent.trim()) return;
 
@@ -177,6 +181,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
   };
 
+  // ✅ Liker un commentaire (OPTIMISÉ)
   const handleLike = async (commentId: string) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -185,29 +190,32 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
 
     try {
+      // Optimistic update
+      setComments((prev) =>
+        prev.map((comment) => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              likesCount: comment.likesCount + 1,
+            };
+          }
+          return comment;
+        })
+      );
+
       const res = await fetch(`${API_URL}/social/comment-like/${commentId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (res.ok) {
-        const data = await res.json();
+      if (!res.ok) {
+        // Revert en cas d'erreur
         setComments((prev) =>
           prev.map((comment) => {
             if (comment.id === commentId) {
               return {
                 ...comment,
-                likesCount: data.liked ? comment.likesCount + 1 : comment.likesCount - 1,
-              };
-            }
-            if (comment.replies) {
-              return {
-                ...comment,
-                replies: comment.replies.map((reply) =>
-                  reply.id === commentId
-                    ? { ...reply, likesCount: data.liked ? reply.likesCount + 1 : reply.likesCount - 1 }
-                    : reply
-                ),
+                likesCount: comment.likesCount - 1,
               };
             }
             return comment;
@@ -216,9 +224,22 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
       }
     } catch (error) {
       console.error("Erreur like:", error);
+      // Revert en cas d'erreur
+      setComments((prev) =>
+        prev.map((comment) => {
+          if (comment.id === commentId) {
+            return {
+              ...comment,
+              likesCount: comment.likesCount - 1,
+            };
+          }
+          return comment;
+        })
+      );
     }
   };
 
+  // ✅ Supprimer un commentaire
   const handleDelete = async (commentId: string) => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -226,19 +247,36 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     if (!confirm("Supprimer ce commentaire ?")) return;
 
     try {
+      // Optimistic update
+      setComments((prev) => prev.filter((c) => c.id !== commentId));
+
       const res = await fetch(`${API_URL}/social/comment/${commentId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (res.ok) {
-        setComments((prev) => prev.filter((c) => c.id !== commentId));
+      if (!res.ok) {
+        // Recharger en cas d'erreur
+        const url = chapterId
+          ? `${API_URL}/social/comments/chapter/${chapterId}`
+          : `${API_URL}/social/comments/${mangaId}`;
+        const fetchRes = await fetch(url);
+        const data = await fetchRes.json();
+        setComments(data.data || []);
       }
     } catch (error) {
       console.error("Erreur suppression:", error);
+      // Recharger en cas d'erreur
+      const url = chapterId
+        ? `${API_URL}/social/comments/chapter/${chapterId}`
+        : `${API_URL}/social/comments/${mangaId}`;
+      const fetchRes = await fetch(url);
+      const data = await fetchRes.json();
+      setComments(data.data || []);
     }
   };
 
+  // ✅ Formater la date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("fr-FR", {
@@ -250,14 +288,15 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     });
   };
 
+  // Composant CommentItem
   const CommentItem = ({ comment, isReply = false }: { comment: Comment; isReply?: boolean }) => {
     const isAuthor = userId === comment.user.id;
-    // ✅ Utiliser la couleur personnalisée du badge de l'utilisateur
     const badgeColor = comment.user.badgeColor || "#2563EB";
 
     return (
       <div className={`${isReply ? "ml-8" : ""} border-b border-zinc-800/60 py-4`}>
         <div className="flex items-start gap-3">
+          {/* Avatar */}
           <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-700">
             {comment.user.avatarUrl ? (
               <img
@@ -272,11 +311,11 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
             )}
           </div>
 
+          {/* Contenu */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-sm text-white">{comment.user.username}</span>
               {comment.user.isCertified && (
-                // ✅ Utiliser la couleur personnalisée
                 <CertifiedBadge color={badgeColor} size={18} />
               )}
               <span className="text-xs text-zinc-500">{formatDate(comment.createdAt)}</span>
@@ -284,6 +323,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
 
             <p className="text-sm text-zinc-300 mt-1">{comment.content}</p>
 
+            {/* Actions */}
             <div className="flex items-center gap-4 mt-2">
               <button
                 onClick={() => handleLike(comment.id)}
@@ -312,6 +352,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
               )}
             </div>
 
+            {/* Formulaire de réponse */}
             {replyTo === comment.id && !isReply && (
               <div className="mt-3 flex gap-2">
                 <input
@@ -332,6 +373,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
           </div>
         </div>
 
+        {/* Réponses */}
         {comment.replies && comment.replies.length > 0 && (
           <div className="mt-2 space-y-2">
             {comment.replies.map((reply) => (
@@ -351,6 +393,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
         <span className="text-xs text-zinc-500">({comments.length})</span>
       </div>
 
+      {/* Ajouter un commentaire */}
       <div className="flex gap-2 mb-4">
         <input
           type="text"
@@ -369,6 +412,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
         </button>
       </div>
 
+      {/* Liste des commentaires */}
       {loading ? (
         <div className="flex justify-center py-8">
           <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
