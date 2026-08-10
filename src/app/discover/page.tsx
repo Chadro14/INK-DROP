@@ -13,13 +13,13 @@ import {
   BookOpen, 
   Sparkles,
   RotateCcw,
-  BadgeCheck  // ✅ Utilisation du même badge que le profil
+  BadgeCheck,
+  Globe,
+  Library
 } from "lucide-react";
 
-// ✅ AJOUT DE L'URL DE L'API
 const API_URL = "https://ink-backend.vercel.app";
 
-// ✅ Fonction pour les URLs d'images
 const getImageUrl = (url?: string | null) => {
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://")) {
@@ -31,12 +31,15 @@ const getImageUrl = (url?: string | null) => {
 export default function DiscoverPage() {
   const router = useRouter();
   const [mangas, setMangas] = useState<any[]>([]);
+  const [externalMangas, setExternalMangas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingExternal, setLoadingExternal] = useState(true);
   const [search, setSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [genre, setGenre] = useState("");
   const [status, setStatus] = useState("");
   const [sort, setSort] = useState("recent");
+  const [activeTab, setActiveTab] = useState<"inkdrop" | "mangadex">("inkdrop");
 
   const genres = ["Action", "Romance", "Horreur", "Sci-Fi", "Mystère", "Aventure", "Comédie"];
   const statuses = ["ONGOING", "COMPLETED", "HIATUS"];
@@ -47,7 +50,7 @@ export default function DiscoverPage() {
   ];
 
   // ============================================
-  // FETCH
+  // FETCH MANGA INKDROP
   // ============================================
   useEffect(() => {
     const fetchMangas = async () => {
@@ -61,9 +64,7 @@ export default function DiscoverPage() {
           ...(sort && { sort }),
         });
 
-        const res = await fetch(
-          `${API_URL}/mangas?${params}`
-        );
+        const res = await fetch(`${API_URL}/mangas?${params}`);
         const data = await res.json();
         setMangas(data.data || []);
       } catch (error) {
@@ -73,8 +74,34 @@ export default function DiscoverPage() {
       }
     };
 
-    fetchMangas();
-  }, [search, genre, status, sort]);
+    if (activeTab === "inkdrop") {
+      fetchMangas();
+    }
+  }, [search, genre, status, sort, activeTab]);
+
+  // ============================================
+  // FETCH MANGA API (MangaDex)
+  // ============================================
+  useEffect(() => {
+    const fetchExternalMangas = async () => {
+      setLoadingExternal(true);
+      try {
+        const res = await fetch(`${API_URL}/manga-api/popular?limit=20`);
+        if (res.ok) {
+          const data = await res.json();
+          setExternalMangas(data.data || []);
+        }
+      } catch (error) {
+        console.error("Erreur chargement mangas externes:", error);
+      } finally {
+        setLoadingExternal(false);
+      }
+    };
+
+    if (activeTab === "mangadex") {
+      fetchExternalMangas();
+    }
+  }, [activeTab]);
 
   // ============================================
   // APPLIQUER FILTRES
@@ -98,9 +125,6 @@ export default function DiscoverPage() {
     setShowFilters(false);
   };
 
-  // ============================================
-  // HANDLE SEARCH
-  // ============================================
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (search.trim()) {
@@ -116,7 +140,7 @@ export default function DiscoverPage() {
   const activeFiltersCount = (genre ? 1 : 0) + (status ? 1 : 0) + (sort !== "recent" ? 1 : 0);
 
   // ============================================
-  // COMPOSANT MANGA CARD
+  // COMPOSANT MANGA CARD (INKDROP)
   // ============================================
   const MangaCard = ({ manga }: { manga: any }) => {
     const coverUrl = getImageUrl(manga.coverUrl);
@@ -129,7 +153,6 @@ export default function DiscoverPage() {
         href={`/manga/${manga.id}`}
         className="group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col"
       >
-        {/* Couverture */}
         <div className="aspect-[2/3] bg-gradient-to-br from-blue-950/30 to-zinc-900 flex items-center justify-center relative overflow-hidden">
           {coverUrl ? (
             <img
@@ -142,7 +165,6 @@ export default function DiscoverPage() {
             <BookOpen className="w-12 h-12 text-zinc-700" />
           )}
           
-          {/* Tags genre */}
           <div className="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[90%]">
             {manga.genre?.slice(0, 2).map((g: string) => (
               <span 
@@ -154,7 +176,6 @@ export default function DiscoverPage() {
             ))}
           </div>
 
-          {/* Statut */}
           <div className="absolute bottom-2 right-2">
             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md backdrop-blur-md border ${
               manga.status === 'ONGOING' 
@@ -168,13 +189,11 @@ export default function DiscoverPage() {
           </div>
         </div>
 
-        {/* Infos */}
         <div className="p-3 space-y-1.5">
           <h3 className="text-sm font-bold truncate text-white group-hover:text-blue-400 transition-colors">
             {manga.title}
           </h3>
           
-          {/* Auteur avec avatar et badge certifié identique au profil */}
           <div className="flex items-center gap-2">
             {authorAvatar ? (
               <img
@@ -200,7 +219,6 @@ export default function DiscoverPage() {
             </p>
           </div>
           
-          {/* Stats */}
           <div className="flex items-center gap-3 pt-1 text-zinc-400 text-[11px] font-semibold border-t border-zinc-800/60">
             <span className="flex items-center gap-1">
               <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/20" /> 
@@ -212,6 +230,71 @@ export default function DiscoverPage() {
             </span>
             <span className="flex items-center gap-1">
               📖 {manga._count?.chapters || 0}
+            </span>
+          </div>
+        </div>
+      </Link>
+    );
+  };
+
+  // ============================================
+  // COMPOSANT EXTERNAL MANGA CARD (MangaDex)
+  // ============================================
+  const ExternalMangaCard = ({ manga }: { manga: any }) => {
+    return (
+      <Link
+        href={`/read/${manga.id}`}
+        className="group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col"
+      >
+        <div className="aspect-[2/3] bg-gradient-to-br from-purple-950/30 to-zinc-900 flex items-center justify-center relative overflow-hidden">
+          {manga.coverImage ? (
+            <img
+              src={manga.coverImage}
+              alt={manga.title}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+            />
+          ) : (
+            <BookOpen className="w-12 h-12 text-zinc-700" />
+          )}
+          
+          <div className="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[90%]">
+            {manga.genres?.slice(0, 2).map((g: string) => (
+              <span 
+                key={g} 
+                className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-zinc-950/80 text-purple-300 backdrop-blur-md border border-purple-500/20"
+              >
+                {g}
+              </span>
+            ))}
+          </div>
+
+          <div className="absolute bottom-2 right-2">
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-zinc-950/80 text-yellow-400 backdrop-blur-md border border-yellow-500/30">
+              ⭐ {manga.rating || 'N/A'}
+            </span>
+          </div>
+        </div>
+
+        <div className="p-3 space-y-1.5">
+          <h3 className="text-sm font-bold truncate text-white group-hover:text-purple-400 transition-colors">
+            {manga.title}
+          </h3>
+          
+          <div className="flex items-center gap-2 text-zinc-400 text-xs">
+            <span>{manga.author?.name || 'Inconnu'}</span>
+            <span>•</span>
+            <span>{manga.status === 'ongoing' ? 'En cours' : 'Terminé'}</span>
+          </div>
+          
+          <div className="flex items-center gap-3 pt-1 text-zinc-400 text-[11px] font-semibold border-t border-zinc-800/60">
+            <span className="flex items-center gap-1">
+              <Globe className="w-3.5 h-3.5 text-purple-400" />
+              MangaDex
+            </span>
+            <span className="flex items-center gap-1">
+              <Library className="w-3.5 h-3.5 text-blue-400" />
+              {manga.chapters || 0} chapitres
             </span>
           </div>
         </div>
@@ -285,7 +368,6 @@ export default function DiscoverPage() {
                 </button>
               </div>
 
-              {/* Genre */}
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                   Genre
@@ -307,7 +389,6 @@ export default function DiscoverPage() {
                 </div>
               </div>
 
-              {/* Statut */}
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                   Statut
@@ -329,7 +410,6 @@ export default function DiscoverPage() {
                 </div>
               </div>
 
-              {/* Tri */}
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                   Trier par
@@ -367,44 +447,105 @@ export default function DiscoverPage() {
         </div>
       )}
 
+      {/* ===== TABS ===== */}
+      <div className="px-4 pt-4 border-b border-zinc-800/60">
+        <div className="flex gap-6 max-w-lg mx-auto">
+          <button
+            onClick={() => setActiveTab("inkdrop")}
+            className={`pb-3 text-sm font-bold transition-all border-b-2 flex items-center gap-2 ${
+              activeTab === "inkdrop"
+                ? "border-blue-500 text-white"
+                : "border-transparent text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            INKDROP ({mangas.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("mangadex")}
+            className={`pb-3 text-sm font-bold transition-all border-b-2 flex items-center gap-2 ${
+              activeTab === "mangadex"
+                ? "border-purple-500 text-white"
+                : "border-transparent text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <Globe className="w-4 h-4" />
+            Mangas ({externalMangas.length})
+          </button>
+        </div>
+      </div>
+
       {/* ===== RÉSULTATS ===== */}
       <main className="flex-1 px-4 md:px-8 py-5 max-w-lg mx-auto w-full space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-blue-400" />
-            Découvrir
+            {activeTab === "inkdrop" ? "Découvrir" : "Mangas"}
           </h1>
           <span className="text-xs font-semibold text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
-            {mangas.length} {mangas.length > 1 ? "résultats" : "résultat"}
+            {activeTab === "inkdrop" ? mangas.length : externalMangas.length} résultats
           </span>
         </div>
 
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {[...Array(6)].map((_, i) => (
-              <div 
-                key={i} 
-                className="aspect-[2/3] bg-zinc-900/60 border border-zinc-800/50 rounded-2xl animate-pulse" 
-              />
-            ))}
-          </div>
-        ) : mangas.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center bg-zinc-900/20 border border-zinc-800/60 rounded-2xl p-6">
-            <BookOpen className="w-12 h-12 text-zinc-700" />
-            <p className="text-zinc-400 text-sm font-medium mt-4">Aucun manga ne correspond à votre recherche</p>
-            <button
-              onClick={clearFilters}
-              className="mt-4 px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md shadow-blue-900/20"
-            >
-              Réinitialiser les filtres
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3.5">
-            {mangas.map((manga: any) => (
-              <MangaCard key={manga.id} manga={manga} />
-            ))}
-          </div>
+        {/* INKDROP MANGAS */}
+        {activeTab === "inkdrop" && (
+          <>
+            {loading ? (
+              <div className="grid grid-cols-2 gap-3">
+                {[...Array(6)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="aspect-[2/3] bg-zinc-900/60 border border-zinc-800/50 rounded-2xl animate-pulse" 
+                  />
+                ))}
+              </div>
+            ) : mangas.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center bg-zinc-900/20 border border-zinc-800/60 rounded-2xl p-6">
+                <BookOpen className="w-12 h-12 text-zinc-700" />
+                <p className="text-zinc-400 text-sm font-medium mt-4">Aucun manga ne correspond à votre recherche</p>
+                <button
+                  onClick={clearFilters}
+                  className="mt-4 px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-md shadow-blue-900/20"
+                >
+                  Réinitialiser les filtres
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3.5">
+                {mangas.map((manga: any) => (
+                  <MangaCard key={manga.id} manga={manga} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* MANGADEX MANGAS */}
+        {activeTab === "mangadex" && (
+          <>
+            {loadingExternal ? (
+              <div className="grid grid-cols-2 gap-3">
+                {[...Array(6)].map((_, i) => (
+                  <div 
+                    key={i} 
+                    className="aspect-[2/3] bg-zinc-900/60 border border-zinc-800/50 rounded-2xl animate-pulse" 
+                  />
+                ))}
+              </div>
+            ) : externalMangas.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center bg-zinc-900/20 border border-zinc-800/60 rounded-2xl p-6">
+                <Globe className="w-12 h-12 text-zinc-700" />
+                <p className="text-zinc-400 text-sm font-medium mt-4">Aucun manga disponible</p>
+                <p className="text-zinc-500 text-xs mt-1">Les mangas sont chargés depuis MangaDex</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3.5">
+                {externalMangas.map((manga: any) => (
+                  <ExternalMangaCard key={manga.id} manga={manga} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
 
