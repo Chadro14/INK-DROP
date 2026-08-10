@@ -58,6 +58,25 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="theme-color" content="#000000" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        
+        {/* ✅ ENREGISTREMENT DU SERVICE WORKER */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('✅ Service Worker enregistré avec succès');
+                    })
+                    .catch(function(error) {
+                      console.log('❌ Échec enregistrement Service Worker:', error);
+                    });
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body className={`${outfit.variable} min-h-screen flex flex-col bg-black text-white`}>
         <Providers>
@@ -67,4 +86,4 @@ export default function RootLayout({
       </body>
     </html>
   );
-}
+        }
