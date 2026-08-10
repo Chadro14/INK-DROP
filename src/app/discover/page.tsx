@@ -80,7 +80,7 @@ export default function DiscoverPage() {
   }, [search, genre, status, sort, activeTab]);
 
   // ============================================
-  // FETCH MANGA API (MangaDex)
+  // FETCH MANGA API (MangaReader via Consumet)
   // ============================================
   useEffect(() => {
     const fetchExternalMangas = async () => {
@@ -90,6 +90,8 @@ export default function DiscoverPage() {
         if (res.ok) {
           const data = await res.json();
           setExternalMangas(data.data || []);
+        } else {
+          console.error("Erreur API:", res.status);
         }
       } catch (error) {
         console.error("Erreur chargement mangas externes:", error);
@@ -238,7 +240,7 @@ export default function DiscoverPage() {
   };
 
   // ============================================
-  // COMPOSANT EXTERNAL MANGA CARD (MangaDex)
+  // COMPOSANT EXTERNAL MANGA CARD (MangaReader)
   // ============================================
   const ExternalMangaCard = ({ manga }: { manga: any }) => {
     return (
@@ -284,13 +286,13 @@ export default function DiscoverPage() {
           <div className="flex items-center gap-2 text-zinc-400 text-xs">
             <span>{manga.author?.name || 'Inconnu'}</span>
             <span>•</span>
-            <span>{manga.status === 'ongoing' ? 'En cours' : 'Terminé'}</span>
+            <span>{manga.status === 'ongoing' ? 'En cours' : manga.status === 'completed' ? 'Terminé' : 'En pause'}</span>
           </div>
           
           <div className="flex items-center gap-3 pt-1 text-zinc-400 text-[11px] font-semibold border-t border-zinc-800/60">
             <span className="flex items-center gap-1">
               <Globe className="w-3.5 h-3.5 text-purple-400" />
-              MangaDex
+              MangaReader
             </span>
             <span className="flex items-center gap-1">
               <Library className="w-3.5 h-3.5 text-blue-400" />
@@ -305,7 +307,6 @@ export default function DiscoverPage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
-      {/* ===== HEADER ===== */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center gap-2 max-w-lg mx-auto">
           <form onSubmit={handleSearch} className="flex-1 flex items-center gap-2">
@@ -349,7 +350,6 @@ export default function DiscoverPage() {
         </div>
       </header>
 
-      {/* ===== FILTRES ===== */}
       {showFilters && (
         <div className="fixed inset-0 z-50 bg-zinc-950/90 backdrop-blur-md animate-fade-in overflow-y-auto">
           <div className="max-w-lg mx-auto px-4 py-6 min-h-screen flex flex-col justify-between">
@@ -487,7 +487,7 @@ export default function DiscoverPage() {
           </span>
         </div>
 
-        {/* INKDROP MANGAS */}
+           {/* INKDROP MANGAS */}
         {activeTab === "inkdrop" && (
           <>
             {loading ? (
@@ -520,7 +520,7 @@ export default function DiscoverPage() {
           </>
         )}
 
-        {/* MANGADEX MANGAS */}
+        {/* MANGAREADER MANGAS */}
         {activeTab === "mangadex" && (
           <>
             {loadingExternal ? (
@@ -536,7 +536,7 @@ export default function DiscoverPage() {
               <div className="flex flex-col items-center justify-center py-16 text-center bg-zinc-900/20 border border-zinc-800/60 rounded-2xl p-6">
                 <Globe className="w-12 h-12 text-zinc-700" />
                 <p className="text-zinc-400 text-sm font-medium mt-4">Aucun manga disponible</p>
-                <p className="text-zinc-500 text-xs mt-1">Les mangas sont chargés depuis MangaDex</p>
+                <p className="text-zinc-500 text-xs mt-1">Les mangas sont chargés depuis MangaReader</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3.5">
