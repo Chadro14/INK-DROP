@@ -10,7 +10,8 @@ import {
   ChevronRight,
   Lock,
   Eye,
-  Heart
+  Heart,
+  Sparkles
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -23,6 +24,7 @@ type Chapter = {
   price: number;
   pageCount: number;
   pdfUrl: string;
+  summary: string | null; // ✅ RÉSUMÉ DU CHAPITRE
   publishedAt: string;
   manga: {
     id: string;
@@ -172,7 +174,7 @@ export default function ChapterReader() {
   }
 
   // ============================================
-  // LECTURE DU CHAPITRE
+  // LECTURE DU CHAPITRE (AVEC RÉSUMÉ)
   // ============================================
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -198,8 +200,19 @@ export default function ChapterReader() {
           <p className="text-gray-400 text-sm">{chapter.manga.title}</p>
         </div>
 
+        {/* ✅ AFFICHAGE DU RÉSUMÉ */}
+        {chapter.summary && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-blue-500" />
+              <h3 className="text-sm font-bold text-blue-700">📖 Résumé du chapitre</h3>
+            </div>
+            <p className="text-gray-700 text-sm leading-relaxed">{chapter.summary}</p>
+          </div>
+        )}
+
         {pdfUrl ? (
-          <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden shadow-sm">
             <iframe
               src={pdfUrl}
               className="w-full h-[70vh] border-0"
@@ -213,10 +226,10 @@ export default function ChapterReader() {
         )}
 
         {/* Navigation entre chapitres */}
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between mt-6">
           <Link
             href={`/manga/${mangaId}/chapter/${chapterNumber - 1}`}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               chapterNumber > 1
                 ? "bg-gray-100 text-black hover:bg-gray-200"
                 : "bg-gray-50 text-gray-300 cursor-not-allowed pointer-events-none"
@@ -226,13 +239,13 @@ export default function ChapterReader() {
           </Link>
           <Link
             href={`/manga/${mangaId}`}
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-black hover:bg-gray-200"
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-black hover:bg-gray-200 transition-all"
           >
             Tous les chapitres
           </Link>
           <Link
             href={`/manga/${mangaId}/chapter/${chapterNumber + 1}`}
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-black text-white hover:bg-gray-800"
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-black text-white hover:bg-gray-800 transition-all"
           >
             Suivant <ChevronRight className="w-4 h-4 inline" />
           </Link>
