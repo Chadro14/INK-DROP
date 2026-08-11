@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { ArrowLeft, BookOpen, Clock, Calendar, User, Tag, ChevronRight } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, Calendar, User, ChevronRight } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-type MangaDetails = {
+type Manga = {
   id: string;
   title: string;
   description: string;
@@ -19,7 +19,6 @@ type MangaDetails = {
   genres: string[];
   chapters: number;
   rating: number;
-  source: string;
 };
 
 type Chapter = {
@@ -33,43 +32,74 @@ type Chapter = {
 export default function ReadPage() {
   const params = useParams();
   const router = useRouter();
-  const [manga, setManga] = useState<MangaDetails | null>(null);
+  const [manga, setManga] = useState<Manga | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingChapters, setLoadingChapters] = useState(true);
   const [error, setError] = useState("");
+  const [mangaTitle, setMangaTitle] = useState("");
 
   const mangaId = params.id as string;
 
-  // Récupérer les détails du manga
+  // ============================================
+  // 1. RÉCUPÉRER LE MANGA PAR ID
+  // ============================================
   useEffect(() => {
     const fetchManga = async () => {
       try {
         const res = await fetch(`${API_URL}/manga-api/${mangaId}`);
-        if (!res.ok) {
-          throw new Error("Manga non trouvé");
-        }
+        if (!res.ok) throw new Error("Manga non trouvé");
         const data = await res.json();
         setManga(data.data);
-        
-        // Récupérer les chapitres
-        const chaptersRes = await fetch(`${API_URL}/manga-api/${mangaId}/chapters?limit=100`);
-        if (chaptersRes.ok) {
-          const chaptersData = await chaptersRes.json();
-          setChapters(chaptersData.data || []);
-        }
+        setMangaTitle(data.data.title);
       } catch (err: any) {
         setError(err.message);
       } finally {
         setLoading(false);
+      }
+    };
+
+    if (mangaId) fetchManga();
+  }, [mangaId]);
+
+  // ============================================
+  // 2. RÉCUPÉRER LES CHAPITRES PAR TITRE (recherche)
+  // ============================================
+  useEffect(() => {
+    const fetchChaptersByTitle = async () => {
+      if (!mangaTitle) return;
+      setLoadingChapters(true);
+
+      try {
+        // Étape 1 : Rechercher le manga par titre
+        const searchRes = await fetch(`${API_URL}/manga-api/search?q=${encodeURIComponent(mangaTitle)}&limit=1`);
+        if (!searchRes.ok) throw new Error("Recherche impossible");
+
+        const searchData = await searchRes.json();
+        if (!searchData.data || searchData.data.length === 0) {
+          setChapters([]);
+          setLoadingChapters(false);
+          return;
+        }
+
+        const realMangaId = searchData.data[0].id;
+
+        // Étape 2 : Récupérer les chapitres avec le vrai ID
+        const chaptersRes = await fetch(`${API_URL}/manga-api/${realMangaId}/chapters?limit=100`);
+        if (!chaptersRes.ok) throw new Error("Impossible de charger les chapitres");
+
+        const chaptersData = await chaptersRes.json();
+        setChapters(chaptersData.data || []);
+      } catch (err: any) {
+        console.error("Erreur chapitres:", err.message);
+        setChapters([]);
+      } finally {
         setLoadingChapters(false);
       }
     };
 
-    if (mangaId) {
-      fetchManga();
-    }
-  }, [mangaId]);
+    fetchChaptersByTitle();
+  }, [mangaTitle]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -108,19 +138,15 @@ export default function ReadPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <span className="font-bold text-white truncate">{manga.title}</span>
-          <span className="text-xs text-zinc-500 ml-auto">MangaDex</span>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto w-full px-4 py-6 flex-1">
 
+        {/* Couverture */}
         <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden border border-zinc-800 mb-6">
           {manga.coverImage ? (
-            <img
-              src={manga.coverImage}
-              alt={manga.title}
-              className="w-full h-full object-cover"
-            />
+            <img src={manga.coverImage} alt={manga.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
               <BookOpen className="w-12 h-12 text-zinc-700" />
@@ -130,47 +156,30 @@ export default function ReadPage() {
           <div className="absolute bottom-4 left-4 right-4">
             <h1 className="text-2xl md:text-3xl font-extrabold text-white">{manga.title}</h1>
             <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-300 mt-1">
-              <span className="flex items-center gap-1">
-                <User className="w-4 h-4" />
-                {manga.author || "Inconnu"}
-              </span>
+              <span className="flex items-center gap-1"><User className="w-4 h-4" /> {manga.author || "Inconnu"}</span>
               <span>•</span>
-              <span className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                {manga.year || "N/A"}
-              </span>
+              <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {manga.year || "N/A"}</span>
               <span>•</span>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                manga.status === "ongoing"
-                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                  : manga.status === "completed"
-                  ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                  : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-              }`}>
-                {manga.status === "ongoing" ? "En cours" : manga.status === "completed" ? "Terminé" : "En pause"}
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${manga.status === "ongoing" ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-blue-500/20 text-blue-400 border border-blue-500/30"}`}>
+                {manga.status === "ongoing" ? "En cours" : "Terminé"}
               </span>
             </div>
           </div>
         </div>
 
+        {/* Description */}
         <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4 mb-6">
-          <p className="text-zinc-300 text-sm leading-relaxed">
-            {manga.description || "Aucune description disponible."}
-          </p>
+          <p className="text-zinc-300 text-sm leading-relaxed">{manga.description || "Aucune description disponible."}</p>
           {manga.genres && manga.genres.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3">
               {manga.genres.map((genre) => (
-                <span
-                  key={genre}
-                  className="px-3 py-1 rounded-full bg-zinc-800/50 border border-zinc-700 text-zinc-300 text-xs"
-                >
-                  {genre}
-                </span>
+                <span key={genre} className="px-3 py-1 rounded-full bg-zinc-800/50 border border-zinc-700 text-zinc-300 text-xs">{genre}</span>
               ))}
             </div>
           )}
         </div>
 
+        {/* Chapitres */}
         <div>
           <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-purple-400" />
@@ -178,13 +187,9 @@ export default function ReadPage() {
           </h2>
 
           {loadingChapters ? (
-            <div className="flex justify-center py-8">
-              <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
-            </div>
+            <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" /></div>
           ) : chapters.length === 0 ? (
-            <div className="text-center text-zinc-500 py-8">
-              <p>Aucun chapitre disponible</p>
-            </div>
+            <div className="text-center text-zinc-500 py-8"><p>Aucun chapitre disponible</p></div>
           ) : (
             <div className="space-y-2">
               {chapters.map((chapter) => (
