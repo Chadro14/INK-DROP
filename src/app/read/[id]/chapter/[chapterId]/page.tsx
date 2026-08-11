@@ -102,14 +102,16 @@ export default function ChapterReader() {
               className="w-full h-auto rounded-lg shadow-2xl"
               loading="lazy"
               onError={(e) => {
-                // ✅ Si l'image ne charge pas, afficher un message
                 e.currentTarget.style.display = 'none';
-                e.currentTarget.parentElement!.innerHTML = `
-                  <div class="flex flex-col items-center justify-center h-96 bg-zinc-900 rounded-lg">
-                    <p class="text-zinc-500 text-sm">Image non disponible</p>
-                    <p class="text-zinc-600 text-xs mt-2">Page ${currentPage + 1}</p>
-                  </div>
-                `;
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  parent.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-96 bg-zinc-900 rounded-lg">
+                      <p class="text-zinc-500 text-sm">Image non disponible</p>
+                      <p class="text-zinc-600 text-xs mt-2">Page ${currentPage + 1}</p>
+                    </div>
+                  `;
+                }
               }}
             />
           ) : (
