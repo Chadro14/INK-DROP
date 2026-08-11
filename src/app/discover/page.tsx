@@ -33,8 +33,9 @@ export default function DiscoverPage() {
   const [mangas, setMangas] = useState<any[]>([]);
   const [externalMangas, setExternalMangas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingExternal, setLoadingExternal] = useState(true);
+  const [loadingExternal, setLoadingExternal] = useState(false);
   const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [genre, setGenre] = useState("");
   const [status, setStatus] = useState("");
@@ -80,21 +81,29 @@ export default function DiscoverPage() {
   }, [search, genre, status, sort, activeTab]);
 
   // ============================================
-  // FETCH MANGA API (MangaReader via Consumet)
+  // FETCH MANGA API (MangaDex via backend)
   // ============================================
   useEffect(() => {
     const fetchExternalMangas = async () => {
+      if (!searchQuery.trim()) {
+        setExternalMangas([]);
+        setLoadingExternal(false);
+        return;
+      }
+
       setLoadingExternal(true);
       try {
-        const res = await fetch(`${API_URL}/manga-api/popular?limit=20`);
+        const res = await fetch(`${API_URL}/manga-api/search?q=${encodeURIComponent(searchQuery)}&limit=20`);
         if (res.ok) {
           const data = await res.json();
           setExternalMangas(data.data || []);
         } else {
           console.error("Erreur API:", res.status);
+          setExternalMangas([]);
         }
       } catch (error) {
         console.error("Erreur chargement mangas externes:", error);
+        setExternalMangas([]);
       } finally {
         setLoadingExternal(false);
       }
@@ -103,7 +112,7 @@ export default function DiscoverPage() {
     if (activeTab === "mangadex") {
       fetchExternalMangas();
     }
-  }, [activeTab]);
+  }, [searchQuery, activeTab]);
 
   // ============================================
   // APPLIQUER FILTRES
@@ -120,6 +129,7 @@ export default function DiscoverPage() {
 
   const clearFilters = () => {
     setSearch("");
+    setSearchQuery("");
     setGenre("");
     setStatus("");
     setSort("recent");
@@ -130,12 +140,16 @@ export default function DiscoverPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (search.trim()) {
-      const params = new URLSearchParams();
-      params.set("search", search);
-      if (genre) params.set("genre", genre);
-      if (status) params.set("status", status);
-      if (sort) params.set("sort", sort);
-      router.push(`/discover?${params}`);
+      if (activeTab === "inkdrop") {
+        const params = new URLSearchParams();
+        params.set("search", search);
+        if (genre) params.set("genre", genre);
+        if (status) params.set("status", status);
+        if (sort) params.set("sort", sort);
+        router.push(`/discover?${params}`);
+      } else {
+        setSearchQuery(search);
+      }
     }
   };
 
@@ -240,7 +254,7 @@ export default function DiscoverPage() {
   };
 
   // ============================================
-  // COMPOSANT EXTERNAL MANGA CARD (MangaReader)
+  // COMPOSANT EXTERNAL MANGA CARD (MangaDex)
   // ============================================
   const ExternalMangaCard = ({ manga }: { manga: any }) => {
     return (
@@ -292,7 +306,7 @@ export default function DiscoverPage() {
           <div className="flex items-center gap-3 pt-1 text-zinc-400 text-[11px] font-semibold border-t border-zinc-800/60">
             <span className="flex items-center gap-1">
               <Globe className="w-3.5 h-3.5 text-purple-400" />
-              MangaReader
+              MangaDex
             </span>
             <span className="flex items-center gap-1">
               <Library className="w-3.5 h-3.5 text-blue-400" />
@@ -315,7 +329,7 @@ export default function DiscoverPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Rechercher un manga..."
+                placeholder={activeTab === "inkdrop" ? "Rechercher un manga..." : "Rechercher sur MangaDex..."}
                 className="w-full pl-10 pr-4 py-2 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
               />
               <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -470,7 +484,7 @@ export default function DiscoverPage() {
             }`}
           >
             <Globe className="w-4 h-4" />
-            Mangas ({externalMangas.length})
+            MangaDex ({externalMangas.length})
           </button>
         </div>
       </div>
@@ -480,14 +494,14 @@ export default function DiscoverPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-blue-400" />
-            {activeTab === "inkdrop" ? "Découvrir" : "Mangas"}
+            {activeTab === "inkdrop" ? "Découvrir" : "Recherche MangaDex"}
           </h1>
           <span className="text-xs font-semibold text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
             {activeTab === "inkdrop" ? mangas.length : externalMangas.length} résultats
           </span>
         </div>
 
-           {/* INKDROP MANGAS */}
+             {/* INKDROP MANGAS */}
         {activeTab === "inkdrop" && (
           <>
             {loading ? (
@@ -520,7 +534,7 @@ export default function DiscoverPage() {
           </>
         )}
 
-        {/* MANGAREADER MANGAS */}
+        {/* MANGADEX MANGAS */}
         {activeTab === "mangadex" && (
           <>
             {loadingExternal ? (
@@ -535,8 +549,10 @@ export default function DiscoverPage() {
             ) : externalMangas.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center bg-zinc-900/20 border border-zinc-800/60 rounded-2xl p-6">
                 <Globe className="w-12 h-12 text-zinc-700" />
-                <p className="text-zinc-400 text-sm font-medium mt-4">Aucun manga disponible</p>
-                <p className="text-zinc-500 text-xs mt-1">Les mangas sont chargés depuis MangaReader</p>
+                <p className="text-zinc-400 text-sm font-medium mt-4">
+                  {searchQuery ? `Aucun résultat pour "${searchQuery}"` : "Recherchez un manga sur MangaDex"}
+                </p>
+                <p className="text-zinc-500 text-xs mt-1">Essayez "Solo Leveling" ou "Boruto"</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-3.5">
