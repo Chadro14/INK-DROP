@@ -28,7 +28,6 @@ type Chapter = {
   title: string;
   pages: number;
   publishedAt: string;
-  mangaId: string; // ✅ Ajout du mangaId pour le lien
 };
 
 export default function ReadPage() {
@@ -39,7 +38,6 @@ export default function ReadPage() {
   const [loading, setLoading] = useState(true);
   const [loadingChapters, setLoadingChapters] = useState(true);
   const [error, setError] = useState("");
-  const [mangadexId, setMangadexId] = useState<string | null>(null);
 
   const mangaId = params.id as string;
 
@@ -54,39 +52,11 @@ export default function ReadPage() {
         const data = await res.json();
         setManga(data.data);
         
-        // Si c'est un manga Kitsu, chercher l'équivalent sur MangaDex
-        if (data.data.source === 'kitsu') {
-          const searchRes = await fetch(`${API_URL}/manga-api/search?q=${encodeURIComponent(data.data.title)}&limit=1`);
-          if (searchRes.ok) {
-            const searchData = await searchRes.json();
-            if (searchData.data && searchData.data.length > 0) {
-              const foundId = searchData.data[0].id;
-              setMangadexId(foundId);
-              
-              const chaptersRes = await fetch(`${API_URL}/manga-api/${foundId}/chapters?limit=100`);
-              if (chaptersRes.ok) {
-                const chaptersData = await chaptersRes.json();
-                // ✅ Ajouter le mangaId à chaque chapitre
-                const chaptersWithMangaId = (chaptersData.data || []).map((ch: any) => ({
-                  ...ch,
-                  mangaId: foundId,
-                }));
-                setChapters(chaptersWithMangaId);
-              }
-            }
-          }
-        } else {
-          // MangaDex : récupérer les chapitres normalement
-          setMangadexId(mangaId);
-          const chaptersRes = await fetch(`${API_URL}/manga-api/${mangaId}/chapters?limit=100`);
-          if (chaptersRes.ok) {
-            const chaptersData = await chaptersRes.json();
-            const chaptersWithMangaId = (chaptersData.data || []).map((ch: any) => ({
-              ...ch,
-              mangaId: mangaId,
-            }));
-            setChapters(chaptersWithMangaId);
-          }
+        // Récupérer les chapitres
+        const chaptersRes = await fetch(`${API_URL}/manga-api/${mangaId}/chapters?limit=100`);
+        if (chaptersRes.ok) {
+          const chaptersData = await chaptersRes.json();
+          setChapters(chaptersData.data || []);
         }
       } catch (err: any) {
         setError(err.message);
@@ -138,7 +108,7 @@ export default function ReadPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <span className="font-bold text-white truncate">{manga.title}</span>
-          <span className="text-xs text-zinc-500 ml-auto">{manga.source === 'kitsu' ? 'Kitsu' : 'MangaDex'}</span>
+          <span className="text-xs text-zinc-500 ml-auto">MangaDex</span>
         </div>
       </header>
 
@@ -214,17 +184,13 @@ export default function ReadPage() {
           ) : chapters.length === 0 ? (
             <div className="text-center text-zinc-500 py-8">
               <p>Aucun chapitre disponible</p>
-              {manga.source === 'kitsu' && (
-                <p className="text-xs text-zinc-600 mt-2">Essayez de rechercher ce manga sur MangaDex</p>
-              )}
             </div>
           ) : (
             <div className="space-y-2">
               {chapters.map((chapter) => (
                 <Link
                   key={chapter.id}
-                  // ✅ Utiliser le mangaId correct (MangaDex ID)
-                  href={`/read/${chapter.mangaId}/chapter/${chapter.id}`}
+                  href={`/read/${mangaId}/chapter/${chapter.id}`}
                   className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/40 border border-zinc-800/80 hover:border-purple-500/50 transition-all group"
                 >
                   <div className="flex items-center gap-3">
