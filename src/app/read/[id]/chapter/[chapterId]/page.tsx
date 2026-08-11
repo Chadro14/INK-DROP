@@ -18,6 +18,7 @@ export default function ChapterReader() {
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
+  const [error, setError] = useState("");
 
   const mangaId = params.id as string;
   const chapterId = params.chapterId as string;
@@ -26,12 +27,17 @@ export default function ChapterReader() {
     const fetchPages = async () => {
       try {
         const res = await fetch(`${API_URL}/manga-api/chapter/${chapterId}/pages`);
-        if (res.ok) {
-          const data = await res.json();
-          setPages(data.data.pages || []);
+        if (!res.ok) {
+          throw new Error("Impossible de charger les pages");
         }
-      } catch (error) {
-        console.error("Erreur chargement pages:", error);
+        const data = await res.json();
+        if (data.data && data.data.pages && data.data.pages.length > 0) {
+          setPages(data.data.pages);
+        } else {
+          setError("Aucune page disponible pour ce chapitre");
+        }
+      } catch (err: any) {
+        setError(err.message);
       } finally {
         setLoading(false);
       }
@@ -62,10 +68,10 @@ export default function ChapterReader() {
     );
   }
 
-  if (pages.length === 0) {
+  if (error || pages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 px-4">
-        <p className="text-zinc-400 text-center">Aucune page disponible</p>
+        <p className="text-zinc-400 text-center">{error || "Aucune page disponible"}</p>
         <Link href={`/read/${mangaId}`} className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 text-white font-semibold">
           Retourner au manga
         </Link>
@@ -89,12 +95,29 @@ export default function ChapterReader() {
 
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="relative max-w-3xl w-full">
-          <img
-            src={pages[currentPage]?.url}
-            alt={`Page ${currentPage + 1}`}
-            className="w-full h-auto rounded-lg shadow-2xl"
-            loading="lazy"
-          />
+          {pages[currentPage]?.url ? (
+            <img
+              src={pages[currentPage].url}
+              alt={`Page ${currentPage + 1}`}
+              className="w-full h-auto rounded-lg shadow-2xl"
+              loading="lazy"
+              onError={(e) => {
+                // ✅ Si l'image ne charge pas, afficher un message
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.parentElement!.innerHTML = `
+                  <div class="flex flex-col items-center justify-center h-96 bg-zinc-900 rounded-lg">
+                    <p class="text-zinc-500 text-sm">Image non disponible</p>
+                    <p class="text-zinc-600 text-xs mt-2">Page ${currentPage + 1}</p>
+                  </div>
+                `;
+              }}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-96 bg-zinc-900 rounded-lg">
+              <p className="text-zinc-500 text-sm">Image non disponible</p>
+              <p className="text-zinc-600 text-xs mt-2">Page {currentPage + 1}</p>
+            </div>
+          )}
 
           {currentPage > 0 && (
             <button
