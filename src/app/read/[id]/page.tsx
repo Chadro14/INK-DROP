@@ -112,7 +112,6 @@ export default function ReadPage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
 
-      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center gap-3 max-w-4xl mx-auto">
           <button onClick={() => router.back()} className="text-zinc-400 hover:text-white transition-colors">
@@ -124,7 +123,6 @@ export default function ReadPage() {
 
       <main className="max-w-4xl mx-auto w-full px-4 py-6 flex-1">
 
-        {/* BANNIÈRE */}
         <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden border border-zinc-800 mb-6">
           {manga.coverImage ? (
             <img
@@ -164,7 +162,6 @@ export default function ReadPage() {
           </div>
         </div>
 
-        {/* DESCRIPTION */}
         <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4 mb-6">
           <p className="text-zinc-300 text-sm leading-relaxed">
             {manga.description || "Aucune description disponible."}
@@ -183,7 +180,6 @@ export default function ReadPage() {
           )}
         </div>
 
-        {/* CHAPITRES */}
         <div>
           <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-purple-400" />
