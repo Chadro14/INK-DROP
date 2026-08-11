@@ -35,63 +35,79 @@ export default function ReadPage() {
   const [manga, setManga] = useState<Manga | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingChapters, setLoadingChapters] = useState(true);
+  const [loadingChapters, setLoadingChapters] = useState(false);
   const [error, setError] = useState("");
   const [mangaTitle, setMangaTitle] = useState("");
 
-  const mangaId = params.id as string;
+  const mangaId = params?.id as string;
 
   // ============================================
   // 1. RÉCUPÉRER LE MANGA PAR ID
   // ============================================
   useEffect(() => {
+    if (!mangaId) {
+      setError("ID du manga manquant");
+      setLoading(false);
+      return;
+    }
+
     const fetchManga = async () => {
       try {
         const res = await fetch(`${API_URL}/manga-api/${mangaId}`);
         if (!res.ok) throw new Error("Manga non trouvé");
         const data = await res.json();
-        setManga(data.data);
-        setMangaTitle(data.data.title);
+        
+        // ✅ Vérifier que les données existent
+        if (data && data.data) {
+          setManga(data.data);
+          setMangaTitle(data.data.title || "");
+        } else {
+          throw new Error("Données du manga invalides");
+        }
       } catch (err: any) {
-        setError(err.message);
+        console.error("Erreur fetch manga:", err);
+        setError(err.message || "Erreur de chargement");
       } finally {
         setLoading(false);
       }
     };
 
-    if (mangaId) fetchManga();
+    fetchManga();
   }, [mangaId]);
 
   // ============================================
-  // 2. RÉCUPÉRER LES CHAPITRES PAR TITRE (recherche)
+  // 2. RÉCUPÉRER LES CHAPITRES PAR TITRE
   // ============================================
   useEffect(() => {
-    const fetchChaptersByTitle = async () => {
-      if (!mangaTitle) return;
-      setLoadingChapters(true);
+    if (!mangaTitle) return;
 
+    const fetchChaptersByTitle = async () => {
+      setLoadingChapters(true);
       try {
-        // Étape 1 : Rechercher le manga par titre
+        // Recherche par titre
         const searchRes = await fetch(`${API_URL}/manga-api/search?q=${encodeURIComponent(mangaTitle)}&limit=1`);
         if (!searchRes.ok) throw new Error("Recherche impossible");
 
         const searchData = await searchRes.json();
         if (!searchData.data || searchData.data.length === 0) {
           setChapters([]);
-          setLoadingChapters(false);
           return;
         }
 
         const realMangaId = searchData.data[0].id;
+        if (!realMangaId) {
+          setChapters([]);
+          return;
+        }
 
-        // Étape 2 : Récupérer les chapitres avec le vrai ID
+        // Récupération des chapitres
         const chaptersRes = await fetch(`${API_URL}/manga-api/${realMangaId}/chapters?limit=100`);
         if (!chaptersRes.ok) throw new Error("Impossible de charger les chapitres");
 
         const chaptersData = await chaptersRes.json();
         setChapters(chaptersData.data || []);
       } catch (err: any) {
-        console.error("Erreur chapitres:", err.message);
+        console.error("Erreur chapitres:", err);
         setChapters([]);
       } finally {
         setLoadingChapters(false);
@@ -102,12 +118,17 @@ export default function ReadPage() {
   }, [mangaTitle]);
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("fr-FR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+    if (!dateString) return "Date inconnue";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    } catch {
+      return "Date inconnue";
+    }
   };
 
   if (loading) {
@@ -137,7 +158,7 @@ export default function ReadPage() {
           <button onClick={() => router.back()} className="text-zinc-400 hover:text-white transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <span className="font-bold text-white truncate">{manga.title}</span>
+          <span className="font-bold text-white truncate">{manga.title || "Manga"}</span>
         </div>
       </header>
 
@@ -146,7 +167,14 @@ export default function ReadPage() {
         {/* Couverture */}
         <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden border border-zinc-800 mb-6">
           {manga.coverImage ? (
-            <img src={manga.coverImage} alt={manga.title} className="w-full h-full object-cover" />
+            <img
+              src={manga.coverImage}
+              alt={manga.title || "Couverture"}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
           ) : (
             <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
               <BookOpen className="w-12 h-12 text-zinc-700" />
@@ -154,14 +182,26 @@ export default function ReadPage() {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
           <div className="absolute bottom-4 left-4 right-4">
-            <h1 className="text-2xl md:text-3xl font-extrabold text-white">{manga.title}</h1>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white">{manga.title || "Titre inconnu"}</h1>
             <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-300 mt-1">
-              <span className="flex items-center gap-1"><User className="w-4 h-4" /> {manga.author || "Inconnu"}</span>
+              <span className="flex items-center gap-1">
+                <User className="w-4 h-4" />
+                {manga.author || "Inconnu"}
+              </span>
               <span>•</span>
-              <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {manga.year || "N/A"}</span>
+              <span className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                {manga.year || "N/A"}
+              </span>
               <span>•</span>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${manga.status === "ongoing" ? "bg-green-500/20 text-green-400 border border-green-500/30" : "bg-blue-500/20 text-blue-400 border border-blue-500/30"}`}>
-                {manga.status === "ongoing" ? "En cours" : "Terminé"}
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                manga.status === "ongoing"
+                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                  : manga.status === "completed"
+                  ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                  : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+              }`}>
+                {manga.status === "ongoing" ? "En cours" : manga.status === "completed" ? "Terminé" : "En pause"}
               </span>
             </div>
           </div>
@@ -169,11 +209,15 @@ export default function ReadPage() {
 
         {/* Description */}
         <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4 mb-6">
-          <p className="text-zinc-300 text-sm leading-relaxed">{manga.description || "Aucune description disponible."}</p>
+          <p className="text-zinc-300 text-sm leading-relaxed">
+            {manga.description || "Aucune description disponible."}
+          </p>
           {manga.genres && manga.genres.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3">
               {manga.genres.map((genre) => (
-                <span key={genre} className="px-3 py-1 rounded-full bg-zinc-800/50 border border-zinc-700 text-zinc-300 text-xs">{genre}</span>
+                <span key={genre} className="px-3 py-1 rounded-full bg-zinc-800/50 border border-zinc-700 text-zinc-300 text-xs">
+                  {genre}
+                </span>
               ))}
             </div>
           )}
@@ -187,9 +231,13 @@ export default function ReadPage() {
           </h2>
 
           {loadingChapters ? (
-            <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" /></div>
+            <div className="flex justify-center py-8">
+              <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            </div>
           ) : chapters.length === 0 ? (
-            <div className="text-center text-zinc-500 py-8"><p>Aucun chapitre disponible</p></div>
+            <div className="text-center text-zinc-500 py-8">
+              <p>Aucun chapitre disponible</p>
+            </div>
           ) : (
             <div className="space-y-2">
               {chapters.map((chapter) => (
@@ -208,7 +256,7 @@ export default function ReadPage() {
                       </p>
                       <p className="text-xs text-zinc-500 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {chapter.publishedAt ? formatDate(chapter.publishedAt) : "Date inconnue"}
+                        {formatDate(chapter.publishedAt)}
                       </p>
                     </div>
                   </div>
