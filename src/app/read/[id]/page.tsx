@@ -13,12 +13,13 @@ type MangaDetails = {
   title: string;
   description: string;
   coverImage: string;
-  author: { id: string; name: string };
+  author: string;
   status: string;
   year: number;
   genres: string[];
   chapters: number;
   rating: number;
+  source: string;
 };
 
 type Chapter = {
@@ -36,6 +37,7 @@ export default function ReadPage() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingChapters, setLoadingChapters] = useState(true);
+  const [error, setError] = useState("");
 
   const mangaId = params.id as string;
 
@@ -44,40 +46,45 @@ export default function ReadPage() {
     const fetchManga = async () => {
       try {
         const res = await fetch(`${API_URL}/manga-api/${mangaId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setManga(data.data);
+        if (!res.ok) {
+          throw new Error("Manga non trouvé");
         }
-      } catch (error) {
-        console.error("Erreur chargement manga:", error);
+        const data = await res.json();
+        setManga(data.data);
+        
+        // Si c'est un manga Kitsu, on récupère les chapitres via une recherche MangaDex
+        if (data.data.source === 'kitsu') {
+          // Rediriger vers MangaDex pour les chapitres
+          const searchRes = await fetch(`${API_URL}/manga-api/search?q=${encodeURIComponent(data.data.title)}&limit=1`);
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            if (searchData.data && searchData.data.length > 0) {
+              const mangadexId = searchData.data[0].id;
+              const chaptersRes = await fetch(`${API_URL}/manga-api/${mangadexId}/chapters?limit=100`);
+              if (chaptersRes.ok) {
+                const chaptersData = await chaptersRes.json();
+                setChapters(chaptersData.data || []);
+              }
+            }
+          }
+        } else {
+          // MangaDex : récupérer les chapitres normalement
+          const chaptersRes = await fetch(`${API_URL}/manga-api/${mangaId}/chapters?limit=100`);
+          if (chaptersRes.ok) {
+            const chaptersData = await chaptersRes.json();
+            setChapters(chaptersData.data || []);
+          }
+        }
+      } catch (err: any) {
+        setError(err.message);
       } finally {
         setLoading(false);
-      }
-    };
-
-    if (mangaId) {
-      fetchManga();
-    }
-  }, [mangaId]);
-
-  // Récupérer les chapitres
-  useEffect(() => {
-    const fetchChapters = async () => {
-      try {
-        const res = await fetch(`${API_URL}/manga-api/${mangaId}/chapters?limit=100`);
-        if (res.ok) {
-          const data = await res.json();
-          setChapters(data.data || []);
-        }
-      } catch (error) {
-        console.error("Erreur chargement chapitres:", error);
-      } finally {
         setLoadingChapters(false);
       }
     };
 
     if (mangaId) {
-      fetchChapters();
+      fetchManga();
     }
   }, [mangaId]);
 
@@ -98,10 +105,10 @@ export default function ReadPage() {
     );
   }
 
-  if (!manga) {
+  if (error || !manga) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 px-4">
-        <p className="text-zinc-400 text-center">Manga non trouvé</p>
+        <p className="text-zinc-400 text-center">{error || "Manga non trouvé"}</p>
         <Link href="/discover" className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 text-white font-semibold">
           Retourner à la découverte
         </Link>
@@ -118,6 +125,7 @@ export default function ReadPage() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <span className="font-bold text-white truncate">{manga.title}</span>
+          <span className="text-xs text-zinc-500 ml-auto">{manga.source === 'kitsu' ? 'Kitsu' : 'MangaDex'}</span>
         </div>
       </header>
 
@@ -141,7 +149,7 @@ export default function ReadPage() {
             <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-300 mt-1">
               <span className="flex items-center gap-1">
                 <User className="w-4 h-4" />
-                {manga.author?.name || "Inconnu"}
+                {manga.author || "Inconnu"}
               </span>
               <span>•</span>
               <span className="flex items-center gap-1">
@@ -193,13 +201,16 @@ export default function ReadPage() {
           ) : chapters.length === 0 ? (
             <div className="text-center text-zinc-500 py-8">
               <p>Aucun chapitre disponible</p>
+              {manga.source === 'kitsu' && (
+                <p className="text-xs text-zinc-600 mt-2">Essayez de rechercher ce manga sur MangaDex</p>
+              )}
             </div>
           ) : (
             <div className="space-y-2">
               {chapters.map((chapter) => (
                 <Link
                   key={chapter.id}
-                  href={`/read/${mangaId}/chapter/${chapter.id}`}
+                  href={`/read/${manga.id}/chapter/${chapter.id}`}
                   className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/40 border border-zinc-800/80 hover:border-purple-500/50 transition-all group"
                 >
                   <div className="flex items-center gap-3">
