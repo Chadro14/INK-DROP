@@ -76,7 +76,6 @@ export default function ChapterReader() {
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
 
-      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <button onClick={() => router.back()} className="text-zinc-400 hover:text-white transition-colors">
@@ -97,7 +96,6 @@ export default function ChapterReader() {
             loading="lazy"
           />
 
-          {/* Navigation gauche */}
           {currentPage > 0 && (
             <button
               onClick={prevPage}
@@ -107,7 +105,6 @@ export default function ChapterReader() {
             </button>
           )}
 
-          {/* Navigation droite */}
           {currentPage < pages.length - 1 && (
             <button
               onClick={nextPage}
