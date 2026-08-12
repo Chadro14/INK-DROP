@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ArrowLeft, BookOpen, Clock, Calendar, User, ChevronRight } from "lucide-react";
@@ -13,7 +13,7 @@ type Manga = {
   title: string;
   description: string;
   coverImage: string;
-  author: string | { name: string; id?: string };
+  author: string;
   status: string;
   year: number;
   genres: string[];
@@ -32,6 +32,9 @@ type Chapter = {
 export default function ReadPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get('from');
+  
   const [manga, setManga] = useState<Manga | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,41 +44,17 @@ export default function ReadPage() {
 
   const mangaId = params?.id as string;
 
-  // ✅ Fonction sécurisée pour récupérer le nom de l'auteur
-  const getAuthorName = (author: any): string => {
-    if (!author) return "Inconnu";
-    if (typeof author === "string") return author;
-    if (author.name) return author.name;
-    return "Inconnu";
-  };
-
-  // ✅ Fonction sécurisée pour récupérer le statut
-  const getStatusLabel = (status: string): string => {
-    const statusMap: Record<string, string> = {
-      'ongoing': 'En cours',
-      'completed': 'Terminé',
-      'hiatus': 'En pause',
-      'cancelled': 'Annulé',
-    };
-    return statusMap[status] || status || 'Inconnu';
-  };
-
-  // ✅ Fonction sécurisée pour récupérer les genres
-  const getGenres = (genres: any): string[] => {
-    if (!genres) return [];
-    if (Array.isArray(genres)) return genres;
-    return [];
-  };
-
-  // ✅ Fonction sécurisée pour récupérer la description
-  const getDescription = (desc: any): string => {
-    if (!desc) return "Aucune description disponible.";
-    if (typeof desc === "string") return desc;
-    return "Aucune description disponible.";
+  // ✅ Gestion du retour
+  const handleBack = () => {
+    if (from === 'inkmanga') {
+      router.push('/discover?tab=mangadex');
+    } else {
+      router.back();
+    }
   };
 
   // ============================================
-  // 1. RÉCUPÉRER LE MANGA PAR ID
+  // RÉCUPÉRER LE MANGA
   // ============================================
   useEffect(() => {
     if (!mangaId) {
@@ -86,12 +65,9 @@ export default function ReadPage() {
 
     const fetchManga = async () => {
       try {
-        console.log("🔍 Fetch manga:", mangaId);
         const res = await fetch(`${API_URL}/manga-api/${mangaId}`);
         if (!res.ok) throw new Error("Manga non trouvé");
         const data = await res.json();
-        console.log("📦 Données manga:", data);
-        
         if (data && data.data) {
           setManga(data.data);
           setMangaTitle(data.data.title || "");
@@ -99,7 +75,7 @@ export default function ReadPage() {
           throw new Error("Données du manga invalides");
         }
       } catch (err: any) {
-        console.error("❌ Erreur fetch manga:", err);
+        console.error("Erreur fetch manga:", err);
         setError(err.message || "Erreur de chargement");
       } finally {
         setLoading(false);
@@ -110,7 +86,7 @@ export default function ReadPage() {
   }, [mangaId]);
 
   // ============================================
-  // 2. RÉCUPÉRER LES CHAPITRES PAR TITRE
+  // RÉCUPÉRER LES CHAPITRES
   // ============================================
   useEffect(() => {
     if (!mangaTitle || mangaTitle === "Titre inconnu") return;
@@ -118,13 +94,10 @@ export default function ReadPage() {
     const fetchChaptersByTitle = async () => {
       setLoadingChapters(true);
       try {
-        console.log("🔍 Recherche chapitres pour:", mangaTitle);
         const searchRes = await fetch(`${API_URL}/manga-api/search?q=${encodeURIComponent(mangaTitle)}&limit=1`);
         if (!searchRes.ok) throw new Error("Recherche impossible");
 
         const searchData = await searchRes.json();
-        console.log("📦 Résultat recherche:", searchData);
-        
         if (!searchData.data || searchData.data.length === 0) {
           setChapters([]);
           return;
@@ -140,10 +113,9 @@ export default function ReadPage() {
         if (!chaptersRes.ok) throw new Error("Impossible de charger les chapitres");
 
         const chaptersData = await chaptersRes.json();
-        console.log("📦 Chapitres:", chaptersData);
         setChapters(chaptersData.data || []);
       } catch (err: any) {
-        console.error("❌ Erreur chapitres:", err);
+        console.error("Erreur chapitres:", err);
         setChapters([]);
       } finally {
         setLoadingChapters(false);
@@ -186,12 +158,11 @@ export default function ReadPage() {
     );
   }
 
-  // ✅ Sécurisation des données avant affichage
   const safeTitle = manga.title || "Titre inconnu";
-  const safeAuthor = getAuthorName(manga.author);
-  const safeStatus = getStatusLabel(manga.status);
-  const safeGenres = getGenres(manga.genres);
-  const safeDescription = getDescription(manga.description);
+  const safeAuthor = manga.author || "Inconnu";
+  const safeStatus = manga.status || "unknown";
+  const safeGenres = manga.genres || [];
+  const safeDescription = manga.description || "Aucune description disponible.";
   const safeYear = manga.year || "N/A";
   const safeCover = manga.coverImage || null;
 
@@ -200,7 +171,7 @@ export default function ReadPage() {
 
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center gap-3 max-w-4xl mx-auto">
-          <button onClick={() => router.back()} className="text-zinc-400 hover:text-white transition-colors">
+          <button onClick={handleBack} className="text-zinc-400 hover:text-white transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <span className="font-bold text-white truncate">{safeTitle}</span>
@@ -209,7 +180,6 @@ export default function ReadPage() {
 
       <main className="max-w-4xl mx-auto w-full px-4 py-6 flex-1">
 
-        {/* Couverture */}
         <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden border border-zinc-800 mb-6">
           {safeCover ? (
             <img
@@ -236,19 +206,18 @@ export default function ReadPage() {
               </span>
               <span>•</span>
               <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                safeStatus === "En cours"
+                safeStatus === "ongoing"
                   ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                  : safeStatus === "Terminé"
+                  : safeStatus === "completed"
                   ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
                   : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
               }`}>
-                {safeStatus}
+                {safeStatus === "ongoing" ? "En cours" : safeStatus === "completed" ? "Terminé" : "En pause"}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Description */}
         <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4 mb-6">
           <p className="text-zinc-300 text-sm leading-relaxed">{safeDescription}</p>
           {safeGenres.length > 0 && (
@@ -262,7 +231,6 @@ export default function ReadPage() {
           )}
         </div>
 
-        {/* Chapitres */}
         <div>
           <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-purple-400" />
@@ -282,7 +250,7 @@ export default function ReadPage() {
               {chapters.map((chapter) => (
                 <Link
                   key={chapter.id}
-                  href={`/read/${mangaId}/chapter/${chapter.id}`}
+                  href={`/read/${mangaId}/chapter/${chapter.id}?from=inkmanga`}
                   className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/40 border border-zinc-800/80 hover:border-purple-500/50 transition-all group"
                 >
                   <div className="flex items-center gap-3">
