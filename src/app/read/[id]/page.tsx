@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ArrowLeft, BookOpen, Clock, Calendar, User, ChevronRight } from "lucide-react";
@@ -32,6 +32,9 @@ type Chapter = {
 export default function ReadPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get('from');
+  
   const [manga, setManga] = useState<Manga | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +43,15 @@ export default function ReadPage() {
   const [mangaTitle, setMangaTitle] = useState("");
 
   const mangaId = params?.id as string;
+
+  // ✅ Gestion du retour
+  const handleBack = () => {
+    if (from === 'inkmanga') {
+      router.push('/discover?tab=mangadex');
+    } else {
+      router.back();
+    }
+  };
 
   // Récupérer le manga
   useEffect(() => {
@@ -121,10 +133,6 @@ export default function ReadPage() {
     } catch {
       return "Date inconnue";
     }
-  };
-
-  const handleBack = () => {
-    router.back();
   };
 
   if (loading) {
@@ -238,7 +246,7 @@ export default function ReadPage() {
               {chapters.map((chapter) => (
                 <Link
                   key={chapter.id}
-                  href={`/read/${mangaId}/chapter/${chapter.id}`}
+                  href={`/read/${mangaId}/chapter/${chapter.id}?from=inkmanga`}
                   className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/40 border border-zinc-800/80 hover:border-purple-500/50 transition-all group"
                 >
                   <div className="flex items-center gap-3">
