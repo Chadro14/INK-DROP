@@ -128,7 +128,7 @@ export default function ChapterPage() {
           ) : (
             <div className="flex flex-col items-center justify-center h-96 bg-zinc-900 rounded-lg">
               <p className="text-zinc-500 text-sm">Image non disponible</p>
-              <p className="text-zinc-600 text-xs mt-2">Page ${currentPage + 1}</p>
+              <p className="text-zinc-600 text-xs mt-2">Page {currentPage + 1}</p>
             </div>
           )}
 
