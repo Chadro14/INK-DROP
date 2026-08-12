@@ -60,6 +60,7 @@ export default function ChapterPage() {
     }
   };
 
+  // ✅ Bouton retour simple
   const handleBack = () => {
     router.back();
   };
