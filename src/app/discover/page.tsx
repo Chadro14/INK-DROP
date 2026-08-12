@@ -99,7 +99,7 @@ export default function DiscoverPage() {
   }, [search, genre, status, sort, activeTab]);
 
   // ============================================
-  // FETCH MANGA MANGADEX (UNIQUEMENT)
+  // FETCH MANGA EXTERNES (InkManga)
   // ============================================
   useEffect(() => {
     const fetchExternalMangas = async () => {
@@ -240,7 +240,7 @@ export default function DiscoverPage() {
 
     return (
       <Link
-        href={`/manga/${manga.id}`}
+        href={`/manga/${manga.id}?from=inkdrop`}
         className="group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg flex flex-col"
       >
         <div className="aspect-[2/3] bg-gradient-to-br from-blue-950/30 to-zinc-900 flex items-center justify-center relative overflow-hidden">
@@ -334,7 +334,7 @@ export default function DiscoverPage() {
   const ExternalMangaCard = ({ manga, featured = false }: { manga: any; featured?: boolean }) => {
     return (
       <Link
-        href={`/read/${manga.id}`}
+        href={`/read/${manga.id}?from=inkmanga`}
         className={`group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all ${
           featured ? "hover:scale-[1.01]" : "hover:scale-[1.02]"
         } active:scale-[0.98] shadow-lg flex flex-col`}
@@ -355,7 +355,7 @@ export default function DiscoverPage() {
           {featured && (
             <div className="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[90%]">
               <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-600/90 text-white backdrop-blur-md border border-purple-400/30">
-                    🔥 En vedette
+                              🔥 En vedette
               </span>
             </div>
           )}
@@ -596,7 +596,7 @@ export default function DiscoverPage() {
           </span>
         </div>
 
-        {/* INKDROP MANGAS */}
+          {/* INKDROP MANGAS */}
         {activeTab === "inkdrop" && (
           <>
             {loading ? (
@@ -634,7 +634,7 @@ export default function DiscoverPage() {
                           index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"
                         }`}
                       >
-                        <Link href={`/manga/${manga.id}`} className="block w-full h-full">
+                        <Link href={`/manga/${manga.id}?from=inkdrop`} className="block w-full h-full">
                           <div className="w-full h-full relative">
                             {manga.coverUrl ? (
                               <img
@@ -746,7 +746,7 @@ export default function DiscoverPage() {
                           index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"
                         }`}
                       >
-                        <Link href={`/read/${manga.id}`} className="block w-full h-full">
+                        <Link href={`/read/${manga.id}?from=inkmanga`} className="block w-full h-full">
                           <div className="w-full h-full relative">
                             {manga.coverImage ? (
                               <img
