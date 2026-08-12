@@ -123,7 +123,6 @@ export default function ReadPage() {
     }
   };
 
-  // ✅ Bouton retour simple
   const handleBack = () => {
     router.back();
   };
