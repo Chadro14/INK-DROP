@@ -26,7 +26,6 @@ export default function ChapterReader() {
   const mangaId = params.id as string;
   const chapterId = params.chapterId as string;
 
-  // ✅ Gestion du retour
   const handleBack = () => {
     if (from === 'inkmanga') {
       router.push(`/read/${mangaId}?from=inkmanga`);
