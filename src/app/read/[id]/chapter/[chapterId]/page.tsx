@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
@@ -15,9 +15,6 @@ type Page = {
 export default function ChapterPage() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const from = searchParams.get('from');
-  
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
@@ -25,14 +22,6 @@ export default function ChapterPage() {
 
   const mangaId = params.id as string;
   const chapterId = params.chapterId as string;
-
-  const handleBack = () => {
-    if (from === 'inkmanga') {
-      router.push(`/read/${mangaId}?from=inkmanga`);
-    } else {
-      router.back();
-    }
-  };
 
   useEffect(() => {
     const fetchPages = async () => {
@@ -71,6 +60,10 @@ export default function ChapterPage() {
     }
   };
 
+  const handleBack = () => {
+    router.back();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-zinc-950">
@@ -83,7 +76,7 @@ export default function ChapterPage() {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 px-4">
         <p className="text-zinc-400 text-center">{error || "Aucune page disponible"}</p>
-        <Link href={`/read/${mangaId}?from=inkmanga`} className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 text-white font-semibold">
+        <Link href={`/read/${mangaId}`} className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 text-white font-semibold">
           Retourner au manga
         </Link>
       </div>
