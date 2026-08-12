@@ -44,7 +44,6 @@ export default function ReadPage() {
 
   const mangaId = params?.id as string;
 
-  // ✅ Gestion du retour
   const handleBack = () => {
     if (from === 'inkmanga') {
       router.push('/discover?tab=mangadex');
@@ -53,7 +52,6 @@ export default function ReadPage() {
     }
   };
 
-  // Récupérer le manga
   useEffect(() => {
     if (!mangaId) {
       setError("ID du manga manquant");
@@ -83,7 +81,6 @@ export default function ReadPage() {
     fetchManga();
   }, [mangaId]);
 
-  // Récupérer les chapitres
   useEffect(() => {
     if (!mangaTitle || mangaTitle === "Titre inconnu") return;
 
