@@ -258,6 +258,7 @@ export default function DiscoverPage() {
 
   const ExternalMangaCard = ({ manga, featured = false }: { manga: any; featured?: boolean }) => {
     return (
+      // ✅ LIEN CORRIGÉ AVEC ?from=inkmanga
       <Link href={`/read/${manga.id}?from=inkmanga`} className={`group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all ${featured ? "hover:scale-[1.01]" : "hover:scale-[1.02]"} active:scale-[0.98] shadow-lg flex flex-col`}>
         <div className={`${featured ? "aspect-[16/9]" : "aspect-[2/3]"} bg-gradient-to-br from-purple-950/30 to-zinc-900 flex items-center justify-center relative overflow-hidden`}>
           {manga.coverImage ? (
@@ -376,8 +377,7 @@ export default function DiscoverPage() {
           <span className="text-xs font-semibold text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">{activeTab === "inkdrop" ? mangas.length : externalMangas.length} résultats</span>
         </div>
 
-          {/* INKDROP */}
-        {activeTab === "inkdrop" && (
+           {activeTab === "inkdrop" && (
           <>
             {loading ? (
               <div className="grid grid-cols-2 gap-3">{[...Array(6)].map((_, i) => (<div key={i} className="aspect-[2/3] bg-zinc-900/60 border border-zinc-800/50 rounded-2xl animate-pulse" />))}</div>
@@ -435,7 +435,6 @@ export default function DiscoverPage() {
           </>
         )}
 
-        {/* MANGADEX */}
         {activeTab === "mangadex" && (
           <>
             {loadingExternal ? (
