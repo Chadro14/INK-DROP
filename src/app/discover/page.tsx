@@ -258,7 +258,7 @@ export default function DiscoverPage() {
 
   const ExternalMangaCard = ({ manga, featured = false }: { manga: any; featured?: boolean }) => {
     return (
-      <Link href={`/read/${manga.id}`} className={`group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all ${featured ? "hover:scale-[1.01]" : "hover:scale-[1.02]"} active:scale-[0.98] shadow-lg flex flex-col`}>
+      <Link href={`/read/${manga.id}?from=inkmanga`} className={`group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all ${featured ? "hover:scale-[1.01]" : "hover:scale-[1.02]"} active:scale-[0.98] shadow-lg flex flex-col`}>
         <div className={`${featured ? "aspect-[16/9]" : "aspect-[2/3]"} bg-gradient-to-br from-purple-950/30 to-zinc-900 flex items-center justify-center relative overflow-hidden`}>
           {manga.coverImage ? (
             <img src={manga.coverImage} alt={manga.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
@@ -376,7 +376,7 @@ export default function DiscoverPage() {
           <span className="text-xs font-semibold text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">{activeTab === "inkdrop" ? mangas.length : externalMangas.length} résultats</span>
         </div>
 
-              {/* INKDROP */}
+          {/* INKDROP */}
         {activeTab === "inkdrop" && (
           <>
             {loading ? (
@@ -452,7 +452,7 @@ export default function DiscoverPage() {
                   <div className="relative h-56 md:h-72 w-full">
                     {externalMangas.map((manga, index) => (
                       <div key={manga.id} className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"}`}>
-                        <Link href={`/read/${manga.id}`} className="block w-full h-full">
+                        <Link href={`/read/${manga.id}?from=inkmanga`} className="block w-full h-full">
                           <div className="w-full h-full relative">
                             {manga.coverImage ? (
                               <img src={manga.coverImage} alt={manga.title} className="w-full h-full object-cover" loading="lazy" />
