@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { 
   Heart, 
@@ -35,6 +35,9 @@ const getImageUrl = (url?: string | null) => {
 
 export default function DiscoverPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'mangadex' ? 'mangadex' : 'inkdrop';
+  
   const [mangas, setMangas] = useState<any[]>([]);
   const [externalMangas, setExternalMangas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +48,7 @@ export default function DiscoverPage() {
   const [genre, setGenre] = useState("");
   const [status, setStatus] = useState("");
   const [sort, setSort] = useState("recent");
-  const [activeTab, setActiveTab] = useState<"inkdrop" | "mangadex">("inkdrop");
+  const [activeTab, setActiveTab] = useState<"inkdrop" | "mangadex">(initialTab);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const slideIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -57,6 +60,13 @@ export default function DiscoverPage() {
     { value: "popular", label: "Les plus populaires" },
     { value: "likes", label: "Les plus aimés" },
   ];
+
+  // ✅ CHANGER D'ONGLET AVEC URL
+  const changeTab = (tab: "inkdrop" | "mangadex") => {
+    setActiveTab(tab);
+    router.push(`/discover?tab=${tab}`, { scroll: false });
+    setCurrentSlide(0);
+  };
 
   // ============================================
   // FETCH MANGA INKDROP
@@ -240,6 +250,7 @@ export default function DiscoverPage() {
               alt={manga.title}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              decoding="async"
             />
           ) : (
             <BookOpen className="w-12 h-12 text-zinc-700" />
@@ -318,7 +329,7 @@ export default function DiscoverPage() {
   };
 
   // ============================================
-  // COMPOSANT EXTERNAL MANGA CARD (MangaDex)
+  // COMPOSANT EXTERNAL MANGA CARD (InkManga)
   // ============================================
   const ExternalMangaCard = ({ manga, featured = false }: { manga: any; featured?: boolean }) => {
     return (
@@ -335,6 +346,7 @@ export default function DiscoverPage() {
               alt={manga.title}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
+              decoding="async"
             />
           ) : (
             <BookOpen className={`${featured ? "w-16 h-16" : "w-12 h-12"} text-zinc-700`} />
@@ -343,7 +355,7 @@ export default function DiscoverPage() {
           {featured && (
             <div className="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[90%]">
               <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-purple-600/90 text-white backdrop-blur-md border border-purple-400/30">
-                🔥 En vedette
+                    🔥 En vedette
               </span>
             </div>
           )}
@@ -389,7 +401,7 @@ export default function DiscoverPage() {
           <div className="flex items-center gap-3 pt-1 text-zinc-400 text-[11px] font-semibold border-t border-zinc-800/60">
             <span className="flex items-center gap-1">
               <Globe className="w-3.5 h-3.5 text-purple-400" />
-              MangaDex
+              InkManga
             </span>
             <span className="flex items-center gap-1">
               <Library className="w-3.5 h-3.5 text-blue-400" />
@@ -412,16 +424,16 @@ export default function DiscoverPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={activeTab === "inkdrop" ? "Rechercher un manga..." : "Rechercher sur MangaDex..."}
+                placeholder={activeTab === "inkdrop" ? "Rechercher un manga..." : "Rechercher sur InkManga..."}
                 className="w-full pl-10 pr-4 py-2 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
               />
               <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
             </div>
             <button
               type="submit"
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-md shadow-blue-900/20 shrink-0"
+              className="p-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md shadow-blue-900/20 shrink-0"
             >
-              Chercher
+              <Search className="w-4 h-4" />
             </button>
           </form>
 
@@ -548,7 +560,7 @@ export default function DiscoverPage() {
       <div className="px-4 pt-4 border-b border-zinc-800/60">
         <div className="flex gap-6 max-w-lg mx-auto">
           <button
-            onClick={() => setActiveTab("inkdrop")}
+            onClick={() => changeTab("inkdrop")}
             className={`pb-3 text-sm font-bold transition-all border-b-2 flex items-center gap-2 ${
               activeTab === "inkdrop"
                 ? "border-blue-500 text-white"
@@ -559,7 +571,7 @@ export default function DiscoverPage() {
             INKDROP ({mangas.length})
           </button>
           <button
-            onClick={() => setActiveTab("mangadex")}
+            onClick={() => changeTab("mangadex")}
             className={`pb-3 text-sm font-bold transition-all border-b-2 flex items-center gap-2 ${
               activeTab === "mangadex"
                 ? "border-purple-500 text-white"
@@ -567,7 +579,7 @@ export default function DiscoverPage() {
             }`}
           >
             <Globe className="w-4 h-4" />
-            MangaDex ({externalMangas.length})
+            InkManga ({externalMangas.length})
           </button>
         </div>
       </div>
@@ -577,7 +589,7 @@ export default function DiscoverPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-blue-400" />
-            {activeTab === "inkdrop" ? "Découvrir" : "MangaDex"}
+            {activeTab === "inkdrop" ? "Découvrir" : "InkManga"}
           </h1>
           <span className="text-xs font-semibold text-zinc-500 bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800">
             {activeTab === "inkdrop" ? mangas.length : externalMangas.length} résultats
@@ -609,7 +621,6 @@ export default function DiscoverPage() {
               </div>
             ) : (
               <>
-                {/* ✅ CARROUSEL INKDROP */}
                 <div 
                   className="relative w-full rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-900/40 shadow-xl"
                   onMouseEnter={handleMouseEnter}
@@ -630,6 +641,8 @@ export default function DiscoverPage() {
                                 src={getImageUrl(manga.coverUrl)}
                                 alt={manga.title}
                                 className="w-full h-full object-cover"
+                                loading="lazy"
+                                decoding="async"
                               />
                             ) : (
                               <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
@@ -688,7 +701,6 @@ export default function DiscoverPage() {
                   </div>
                 </div>
 
-                {/* GRILLE */}
                 <div className="grid grid-cols-2 gap-3.5">
                   {mangas.slice(1).map((manga: any) => (
                     <MangaCard key={manga.id} manga={manga} />
@@ -699,7 +711,7 @@ export default function DiscoverPage() {
           </>
         )}
 
-        {/* MANGADEX MANGAS */}
+        {/* INKMANGA MANGAS */}
         {activeTab === "mangadex" && (
           <>
             {loadingExternal ? (
@@ -721,7 +733,6 @@ export default function DiscoverPage() {
               </div>
             ) : (
               <>
-                {/* ✅ CARROUSEL MANGADEX */}
                 <div 
                   className="relative w-full rounded-2xl overflow-hidden border border-zinc-800/80 bg-zinc-900/40 shadow-xl"
                   onMouseEnter={handleMouseEnter}
@@ -742,6 +753,8 @@ export default function DiscoverPage() {
                                 src={manga.coverImage}
                                 alt={manga.title}
                                 className="w-full h-full object-cover"
+                                loading="lazy"
+                                decoding="async"
                               />
                             ) : (
                               <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
@@ -761,7 +774,7 @@ export default function DiscoverPage() {
                               </div>
                               <h2 className="text-xl md:text-2xl font-extrabold text-white">{manga.title}</h2>
                               <p className="text-zinc-300 text-sm mt-1 line-clamp-2 max-w-md">
-                                {manga.description || "Découvrez ce manga sur MangaDex."}
+                                {manga.description || "Découvrez ce manga sur InkManga."}
                               </p>
                               <div className="flex items-center gap-3 mt-2 text-xs text-zinc-400">
                                 <span>{manga.author?.name || 'Inconnu'}</span>
@@ -801,7 +814,6 @@ export default function DiscoverPage() {
                   </div>
                 </div>
 
-                {/* GRILLE */}
                 <div className="grid grid-cols-2 gap-3.5">
                   {externalMangas.slice(1).map((manga: any) => (
                     <ExternalMangaCard key={manga.id} manga={manga} />
