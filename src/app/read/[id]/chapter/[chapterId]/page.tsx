@@ -1,67 +1,138 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, BookOpen, Clock, Calendar, User, ChevronRight } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-type Page = {
-  url: string;
+type Manga = {
+  id: string;
+  title: string;
+  description: string;
+  coverImage: string;
+  author: string;
+  status: string;
+  year: number;
+  genres: string[];
+  chapters: number;
+  rating: number;
 };
 
-export default function ChapterPage() {
+type Chapter = {
+  id: string;
+  chapter: string;
+  title: string;
+  pages: number;
+  publishedAt: string;
+};
+
+export default function ReadPage() {
   const params = useParams();
   const router = useRouter();
-  const [pages, setPages] = useState<Page[]>([]);
+  const searchParams = useSearchParams();
+  const from = searchParams.get('from');
+  
+  const [manga, setManga] = useState<Manga | null>(null);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [loadingChapters, setLoadingChapters] = useState(false);
   const [error, setError] = useState("");
+  const [mangaTitle, setMangaTitle] = useState("");
 
-  const mangaId = params.id as string;
-  const chapterId = params.chapterId as string;
+  const mangaId = params?.id as string;
 
+  // ✅ Gestion du retour
+  const handleBack = () => {
+    if (from === 'inkmanga') {
+      router.push('/discover?tab=mangadex');
+    } else {
+      router.back();
+    }
+  };
+
+  // Récupérer le manga
   useEffect(() => {
-    const fetchPages = async () => {
+    if (!mangaId) {
+      setError("ID du manga manquant");
+      setLoading(false);
+      return;
+    }
+
+    const fetchManga = async () => {
       try {
-        const res = await fetch(`${API_URL}/manga-api/chapter/${chapterId}/pages`);
-        if (!res.ok) {
-          throw new Error("Impossible de charger les pages");
-        }
+        const res = await fetch(`${API_URL}/manga-api/${mangaId}`);
+        if (!res.ok) throw new Error("Manga non trouvé");
         const data = await res.json();
-        if (data.data && data.data.pages && data.data.pages.length > 0) {
-          setPages(data.data.pages);
+        if (data && data.data) {
+          setManga(data.data);
+          setMangaTitle(data.data.title || "");
         } else {
-          setError("Aucune page disponible pour ce chapitre");
+          throw new Error("Données du manga invalides");
         }
       } catch (err: any) {
-        setError(err.message);
+        console.error("Erreur fetch manga:", err);
+        setError(err.message || "Erreur de chargement");
       } finally {
         setLoading(false);
       }
     };
 
-    if (chapterId) {
-      fetchPages();
-    }
-  }, [chapterId]);
+    fetchManga();
+  }, [mangaId]);
 
-  const nextPage = () => {
-    if (currentPage < pages.length - 1) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
+  // Récupérer les chapitres
+  useEffect(() => {
+    if (!mangaTitle || mangaTitle === "Titre inconnu") return;
 
-  const prevPage = () => {
-    if (currentPage > 0) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
+    const fetchChaptersByTitle = async () => {
+      setLoadingChapters(true);
+      try {
+        const searchRes = await fetch(`${API_URL}/manga-api/search?q=${encodeURIComponent(mangaTitle)}&limit=1`);
+        if (!searchRes.ok) throw new Error("Recherche impossible");
 
-  const handleBack = () => {
-    router.back();
+        const searchData = await searchRes.json();
+        if (!searchData.data || searchData.data.length === 0) {
+          setChapters([]);
+          return;
+        }
+
+        const realMangaId = searchData.data[0].id;
+        if (!realMangaId) {
+          setChapters([]);
+          return;
+        }
+
+        const chaptersRes = await fetch(`${API_URL}/manga-api/${realMangaId}/chapters?limit=100`);
+        if (!chaptersRes.ok) throw new Error("Impossible de charger les chapitres");
+
+        const chaptersData = await chaptersRes.json();
+        setChapters(chaptersData.data || []);
+      } catch (err: any) {
+        console.error("Erreur chapitres:", err);
+        setChapters([]);
+      } finally {
+        setLoadingChapters(false);
+      }
+    };
+
+    fetchChaptersByTitle();
+  }, [mangaTitle]);
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "Date inconnue";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    } catch {
+      return "Date inconnue";
+    }
   };
 
   if (loading) {
@@ -72,75 +143,130 @@ export default function ChapterPage() {
     );
   }
 
-  if (error || pages.length === 0) {
+  if (error || !manga) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 px-4">
-        <p className="text-zinc-400 text-center">{error || "Aucune page disponible"}</p>
-        <Link href={`/read/${mangaId}`} className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 text-white font-semibold">
-          Retourner au manga
+        <p className="text-zinc-400 text-center">{error || "Manga non trouvé"}</p>
+        <Link href="/discover" className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 text-white font-semibold">
+          Retourner à la découverte
         </Link>
       </div>
     );
   }
 
+  const safeTitle = manga.title || "Titre inconnu";
+  const safeAuthor = manga.author || "Inconnu";
+  const safeStatus = manga.status || "unknown";
+  const safeGenres = manga.genres || [];
+  const safeDescription = manga.description || "Aucune description disponible.";
+  const safeYear = manga.year || "N/A";
+  const safeCover = manga.coverImage || null;
+
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
+    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
 
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
+        <div className="flex items-center gap-3 max-w-4xl mx-auto">
           <button onClick={handleBack} className="text-zinc-400 hover:text-white transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <span className="text-sm text-zinc-400">
-            Page {currentPage + 1} / {pages.length}
-          </span>
+          <span className="font-bold text-white truncate">{safeTitle}</span>
         </div>
       </header>
 
-      <main className="flex-1 flex items-center justify-center p-4">
-        <div className="relative max-w-3xl w-full">
-          {pages[currentPage]?.url ? (
+      <main className="max-w-4xl mx-auto w-full px-4 py-6 flex-1">
+
+        <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden border border-zinc-800 mb-6">
+          {safeCover ? (
             <img
-              src={pages[currentPage].url}
-              alt={`Page ${currentPage + 1}`}
-              className="w-full h-auto rounded-lg shadow-2xl"
-              loading="lazy"
+              src={safeCover}
+              alt={safeTitle}
+              className="w-full h-full object-cover"
               onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                const parent = e.currentTarget.parentElement;
-                if (parent) {
-                  parent.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-96 bg-zinc-900 rounded-lg">
-                      <p class="text-zinc-500 text-sm">Image non disponible</p>
-                      <p class="text-zinc-600 text-xs mt-2">Page ${currentPage + 1}</p>
-                    </div>
-                  `;
-                }
+                e.currentTarget.style.display = "none";
               }}
             />
-          ) : (
-            <div className="flex flex-col items-center justify-center h-96 bg-zinc-900 rounded-lg">
-              <p className="text-zinc-500 text-sm">Image non disponible</p>
-              <p className="text-zinc-600 text-xs mt-2">Page {currentPage + 1}</p>
+          ) : null}
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
+          <div className="absolute bottom-4 left-4 right-4">
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white">{safeTitle}</h1>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-300 mt-1">
+              <span className="flex items-center gap-1">
+                <User className="w-4 h-4" />
+                {safeAuthor}
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                {safeYear}
+              </span>
+              <span>•</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                safeStatus === "ongoing"
+                  ? "bg-green-500/20 text-green-400 border border-green-500/30"
+                  : safeStatus === "completed"
+                  ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                  : "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+              }`}>
+                {safeStatus === "ongoing" ? "En cours" : safeStatus === "completed" ? "Terminé" : "En pause"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4 mb-6">
+          <p className="text-zinc-300 text-sm leading-relaxed">{safeDescription}</p>
+          {safeGenres.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {safeGenres.map((genre) => (
+                <span key={genre} className="px-3 py-1 rounded-full bg-zinc-800/50 border border-zinc-700 text-zinc-300 text-xs">
+                  {genre}
+                </span>
+              ))}
             </div>
           )}
+        </div>
 
-          {currentPage > 0 && (
-            <button
-              onClick={prevPage}
-              className="absolute left-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700 transition-all"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-          )}
+        <div>
+          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-purple-400" />
+            Chapitres ({chapters.length})
+          </h2>
 
-          {currentPage < pages.length - 1 && (
-            <button
-              onClick={nextPage}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700 transition-all"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
+          {loadingChapters ? (
+            <div className="flex justify-center py-8">
+              <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : chapters.length === 0 ? (
+            <div className="text-center text-zinc-500 py-8">
+              <p>Aucun chapitre disponible</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {chapters.map((chapter) => (
+                <Link
+                  key={chapter.id}
+                  href={`/read/${mangaId}/chapter/${chapter.id}?from=inkmanga`}
+                  className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/40 border border-zinc-800/80 hover:border-purple-500/50 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-purple-600/20 flex items-center justify-center text-purple-400 font-bold text-sm">
+                      {chapter.chapter || "?"}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-white group-hover:text-purple-400 transition-colors">
+                        {chapter.title || `Chapitre ${chapter.chapter || "?"}`}
+                      </p>
+                      <p className="text-xs text-zinc-500 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {formatDate(chapter.publishedAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-purple-400 transition-colors" />
+                </Link>
+              ))}
+            </div>
           )}
         </div>
       </main>
