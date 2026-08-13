@@ -1,9 +1,7 @@
-// public/sw.js
 const CACHE_NAME = 'inkdrop-v1';
-const API_CACHE_NAME = 'inkdrop-api-v1';
-const IMAGE_CACHE_NAME = 'inkdrop-images-v1';
+const OFFLINE_PAGE = '/offline.html';
 
-// ✅ Fichiers statiques à mettre en cache
+// ✅ Fichiers à mettre en cache
 const STATIC_ASSETS = [
   '/',
   '/discover',
@@ -11,7 +9,7 @@ const STATIC_ASSETS = [
   '/favicon.ico',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
-  '/icons/icon-384.png',
+  OFFLINE_PAGE,
 ];
 
 // ✅ Installation
@@ -32,7 +30,7 @@ self.addEventListener('activate', (event) => {
       caches.keys().then((cacheNames) => {
         return Promise.all(
           cacheNames
-            .filter((name) => name !== CACHE_NAME && name !== API_CACHE_NAME && name !== IMAGE_CACHE_NAME)
+            .filter((name) => name !== CACHE_NAME)
             .map((name) => caches.delete(name))
         );
       }),
@@ -43,84 +41,57 @@ self.addEventListener('activate', (event) => {
 
 // ✅ Interception des requêtes
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+  const request = event.request;
 
-  // ⚡ Stratégie différente selon le type de requête
-
-  // 1. API : Network First (toujours la version la plus récente)
-  if (url.pathname.startsWith('/api/')) {
+  // 1. API : Network First
+  if (request.url.includes('/api/')) {
     event.respondWith(
-      fetch(event.request)
+      fetch(request)
         .then((response) => {
           const clonedResponse = response.clone();
-          caches.open(API_CACHE_NAME).then((cache) => {
-            cache.put(event.request, clonedResponse);
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, clonedResponse);
           });
           return response;
         })
         .catch(() => {
-          return caches.match(event.request);
+          return caches.match(request);
         })
     );
     return;
   }
 
-  // 2. Images : Stale While Revalidate (affiche le cache, met à jour en arrière-plan)
-  if (event.request.destination === 'image') {
+  // 2. Pages HTML : Network First avec fallback offline
+  if (request.mode === 'navigate') {
     event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        const fetchPromise = fetch(event.request).then((networkResponse) => {
-          caches.open(IMAGE_CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
+      fetch(request)
+        .then((response) => {
+          const clonedResponse = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, clonedResponse);
           });
-          return networkResponse;
-        });
-        return cachedResponse || fetchPromise;
-      })
+          return response;
+        })
+        .catch(() => {
+          return caches.match(OFFLINE_PAGE);
+        })
     );
     return;
   }
 
-  // 3. Pages : Cache First (rapide, puis mise à jour)
+  // 3. Images, CSS, JS : Cache First
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
         // Mise à jour en arrière-plan
-        fetch(event.request).then((networkResponse) => {
+        fetch(request).then((networkResponse) => {
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse);
+            cache.put(request, networkResponse);
           });
         });
         return cachedResponse;
       }
-      return fetch(event.request);
+      return fetch(request);
     })
-  );
-});
-
-// ✅ Gestion des notifications push (si activé)
-self.addEventListener('push', (event) => {
-  const data = event.data.json();
-  const options = {
-    body: data.body || 'Nouvelle notification INKDROP',
-    icon: '/icons/icon-192.png',
-    badge: '/icons/icon-72.png',
-    vibrate: [200, 100, 200],
-    data: {
-      url: data.url || '/',
-    },
-  };
-
-  event.waitUntil(
-    self.registration.showNotification('INKDROP', options)
-  );
-});
-
-// ✅ Clic sur notification
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const url = event.notification.data.url || '/';
-  event.waitUntil(
-    clients.openWindow(url)
   );
 });
