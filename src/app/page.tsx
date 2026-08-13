@@ -25,7 +25,6 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 
-// ✅ ANIMES EN DUR (fallback si l'API ne fonctionne pas)
 const FALLBACK_ANIMES = [
   {
     id: "jujutsu-kaisen",
@@ -162,7 +161,6 @@ export default function Home() {
         setTrendingMangas(trendingData.data || []);
         setCreators(creatorsData.data || []);
 
-        // ✅ ANIMES : fallback si l'API ne fonctionne pas
         if (animesRes && animesRes.ok) {
           const animesData = await animesRes.json();
           if (animesData.data && animesData.data.length > 0) {
@@ -187,7 +185,7 @@ export default function Home() {
   }, []);
 
   // ============================================
-  // DÉFILEMENT INFINI (TikTok style)
+  // DÉFILEMENT INFINI
   // ============================================
   const fetchMoreMangas = async () => {
     if (loadingInfinite || !hasMore) return;
@@ -233,7 +231,7 @@ export default function Home() {
   }, [loadingInfinite, hasMore]);
 
   // ============================================
-  // CARROUSEL TENDANCES (3s)
+  // CARROUSEL TENDANCES
   // ============================================
   useEffect(() => {
     if (trendingMangas.length === 0) return;
@@ -251,9 +249,6 @@ export default function Home() {
     setCurrentTrendIndex((prev) => (prev - 1 + trendingMangas.length) % trendingMangas.length);
   };
 
-  // ============================================
-  // RECHERCHE
-  // ============================================
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (search.trim()) {
@@ -261,9 +256,6 @@ export default function Home() {
     }
   };
 
-  // ============================================
-  // AFFICHAGE
-  // ============================================
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-zinc-950">
@@ -402,7 +394,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== CRÉATEURS CERTIFIÉS ===== */}
+      {/* ===== CRÉATEURS CERTIFIÉS - BADGE EN BAS ===== */}
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -429,8 +421,9 @@ export default function Home() {
                     ) : (
                       creator.username?.charAt(0).toUpperCase() || "?"
                     )}
+                    {/* ✅ BADGE EN BAS */}
                     {creator.isCertified && (
-                      <div className="absolute -top-0.5 -right-0.5 bg-zinc-950 p-0.5 rounded-full shadow-lg">
+                      <div className="absolute -bottom-0.5 -right-0.5 bg-zinc-950 p-0.5 rounded-full shadow-lg">
                         <BadgeCheck
                           className="w-5 h-5"
                           fill={badgeColor}
@@ -494,7 +487,6 @@ export default function Home() {
                   <h4 className="text-xs font-bold truncate text-white group-hover:text-blue-400 transition-colors">
                     {manga.title}
                   </h4>
-                  {/* ===== AUTEUR AVEC PHOTO + BADGE ===== */}
                   <div className="flex items-center gap-1.5 mt-1">
                     {manga.author?.avatarUrl ? (
                       <img 
@@ -615,7 +607,6 @@ export default function Home() {
                     <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">
                       {manga.title}
                     </h3>
-                    {/* ===== AUTEUR AVEC PHOTO + BADGE ===== */}
                     <div className="flex items-center gap-1.5 mt-0.5">
                       {manga.author?.avatarUrl ? (
                         <img 
@@ -670,7 +661,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* MESSAGE MANGADEX */}
           {!hasMore && infiniteMangas.length > 0 && (
             <div className="text-center py-6">
               <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
