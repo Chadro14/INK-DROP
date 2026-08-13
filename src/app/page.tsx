@@ -1,630 +1,560 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { 
-  Heart, 
-  Eye, 
-  Search, 
-  X, 
   BookOpen, 
+  Heart, 
+  Settings, 
+  LogOut, 
+  Edit, 
+  Eye, 
+  Mail, 
+  Calendar, 
+  Plus, 
+  Share2, 
+  Award, 
+  Zap, 
+  Coins, 
+  ChevronRight, 
+  BadgeCheck, 
+  Shield, 
+  Palette,
+  Grid,
   Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  Star,
+  User,
+  Clock,
   TrendingUp,
-  Flame,
+  Layers,
+  Star,
   Users,
-  Globe,
-  Film,
-  Library
+  BookMarked,
+  FileText,
+  MoreHorizontal,
+  Camera,
+  Trash2,
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  Info,
+  Menu,
+  Home,
+  Search,
+  Bell,
+  MessageCircle,
+  Compass,
+  Flame,
+  Crown,
+  Gift,
+  Zap as ZapIcon,
+  Award as AwardIcon,
+  Coins as CoinsIcon,
+  Sparkles as SparklesIcon,
+  BadgeCheck as BadgeCheckIcon,
+  Shield as ShieldIcon,
+  Palette as PaletteIcon,
+  Grid as GridIcon,
+  BookOpen as BookOpenIcon,
+  Heart as HeartIcon,
+  Eye as EyeIcon,
+  Mail as MailIcon,
+  Calendar as CalendarIcon,
+  Plus as PlusIcon,
+  Share2 as Share2Icon,
+  Settings as SettingsIcon,
+  LogOut as LogOutIcon,
+  Edit as EditIcon,
+  ChevronRight as ChevronRightIcon,
+  User as UserIcon,
+  Clock as ClockIcon,
+  TrendingUp as TrendingUpIcon,
+  Layers as LayersIcon,
+  Star as StarIcon,
+  Users as UsersIcon,
+  BookMarked as BookMarkedIcon,
+  FileText as FileTextIcon,
+  MoreHorizontal as MoreHorizontalIcon,
+  Camera as CameraIcon,
+  Trash2 as Trash2Icon,
+  Loader2 as Loader2Icon,
+  CheckCircle as CheckCircleIcon,
+  AlertCircle as AlertCircleIcon,
+  XCircle as XCircleIcon,
+  Info as InfoIcon,
+  Menu as MenuIcon,
+  Home as HomeIcon,
+  Search as SearchIcon,
+  Bell as BellIcon,
+  MessageCircle as MessageCircleIcon,
+  Compass as CompassIcon,
+  Flame as FlameIcon,
+  Crown as CrownIcon,
+  Gift as GiftIcon,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-// ✅ ANIMES EN DUR (fallback si l'API ne fonctionne pas)
-const FALLBACK_ANIMES = [
-  {
-    id: "jujutsu-kaisen",
-    title: "Jujutsu Kaisen",
-    coverImage: "https://m.media-amazon.com/images/I/81sFGrAbkdL._AC_SL1500_.jpg",
-    rating: 4.8,
-    episodes: 47,
-    genre: ["Action", "Surnaturel"],
-  },
-  {
-    id: "solo-leveling",
-    title: "Solo Leveling",
-    coverImage: "https://m.media-amazon.com/images/I/71yI-pV3KbL._AC_SL1500_.jpg",
-    rating: 4.9,
-    episodes: 12,
-    genre: ["Action", "Fantastique"],
-  },
-  {
-    id: "demon-slayer",
-    title: "Demon Slayer",
-    coverImage: "https://m.media-amazon.com/images/I/81uLEKlS4LL._AC_SL1500_.jpg",
-    rating: 4.7,
-    episodes: 55,
-    genre: ["Action", "Aventure"],
-  },
-  {
-    id: "one-piece",
-    title: "One Piece",
-    coverImage: "https://m.media-amazon.com/images/I/81jQw5Fw-WL._AC_SL1500_.jpg",
-    rating: 4.6,
-    episodes: 1100,
-    genre: ["Aventure", "Comédie"],
-  },
-  {
-    id: "attack-on-titan",
-    title: "Attack on Titan",
-    coverImage: "https://m.media-amazon.com/images/I/81qLpG5TjRL._AC_SL1500_.jpg",
-    rating: 4.8,
-    episodes: 87,
-    genre: ["Action", "Drame"],
-  },
-  {
-    id: "naruto",
-    title: "Naruto",
-    coverImage: "https://m.media-amazon.com/images/I/81xP0l6rS-L._AC_SL1500_.jpg",
-    rating: 4.5,
-    episodes: 220,
-    genre: ["Action", "Aventure"],
-  },
-];
-
-const getImageUrl = (url?: string | null) => {
-  if (!url) return null;
-  if (url.startsWith("http://") || url.startsWith("https://")) {
-    return url;
-  }
-  return `${API_URL}/storage/${url}`;
-};
-
-type Manga = {
-  id: string;
-  title: string;
-  coverUrl: string;
-  author: { username: string; isCertified: boolean };
-  likesCount: number;
-  viewsCount: number;
-  genre: string[];
-  status: string;
-};
-
-type Creator = {
+type UserProfile = {
   id: string;
   username: string;
-  avatarUrl: string;
+  email: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  role: string;
   isCertified: boolean;
-  _count: { mangas: number; followers: number };
+  premiumActive: boolean;
+  premiumExpires: string | null;
+  createdAt: string;
+  manas: number;
+  steamPoints: number;
+  steamLevel: number;
+  avatarColor: string | null;
+  badgeColor?: string | null;
+  _count: {
+    mangas: number;
+    followers: number;
+    following: number;
+  };
+  mangas?: any[];
+  earnings?: {
+    total: number;
+    pending: number;
+    paid: number;
+  };
 };
 
-type Anime = {
-  id: string;
-  title: string;
-  coverImage: string;
-  rating: number;
-  episodes: number;
-  genre: string[];
-};
-
-export default function Home() {
+export default function ProfilePage() {
   const router = useRouter();
-  const [mangas, setMangas] = useState<Manga[]>([]);
-  const [trendingMangas, setTrendingMangas] = useState<Manga[]>([]);
-  const [creators, setCreators] = useState<Creator[]>([]);
-  const [animes, setAnimes] = useState<Anime[]>(FALLBACK_ANIMES);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
-  const [currentTrendIndex, setCurrentTrendIndex] = useState(0);
-  const [infiniteMangas, setInfiniteMangas] = useState<Manga[]>([]);
-  const [infinitePage, setInfinitePage] = useState(1);
-  const [loadingInfinite, setLoadingInfinite] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const observerRef = useRef<HTMLDivElement | null>(null);
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<"mangas" | "stats" | "menu">("mangas");
 
-  // ============================================
-  // FETCH MANGAS POPULAIRES
-  // ============================================
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
       try {
-        const [mangasRes, trendingRes, creatorsRes, animesRes] = await Promise.all([
-          fetch(`${API_URL}/mangas?limit=6&sort=popular`),
-          fetch(`${API_URL}/mangas?limit=10&sort=trending`),
-          // ✅ NOUVELLE ROUTE : creators/top (sans JWT)
-          fetch(`${API_URL}/creators/top?limit=6`),
-          fetch(`${API_URL}/inkstream/popular?limit=6`).catch(() => ({ ok: false })),
+        const [profileRes, earningsRes] = await Promise.all([
+          fetch(`${API_URL}/users/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_URL}/dashboard/earnings`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
         ]);
 
-        const mangasData = mangasRes.ok ? await mangasRes.json() : { data: [] };
-        const trendingData = trendingRes.ok ? await trendingRes.json() : { data: [] };
-        
-        // ✅ GESTION DE LA NOUVELLE RÉPONSE
-        let creatorsData = { data: [] };
-        if (creatorsRes.ok) {
-          const json = await creatorsRes.json();
-          // La nouvelle route retourne { success: true, data: [...] }
-          creatorsData = { data: json.data || [] };
-        }
-
-        setMangas(mangasData.data || []);
-        setTrendingMangas(trendingData.data || []);
-        setCreators(creatorsData.data || []);
-
-        // ✅ ANIMES : fallback si l'API ne fonctionne pas
-        if (animesRes && animesRes.ok) {
-          const animesData = await animesRes.json();
-          if (animesData.data && animesData.data.length > 0) {
-            setAnimes(animesData.data);
-          } else {
-            setAnimes(FALLBACK_ANIMES);
+        if (!profileRes.ok) {
+          if (profileRes.status === 401) {
+            localStorage.removeItem("token");
+            router.push("/login");
+            return;
           }
-        } else {
-          setAnimes(FALLBACK_ANIMES);
+          throw new Error("Erreur lors du chargement du profil");
         }
 
-        setInfiniteMangas(mangasData.data || []);
-      } catch (error) {
-        console.error("Erreur chargement:", error);
-        setAnimes(FALLBACK_ANIMES);
+        const profileData = await profileRes.json();
+
+        let earningsData = null;
+        if (earningsRes.ok) {
+          earningsData = await earningsRes.json();
+        }
+
+        setProfile({
+          ...profileData,
+          earnings: earningsData || { total: 0, pending: 0, paid: 0 },
+        });
+      } catch (err: any) {
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, []);
+    fetchProfile();
+  }, [router]);
 
-  // ============================================
-  // DÉFILEMENT INFINI (TikTok style)
-  // ============================================
-  const fetchMoreMangas = async () => {
-    if (loadingInfinite || !hasMore) return;
-    setLoadingInfinite(true);
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    router.push("/login");
+  };
 
-    try {
-      const res = await fetch(`${API_URL}/mangas?limit=10&page=${infinitePage}&sort=popular`);
-      const data = await res.json();
-      const newMangas = data.data || [];
+  const handleShare = () => {
+    const username = profile?.username || "utilisateur";
+    const shareUrl = `https://ink-drop-one.vercel.app/creator/${username}`;
 
-      if (newMangas.length === 0) {
-        setHasMore(false);
-      } else {
-        setInfiniteMangas((prev) => [...prev, ...newMangas]);
-        setInfinitePage((prev) => prev + 1);
-      }
-    } catch (error) {
-      console.error("Erreur chargement infini:", error);
-      setHasMore(false);
-    } finally {
-      setLoadingInfinite(false);
+    if (navigator.share) {
+      navigator.share({
+        title: `INKDROP - ${username}`,
+        text: `Découvre le profil de ${username} sur INKDROP !`,
+        url: shareUrl,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      alert("📋 Lien copié !");
     }
   };
 
-  // ============================================
-  // OBSERVER POUR LE DÉFILEMENT INFINI
-  // ============================================
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loadingInfinite && hasMore) {
-          fetchMoreMangas();
-        }
-      },
-      { threshold: 0.3 }
-    );
-
-    if (observerRef.current) {
-      observer.observe(observerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [loadingInfinite, hasMore]);
-
-  // ============================================
-  // CARROUSEL TENDANCES (3s)
-  // ============================================
-  useEffect(() => {
-    if (trendingMangas.length === 0) return;
-    const interval = setInterval(() => {
-      setCurrentTrendIndex((prev) => (prev + 1) % trendingMangas.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [trendingMangas.length]);
-
-  const nextTrend = () => {
-    setCurrentTrendIndex((prev) => (prev + 1) % trendingMangas.length);
-  };
-
-  const prevTrend = () => {
-    setCurrentTrendIndex((prev) => (prev - 1 + trendingMangas.length) % trendingMangas.length);
-  };
-
-  // ============================================
-  // RECHERCHE
-  // ============================================
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (search.trim()) {
-      router.push(`/discover?search=${encodeURIComponent(search)}`);
-    }
-  };
-
-  // ============================================
-  // AFFICHAGE
-  // ============================================
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-zinc-950">
+      <div className="flex items-center justify-center h-screen bg-zinc-950 text-white">
         <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
+  if (error || !profile) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-white px-4">
+        <p className="text-zinc-400 text-center">{error || "Profil non trouvé"}</p>
+        <button
+          onClick={() => router.push("/login")}
+          className="mt-4 px-6 py-2.5 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all"
+        >
+          Se connecter
+        </button>
+      </div>
+    );
+  }
+
+  const activeBadgeColor = profile.badgeColor || profile.avatarColor || "#3B82F6";
+
   return (
-    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
+    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
       {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          <span className="text-xl font-bold text-white tracking-tight">INKDROP</span>
-          <button
-            onClick={() => setShowSearch(!showSearch)}
-            className="text-zinc-400 hover:text-white transition-colors p-2"
-          >
-            <Search className="w-5 h-5" />
-          </button>
-        </div>
-        {showSearch && (
-          <form onSubmit={handleSearch} className="max-w-lg mx-auto mt-3 flex items-center gap-2 animate-fade-in">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher un créateur ou un manga..."
-              className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
-              autoFocus
-            />
-            <button
-              type="submit"
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition-all"
-            >
-              OK
+      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
+        <div className="flex items-center justify-between max-w-4xl mx-auto">
+          <span className="text-base font-bold tracking-tight text-white/90">
+            @{profile.username.toLowerCase()}
+          </span>
+          <div className="flex items-center gap-2 md:gap-3 text-zinc-400">
+            <button onClick={handleShare} className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all">
+              <Share2 className="w-5 h-5" />
             </button>
-            <button
-              type="button"
-              onClick={() => setShowSearch(false)}
-              className="p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all"
-            >
-              <X className="w-4 h-4" />
+            <Link href="/profile/settings" className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all">
+              <Settings className="w-5 h-5" />
+            </Link>
+            <button onClick={handleLogout} className="p-2 rounded-full hover:bg-zinc-900 hover:text-red-400 transition-all">
+              <LogOut className="w-5 h-5" />
             </button>
-          </form>
-        )}
-      </header>
-
-      {/* ===== TENDANCES ===== */}
-      <section className="px-4 pt-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Flame className="w-3.5 h-3.5 text-orange-500" />
-            Tendances
-          </h2>
-          <Link href="/discover" className="text-zinc-500 text-xs font-medium hover:text-white transition-colors">
-            Voir tout
-          </Link>
-        </div>
-        <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
-          <div className="relative h-48 md:h-56">
-            {trendingMangas.length > 0 ? (
-              trendingMangas.map((manga, index) => (
-                <Link
-                  key={manga.id}
-                  href={`/manga/${manga.id}`}
-                  className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                    index === currentTrendIndex ? "opacity-100 z-10" : "opacity-0 z-0"
-                  }`}
-                >
-                  <div className="w-full h-full relative">
-                    {manga.coverUrl ? (
-                      <img
-                        src={getImageUrl(manga.coverUrl)}
-                        alt={manga.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
-                        <BookOpen className="w-12 h-12 text-zinc-700" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 p-4">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600/80 text-white border border-blue-400/30">
-                          🔥 Tendance
-                        </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-800/80 text-yellow-400 border border-yellow-500/30 flex items-center gap-0.5">
-                          <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
-                          {manga.likesCount || 0}
-                        </span>
-                      </div>
-                      <h3 className="text-lg md:text-xl font-bold text-white mt-1">{manga.title}</h3>
-                      <p className="text-zinc-400 text-xs">{manga.author?.username || "Inconnu"}</p>
-                    </div>
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-zinc-500">
-                <p>Aucune tendance pour le moment</p>
-              </div>
-            )}
-
-            {trendingMangas.length > 1 && (
-              <>
-                <button
-                  onClick={prevTrend}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-zinc-950/60 text-zinc-300 hover:text-white border border-zinc-800 backdrop-blur-md z-20 transition-all"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={nextTrend}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-zinc-950/60 text-zinc-300 hover:text-white border border-zinc-800 backdrop-blur-md z-20 transition-all"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-                  {trendingMangas.slice(0, 6).map((_, index) => (
-                    <button
-                      key={index}
-                      onClick={() => setCurrentTrendIndex(index)}
-                      className={`h-1 rounded-full transition-all duration-300 ${
-                        index === currentTrendIndex ? "w-5 bg-blue-500" : "w-1.5 bg-zinc-600"
-                      }`}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
           </div>
         </div>
-      </section>
+      </header>
 
-      {/* ===== CRÉATEURS CERTIFIÉS ===== */}
-      <section className="px-4 py-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5 text-blue-400" />
-            Créateurs certifiés
-          </h2>
-          <Link href="/discover" className="text-zinc-500 text-xs font-medium hover:text-white transition-colors">
-            Voir tout
-          </Link>
+      {/* ===== BANNIÈRE ===== */}
+      <div className="h-32 md:h-48 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
+      </div>
+
+      <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
+
+        {/* ===== AVATAR ===== */}
+        <div className="relative mb-3 group">
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 overflow-hidden border-4 border-zinc-950 shadow-2xl ring-2 ring-blue-500/30 shrink-0">
+            {profile.avatarUrl ? (
+              <img 
+                src={profile.avatarUrl} 
+                alt={profile.username} 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-3xl md:text-4xl font-black text-blue-400 bg-gradient-to-br from-zinc-800 to-zinc-900">
+                {profile.username?.charAt(0).toUpperCase() || "?"}
+              </div>
+            )}
+          </div>
+          {/* ✅ BADGE RETIRÉ D'ICI - Déplacé à côté du nom */}
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-          {creators.length > 0 ? (
-            creators.map((creator) => (
-              <Link
-                key={creator.id}
-                href={`/creator/${creator.username}`}
-                className="flex flex-col items-center gap-1 flex-shrink-0 group"
+
+        {/* ===== NOM + BADGE (NOUVEAU DESIGN) ===== */}
+        <div className="flex items-center gap-3 mb-1 flex-wrap justify-center">
+          <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">
+            {profile.username}
+          </h1>
+          {profile.isCertified && (
+            <div 
+              className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border shadow-lg"
+              style={{ 
+                backgroundColor: `${activeBadgeColor}20`,
+                borderColor: activeBadgeColor,
+                boxShadow: `0 0 20px ${activeBadgeColor}20`
+              }}
+            >
+              <BadgeCheck 
+                className="w-4 h-4" 
+                fill={activeBadgeColor} 
+                color="white"
+                strokeWidth={2}
+              />
+              <span 
+                className="text-[9px] font-bold uppercase tracking-wider"
+                style={{ color: activeBadgeColor }}
               >
-                <div className="w-14 h-14 rounded-full bg-zinc-900 flex items-center justify-center text-white font-bold text-lg border-2 border-zinc-800 group-hover:border-blue-500 transition-all relative">
-                  {creator.avatarUrl ? (
-                    <img src={creator.avatarUrl} alt={creator.username} className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    creator.username?.charAt(0).toUpperCase() || "?"
-                  )}
-                  {creator.isCertified && (
-                    <span className="absolute -top-0.5 -right-0.5">
-                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                    </span>
-                  )}
-                </div>
-                <span className="text-zinc-400 text-[10px] truncate max-w-14 text-center">
-                  {creator.username || "Inconnu"}
-                </span>
-              </Link>
-            ))
-          ) : (
-            <div className="flex-1 text-center py-4">
-              <p className="text-zinc-500 text-xs">Aucun créateur certifié pour le moment</p>
+                Certifié
+              </span>
             </div>
           )}
-        </div>
-      </section>
-
-      {/* ===== MANGA POPULAIRES ===== */}
-      <section className="px-4 py-2">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-            Mangas populaires
-          </h2>
-          <Link href="/discover" className="text-zinc-500 text-xs font-medium hover:text-white transition-colors">
-            Voir tout
-          </Link>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {mangas.slice(0, 6).map((manga) => (
-            <Link
-              key={manga.id}
-              href={`/manga/${manga.id}`}
-              className="group bg-zinc-900/40 border border-zinc-800/80 rounded-xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.97]"
-            >
-              <div className="aspect-[2/3] bg-zinc-900 flex items-center justify-center relative overflow-hidden">
-                {manga.coverUrl ? (
-                  <img
-                    src={getImageUrl(manga.coverUrl)}
-                    alt={manga.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <BookOpen className="w-8 h-8 text-zinc-700" />
-                )}
-                <div className="absolute top-1.5 left-1.5">
-                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-blue-600/80 text-white border border-blue-400/30">
-                    {manga.genre?.[0] || "Manga"}
-                  </span>
-                </div>
-              </div>
-              <div className="p-2">
-                <h4 className="text-xs font-bold truncate text-white group-hover:text-blue-400 transition-colors">
-                  {manga.title}
-                </h4>
-                <p className="text-zinc-500 text-[9px] truncate">{manga.author?.username || "Inconnu"}</p>
-                <div className="flex items-center gap-2 mt-0.5 text-zinc-500 text-[9px]">
-                  <span className="flex items-center gap-0.5">
-                    <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500/20" />
-                    {manga.likesCount || 0}
-                  </span>
-                  <span className="flex items-center gap-0.5">
-                    <Eye className="w-2.5 h-2.5 text-blue-400" />
-                    {manga.viewsCount || 0}
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== ANIMES POPULAIRES (gardé comme fallback) ===== */}
-      <section className="px-4 py-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Film className="w-3.5 h-3.5 text-purple-400" />
-            Animes populaires
-          </h2>
-          <Link href="/inkstream" className="text-zinc-500 text-xs font-medium hover:text-white transition-colors">
-            Voir tout
-          </Link>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          {animes.map((anime) => (
-            <Link
-              key={anime.id}
-              href={`/inkstream/${anime.id}`}
-              className="flex-shrink-0 w-32 group"
-            >
-              <div className="aspect-[2/3] bg-zinc-900 rounded-xl overflow-hidden border border-zinc-800 group-hover:border-purple-500/50 transition-all relative">
-                {anime.coverImage ? (
-                  <img
-                    src={anime.coverImage}
-                    alt={anime.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Film className="w-8 h-8 text-zinc-700" />
-                  </div>
-                )}
-                <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[9px] font-bold flex items-center gap-0.5">
-                  <Star className="w-2.5 h-2.5 fill-yellow-500 text-yellow-500" />
-                  {anime.rating || 'N/A'}
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
-                  <p className="text-white text-xs font-bold truncate">{anime.title}</p>
-                  <p className="text-zinc-400 text-[9px]">{anime.episodes || 0} épisodes</p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== DÉFILEMENT INFINI ===== */}
-      <section className="px-4 py-2">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5 text-blue-400" />
-            Découvrir
-          </h2>
-        </div>
-        <div className="space-y-4">
-          {infiniteMangas.map((manga) => (
-            <Link
-              key={manga.id}
-              href={`/manga/${manga.id}`}
-              className="block bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.98]"
-            >
-              <div className="flex gap-3 p-3">
-                <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden">
-                  {manga.coverUrl ? (
-                    <img
-                      src={getImageUrl(manga.coverUrl)}
-                      alt={manga.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <BookOpen className="w-6 h-6 text-zinc-700" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">
-                    {manga.title}
-                  </h3>
-                  <p className="text-zinc-400 text-xs truncate">par {manga.author?.username || "Inconnu"}</p>
-                  <div className="flex items-center gap-3 mt-1 text-zinc-500 text-[10px]">
-                    <span className="flex items-center gap-0.5">
-                      <Heart className="w-3 h-3 text-rose-500 fill-rose-500/20" />
-                      {manga.likesCount || 0}
-                    </span>
-                    <span className="flex items-center gap-0.5">
-                      <Eye className="w-3 h-3 text-blue-400" />
-                      {manga.viewsCount || 0}
-                    </span>
-                    {manga.genre && manga.genre.length > 0 && (
-                      <span className="px-1.5 py-0.5 rounded bg-zinc-800/50 text-zinc-400 text-[8px]">
-                        {manga.genre[0]}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </Link>
-          ))}
-
-          {/* OBSERVER */}
-          <div ref={observerRef} className="h-4" />
-
-          {loadingInfinite && (
-            <div className="flex justify-center py-4">
-              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            </div>
+          {profile.premiumActive && (
+            <span className="px-2.5 py-0.5 rounded-full bg-blue-500 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm">
+              PRO
+            </span>
           )}
+        </div>
 
-          {/* MESSAGE MANGADEX */}
-          {!hasMore && infiniteMangas.length > 0 && (
-            <div className="text-center py-6">
-              <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
-                <p className="text-zinc-400 text-sm font-medium">
-                  🌐 Tu as atteint la fin des mangas INKDROP
-                </p>
-                <p className="text-zinc-500 text-xs mt-1">
-                  Explore plus de mangas sur <span className="text-purple-400 font-semibold">MangaDex</span>
-                </p>
+        {/* ===== BIO ===== */}
+        <p className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal">
+          {profile.bio || "Créateur sur INKDROP 🎨"}
+        </p>
+
+        {/* ===== INFOS ===== */}
+        <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-6">
+          <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-blue-400" /> {profile.email}</span>
+          <span>•</span>
+          <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-blue-400" /> Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
+        </div>
+
+        {/* ===== STATS SOCIALES ===== */}
+        <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
+          <div className="text-center">
+            <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
+            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Abonnements</p>
+          </div>
+          <div className="h-7 w-[1px] bg-zinc-800" />
+          <div className="text-center">
+            <p className="text-lg md:text-xl font-black text-white">{profile._count?.followers || 0}</p>
+            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Abonnés</p>
+          </div>
+          <div className="h-7 w-[1px] bg-zinc-800" />
+          <div className="text-center">
+            <p className="text-lg md:text-xl font-black text-blue-400">{profile.manas || 0}</p>
+            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">MANAS</p>
+          </div>
+        </div>
+
+        {/* ===== BOUTONS D'ACTION ===== */}
+        <div className="flex gap-2.5 w-full max-w-md md:max-w-lg mb-8">
+          <Link
+            href="/profile/edit"
+            className="flex-1 py-2.5 rounded-full bg-white hover:bg-zinc-200 text-black text-xs md:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2"
+          >
+            <Edit className="w-4 h-4" />
+            Modifier le profil
+          </Link>
+          <Link
+            href="/creator/upload"
+            className="px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" />
+            Publier
+          </Link>
+          <button
+            onClick={handleShare}
+            className="p-2.5 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-800 transition-all flex items-center justify-center"
+            title="Partager"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* ===== TABS ===== */}
+        <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
+          <button
+            onClick={() => setActiveTab("mangas")}
+            className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
+              activeTab === "mangas"
+                ? "border-blue-500 text-white"
+                : "border-transparent text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <Grid className="w-4 h-4" />
+            <span>Mangas ({profile._count?.mangas || 0})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("stats")}
+            className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
+              activeTab === "stats"
+                ? "border-blue-500 text-white"
+                : "border-transparent text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <Zap className="w-4 h-4" />
+            <span>Niveau & Stats</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("menu")}
+            className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
+              activeTab === "menu"
+                ? "border-blue-500 text-white"
+                : "border-transparent text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Avantages</span>
+          </button>
+        </div>
+
+        {/* ===== TAB CONTENT : MANGAS ===== */}
+        {activeTab === "mangas" && (
+          <div className="w-full">
+            {!profile.mangas || profile.mangas.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center bg-zinc-900/30 rounded-2xl border border-zinc-800/40 max-w-md mx-auto my-2">
+                <BookOpen className="w-10 h-10 text-zinc-700" />
+                <p className="text-zinc-400 mt-3 text-sm font-medium">Aucun manga publié</p>
                 <Link
-                  href="/discover?tab=mangadex"
-                  className="mt-3 inline-block px-5 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-900/20"
+                  href="/creator/upload"
+                  className="mt-4 px-5 py-2 rounded-full bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-all shadow"
                 >
-                  🔍 Découvrir MangaDex
+                  Publier ton premier projet
                 </Link>
               </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
+                {profile.mangas.map((manga: any) => (
+                  <Link
+                    key={manga.id}
+                    href={`/manga/${manga.id}`}
+                    className="group relative aspect-[2/3] bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800/60 hover:scale-[1.02] hover:border-blue-500/50 transition-all duration-200"
+                  >
+                    {manga.coverUrl || manga.imageUrl ? (
+                      <img 
+                        src={manga.coverUrl || manga.imageUrl} 
+                        alt={manga.title} 
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <BookOpen className="w-8 h-8 text-zinc-700" />
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-0 left-0 right-0 p-1.5 md:p-2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end justify-between">
+                      <span className="flex items-center gap-1 text-white text-[10px] md:text-xs font-bold drop-shadow">
+                        <Eye className="w-3 h-3 text-sky-400" /> {manga.viewsCount || 0}
+                      </span>
+                      <span className="flex items-center gap-1 text-white text-[10px] md:text-xs font-bold drop-shadow">
+                        <Heart className="w-3 h-3 text-rose-500 fill-rose-500" /> {manga.likesCount || 0}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (confirm(`Supprimer "${manga.title}" ?`)) {
+                          const token = localStorage.getItem("token");
+                          try {
+                            const res = await fetch(`${API_URL}/mangas/${manga.id}`, {
+                              method: "DELETE",
+                              headers: { Authorization: `Bearer ${token}` },
+                            });
+                            if (res.ok) {
+                              window.location.reload();
+                            } else {
+                              alert("Erreur lors de la suppression");
+                            }
+                          } catch (error) {
+                            alert("Erreur réseau");
+                          }
+                        }
+                      }}
+                      className="absolute top-1.5 right-1.5 z-10 p-1 rounded-full bg-black/70 text-white hover:bg-red-600 transition-all backdrop-blur-md opacity-0 group-hover:opacity-100"
+                    >
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ===== TAB CONTENT : STATS ===== */}
+        {activeTab === "stats" && (
+          <div className="w-full max-w-xl mx-auto space-y-3">
+            <div className="grid grid-cols-3 gap-2.5">
+              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
+                <Zap className="w-5 h-5 mx-auto text-blue-400 mb-1" />
+                <p className="text-base md:text-lg font-black text-white">{profile.steamPoints || 0}</p>
+                <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Points Steam</p>
+              </div>
+              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
+                <Award className="w-5 h-5 mx-auto text-purple-400 mb-1" />
+                <p className="text-base md:text-lg font-black text-white">Niv. {profile.steamLevel || 1}</p>
+                <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Niveau</p>
+              </div>
+              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
+                <Coins className="w-5 h-5 mx-auto text-emerald-400 mb-1" />
+                <p className="text-base md:text-lg font-black text-white">{profile.earnings?.total || 0}$</p>
+                <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Revenus</p>
+              </div>
             </div>
-          )}
-        </div>
-      </section>
+          </div>
+        )}
+
+        {/* ===== TAB CONTENT : MENU ===== */}
+        {activeTab === "menu" && (
+          <div className="w-full max-w-xl mx-auto space-y-2.5">
+            <Link
+              href="/certification"
+              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Award className="w-5 h-5 text-blue-400" />
+                <span className="text-sm font-semibold text-white">Demande de Certification</span>
+                {profile.isCertified && (
+                  <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20">
+                    Certifié
+                  </span>
+                )}
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-500" />
+            </Link>
+
+            {profile.isCertified && (
+              <Link
+                href="/profile/badge-color"
+                className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <Palette className="w-5 h-5 text-purple-400" />
+                  <span className="text-sm font-semibold text-white">Couleur du Badge</span>
+                  <div
+                    className="w-4.5 h-4.5 rounded-full border border-zinc-700 shadow-inner"
+                    style={{ backgroundColor: activeBadgeColor }}
+                  />
+                </div>
+                <ChevronRight className="w-4 h-4 text-zinc-500" />
+              </Link>
+            )}
+
+            {profile.role === 'ADMIN' && (
+              <Link
+                href="/admin/certify"
+                className="flex items-center justify-between p-4 bg-purple-950/40 rounded-xl border border-purple-500/30 hover:border-purple-500/60 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <Shield className="w-5 h-5 text-purple-400" />
+                  <span className="text-sm font-semibold text-white">Panneau d'administration</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-purple-400" />
+              </Link>
+            )}
+          </div>
+        )}
+
+      </main>
 
       <BottomNav />
     </div>
