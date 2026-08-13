@@ -58,7 +58,6 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="theme-color" content="#000000" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-        
         {/* ✅ ENREGISTREMENT DU SERVICE WORKER */}
         <script
           dangerouslySetInnerHTML={{
@@ -86,4 +85,4 @@ export default function RootLayout({
       </body>
     </html>
   );
-        }
+}
