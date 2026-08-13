@@ -5,11 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>INKDROP — Hors ligne</title>
   <style>
+    /* ===== RESET ===== */
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
+
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap');
 
     body {
       min-height: 100vh;
@@ -17,27 +20,94 @@
       align-items: center;
       justify-content: center;
       background: #0a0a0f;
-      color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
       padding: 20px;
       overflow: hidden;
+      color: #fff;
     }
 
-    /* ===== ANIMATION DE FOND ===== */
-    .bg-gradient {
+    /* ===== FOND MANGA ===== */
+    .bg-manga {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background:
-        radial-gradient(circle at 20% 50%, rgba(37, 99, 235, 0.08) 0%, transparent 60%),
-        radial-gradient(circle at 80% 50%, rgba(99, 102, 241, 0.06) 0%, transparent 60%),
-        #0a0a0f;
       z-index: 0;
+      background:
+        radial-gradient(circle at 20% 30%, rgba(37, 99, 235, 0.06) 0%, transparent 60%),
+        radial-gradient(circle at 80% 70%, rgba(139, 92, 246, 0.05) 0%, transparent 60%),
+        #0a0a0f;
     }
 
-    .bg-particles {
+    /* ===== LIGNES DE MANGA (décor) ===== */
+    .manga-lines {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.04;
+    }
+
+    .manga-lines .line {
+      position: absolute;
+      background: #3b82f6;
+      border-radius: 2px;
+    }
+
+    .manga-lines .line:nth-child(1) {
+      width: 2px;
+      height: 200px;
+      top: 10%;
+      left: 8%;
+      animation: lineFloat 8s ease-in-out infinite;
+    }
+    .manga-lines .line:nth-child(2) {
+      width: 2px;
+      height: 150px;
+      top: 50%;
+      right: 12%;
+      animation: lineFloat 6s ease-in-out infinite 1s;
+    }
+    .manga-lines .line:nth-child(3) {
+      width: 120px;
+      height: 2px;
+      top: 20%;
+      right: 20%;
+      animation: lineFloat 7s ease-in-out infinite 0.5s;
+    }
+    .manga-lines .line:nth-child(4) {
+      width: 80px;
+      height: 2px;
+      bottom: 30%;
+      left: 15%;
+      animation: lineFloat 9s ease-in-out infinite 2s;
+    }
+    .manga-lines .line:nth-child(5) {
+      width: 2px;
+      height: 100px;
+      top: 60%;
+      left: 5%;
+      animation: lineFloat 5s ease-in-out infinite 1.5s;
+    }
+    .manga-lines .line:nth-child(6) {
+      width: 2px;
+      height: 180px;
+      bottom: 10%;
+      right: 25%;
+      animation: lineFloat 7s ease-in-out infinite 0.8s;
+    }
+
+    @keyframes lineFloat {
+      0%, 100% { transform: translateY(0) scaleY(1); opacity: 0.04; }
+      50% { transform: translateY(-20px) scaleY(1.2); opacity: 0.08; }
+    }
+
+    /* ===== PARTICULES ===== */
+    .particles {
       position: fixed;
       top: 0;
       left: 0;
@@ -50,25 +120,25 @@
 
     .particle {
       position: absolute;
-      width: 2px;
-      height: 2px;
+      width: 3px;
+      height: 3px;
       background: rgba(37, 99, 235, 0.15);
       border-radius: 50%;
-      animation: floatParticle 8s infinite ease-in-out;
+      animation: floatParticle 10s infinite ease-in-out;
     }
 
-    .particle:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; }
-    .particle:nth-child(2) { top: 20%; left: 80%; animation-delay: 1.2s; width: 3px; height: 3px; }
-    .particle:nth-child(3) { top: 60%; left: 5%; animation-delay: 2.4s; }
-    .particle:nth-child(4) { top: 70%; left: 90%; animation-delay: 0.6s; width: 4px; height: 4px; }
-    .particle:nth-child(5) { top: 40%; left: 50%; animation-delay: 1.8s; }
-    .particle:nth-child(6) { top: 85%; left: 30%; animation-delay: 3s; width: 3px; height: 3px; }
-    .particle:nth-child(7) { top: 15%; left: 60%; animation-delay: 0.9s; }
-    .particle:nth-child(8) { top: 50%; left: 20%; animation-delay: 2.1s; width: 5px; height: 5px; }
+    .particle:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; width: 4px; height: 4px; }
+    .particle:nth-child(2) { top: 20%; left: 80%; animation-delay: 1.5s; }
+    .particle:nth-child(3) { top: 60%; left: 5%; animation-delay: 3s; width: 5px; height: 5px; }
+    .particle:nth-child(4) { top: 70%; left: 90%; animation-delay: 0.8s; }
+    .particle:nth-child(5) { top: 40%; left: 50%; animation-delay: 2.2s; width: 4px; height: 4px; }
+    .particle:nth-child(6) { top: 85%; left: 30%; animation-delay: 3.5s; }
+    .particle:nth-child(7) { top: 15%; left: 60%; animation-delay: 1s; width: 5px; height: 5px; }
+    .particle:nth-child(8) { top: 50%; left: 20%; animation-delay: 2.8s; }
 
     @keyframes floatParticle {
-      0%, 100% { transform: translateY(0) scale(1); opacity: 0.15; }
-      50% { transform: translateY(-40px) scale(1.5); opacity: 0.5; }
+      0%, 100% { transform: translateY(0) scale(1); opacity: 0.1; }
+      50% { transform: translateY(-50px) scale(1.8); opacity: 0.4; }
     }
 
     /* ===== CONTAINER ===== */
@@ -76,64 +146,83 @@
       position: relative;
       z-index: 1;
       text-align: center;
-      max-width: 440px;
+      max-width: 460px;
       animation: fadeInUp 0.8s ease-out;
     }
 
     @keyframes fadeInUp {
-      0% { opacity: 0; transform: translateY(20px); }
-      100% { opacity: 1; transform: translateY(0); }
+      0% { opacity: 0; transform: translateY(30px) scale(0.96); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
     }
 
-    /* ===== LOGO / ICÔNE ===== */
-    .logo-wrapper {
-      width: 100px;
-      height: 100px;
-      margin: 0 auto 24px auto;
-      border-radius: 24px;
-      background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(99, 102, 241, 0.08));
-      border: 1px solid rgba(37, 99, 235, 0.15);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      animation: logoPulse 3s ease-in-out infinite;
+    /* ===== SVG MANGA ===== */
+    .manga-svg {
+      width: 140px;
+      height: 160px;
+      margin: 0 auto 16px auto;
+      display: block;
     }
 
-    .logo-wrapper svg {
-      width: 48px;
-      height: 48px;
+    /* Animation du livre qui s'ouvre */
+    .book-cover {
+      transform-origin: left center;
+      animation: openBook 1.2s ease-out forwards;
     }
 
-    @keyframes logoPulse {
-      0%, 100% { box-shadow: 0 0 30px rgba(37, 99, 235, 0.05); }
-      50% { box-shadow: 0 0 60px rgba(37, 99, 235, 0.15); }
+    @keyframes openBook {
+      0% { transform: scaleX(0); opacity: 0; }
+      60% { transform: scaleX(1.05); opacity: 1; }
+      100% { transform: scaleX(1); opacity: 1; }
     }
 
-    /* Anneau rotatif autour du logo */
-    .ring {
-      position: absolute;
-      inset: -4px;
-      border-radius: 28px;
-      border: 1px solid transparent;
-      background: linear-gradient(135deg, transparent 40%, rgba(37, 99, 235, 0.3) 100%) border-box;
-      -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      animation: ringRotate 6s linear infinite;
+    .book-pages {
+      animation: pagesFloat 3s ease-in-out infinite;
     }
 
-    @keyframes ringRotate {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
+    @keyframes pagesFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    /* Animation des bulles de dialogue */
+    .speech-bubble {
+      opacity: 0;
+      animation: bubbleAppear 1s ease-out 0.8s forwards;
+    }
+
+    @keyframes bubbleAppear {
+      0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* Animation de l'étoile (effet manga) */
+    .manga-star {
+      animation: starPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes starPulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
+
+    /* Animation des traits d'action */
+    .action-lines {
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      animation: drawLines 1.5s ease-out 0.5s forwards;
+    }
+
+    @keyframes drawLines {
+      0% { stroke-dashoffset: 100; opacity: 0; }
+      100% { stroke-dashoffset: 0; opacity: 0.6; }
     }
 
     /* ===== TEXTE ===== */
     h1 {
       font-size: 28px;
-      font-weight: 800;
-      margin-bottom: 6px;
-      background: linear-gradient(135deg, #ffffff 30%, #94a3b8 100%);
+      font-weight: 900;
+      margin-bottom: 4px;
+      background: linear-gradient(135deg, #ffffff 20%, #94a3b8 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -142,58 +231,25 @@
 
     .subtitle {
       color: #64748b;
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 2px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 3px;
       text-transform: uppercase;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
+    }
+
+    .subtitle span {
+      color: #3b82f6;
     }
 
     p {
       color: #a1a1aa;
       font-size: 15px;
-      line-height: 1.7;
+      line-height: 1.8;
       margin-bottom: 28px;
-      max-width: 360px;
+      max-width: 340px;
       margin-left: auto;
       margin-right: auto;
-    }
-
-    /* ===== ANIMATION DE CHARGEMENT ===== */
-    .loader {
-      display: flex;
-      gap: 6px;
-      justify-content: center;
-      margin-bottom: 28px;
-    }
-
-    .loader span {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #2563eb;
-      animation: loaderBounce 1.2s ease-in-out infinite;
-    }
-
-    .loader span:nth-child(2) {
-      animation-delay: 0.15s;
-      background: #3b82f6;
-    }
-
-    .loader span:nth-child(3) {
-      animation-delay: 0.3s;
-      background: #60a5fa;
-    }
-
-    @keyframes loaderBounce {
-      0%, 80%, 100% {
-        transform: scale(0.4);
-        opacity: 0.3;
-      }
-      40% {
-        transform: scale(1);
-        opacity: 1;
-      }
     }
 
     /* ===== BOUTON ===== */
@@ -201,15 +257,15 @@
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      padding: 14px 36px;
+      padding: 14px 38px;
       background: linear-gradient(135deg, #2563eb, #1d4ed8);
       color: #fff;
       border-radius: 14px;
       text-decoration: none;
-      font-weight: 600;
+      font-weight: 700;
       font-size: 14px;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.25);
+      box-shadow: 0 4px 25px rgba(37, 99, 235, 0.25);
       position: relative;
       overflow: hidden;
       border: none;
@@ -233,7 +289,7 @@
 
     .btn:hover {
       transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 8px 30px rgba(37, 99, 235, 0.4);
+      box-shadow: 0 8px 35px rgba(37, 99, 235, 0.4);
       background: linear-gradient(135deg, #3b82f6, #2563eb);
     }
 
@@ -252,9 +308,9 @@
     }
 
     /* ===== BADGE ===== */
-    .offline-badge {
+    .badge {
       display: inline-block;
-      margin-top: 24px;
+      margin-top: 22px;
       padding: 6px 20px;
       background: rgba(63, 63, 70, 0.4);
       backdrop-filter: blur(12px);
@@ -262,11 +318,11 @@
       font-size: 11px;
       color: #a1a1aa;
       border: 1px solid rgba(82, 82, 91, 0.3);
-      letter-spacing: 0.5px;
       font-weight: 500;
+      letter-spacing: 0.3px;
     }
 
-    .offline-badge .dot {
+    .badge .dot {
       display: inline-block;
       width: 7px;
       height: 7px;
@@ -281,15 +337,30 @@
       50% { opacity: 0.2; transform: scale(0.8); }
     }
 
+    /* ===== OMBRE PORTÉE ===== */
+    .shadow-glow {
+      position: absolute;
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 30px;
+      background: radial-gradient(ellipse, rgba(37, 99, 235, 0.15) 0%, transparent 70%);
+      border-radius: 50%;
+      filter: blur(10px);
+      animation: glowPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes glowPulse {
+      0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.5; }
+      50% { transform: translateX(-50%) scale(1.2); opacity: 0.8; }
+    }
+
     /* ===== RESPONSIVE ===== */
     @media (max-width: 480px) {
-      .logo-wrapper {
-        width: 80px;
-        height: 80px;
-      }
-      .logo-wrapper svg {
-        width: 36px;
-        height: 36px;
+      .manga-svg {
+        width: 110px;
+        height: 130px;
       }
       h1 {
         font-size: 22px;
@@ -298,14 +369,29 @@
         padding: 12px 28px;
         font-size: 13px;
       }
+      p {
+        font-size: 14px;
+      }
     }
   </style>
 </head>
 <body>
 
   <!-- FOND -->
-  <div class="bg-gradient"></div>
-  <div class="bg-particles">
+  <div class="bg-manga"></div>
+
+  <!-- LIGNES MANGA -->
+  <div class="manga-lines">
+    <div class="line"></div>
+    <div class="line"></div>
+    <div class="line"></div>
+    <div class="line"></div>
+    <div class="line"></div>
+    <div class="line"></div>
+  </div>
+
+  <!-- PARTICULES -->
+  <div class="particles">
     <div class="particle"></div>
     <div class="particle"></div>
     <div class="particle"></div>
@@ -319,44 +405,85 @@
   <!-- CONTENU -->
   <div class="container">
 
-    <!-- LOGO -->
-    <div class="logo-wrapper">
-      <span class="ring"></span>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#2563eb"/>
-        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="#3b82f6"/>
-        <path d="M8 7h8" stroke="#60a5fa" stroke-width="2"/>
-        <path d="M8 11h6" stroke="#60a5fa" stroke-width="2"/>
-        <path d="M8 15h4" stroke="#60a5fa" stroke-width="2"/>
-      </svg>
-    </div>
+    <!-- SVG MANGA -->
+    <svg class="manga-svg" viewBox="0 0 140 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Ombre -->
+      <ellipse cx="70" cy="150" rx="50" ry="6" fill="rgba(37,99,235,0.08)" filter="url(#blur)"/>
+
+      <!-- Livre - Pages -->
+      <g class="book-pages">
+        <rect x="28" y="30" width="84" height="100" rx="4" fill="rgba(37,99,235,0.06)" stroke="rgba(37,99,235,0.15)" stroke-width="0.8"/>
+        <rect x="32" y="34" width="76" height="92" rx="3" fill="rgba(37,99,235,0.04)" stroke="rgba(37,99,235,0.08)" stroke-width="0.5"/>
+        <rect x="36" y="38" width="68" height="84" rx="2" fill="rgba(37,99,235,0.02)" stroke="rgba(37,99,235,0.05)" stroke-width="0.5"/>
+      </g>
+
+      <!-- Livre - Couverture (s'ouvre) -->
+      <g class="book-cover">
+        <rect x="24" y="26" width="92" height="108" rx="4" fill="url(#coverGrad)" stroke="rgba(37,99,235,0.2)" stroke-width="1.2"/>
+        <rect x="28" y="30" width="84" height="100" rx="3" fill="none" stroke="rgba(37,99,235,0.1)" stroke-width="0.8"/>
+        <!-- Détail de la tranche -->
+        <line x1="70" y1="30" x2="70" y2="130" stroke="rgba(37,99,235,0.1)" stroke-width="0.5"/>
+        <!-- Titre sur la couverture -->
+        <text x="70" y="82" text-anchor="middle" font-size="10" font-weight="700" fill="rgba(59,130,246,0.6)" font-family="Outfit, sans-serif">INKDROP</text>
+        <rect x="48" y="92" width="44" height="3" rx="1.5" fill="rgba(59,130,246,0.2)"/>
+        <rect x="52" y="98" width="36" height="2" rx="1" fill="rgba(59,130,246,0.1)"/>
+      </g>
+
+      <!-- Bulle de dialogue -->
+      <g class="speech-bubble">
+        <path d="M85 60 L105 60 C110 60 115 65 115 70 L115 80 C115 85 110 88 105 88 L92 88 L82 96 L85 88 L85 80 C85 75 80 70 80 65 L80 60 C80 55 85 52 90 52 Z" fill="rgba(37,99,235,0.08)" stroke="rgba(37,99,235,0.15)" stroke-width="0.8"/>
+        <text x="95" y="72" text-anchor="middle" font-size="6" font-weight="600" fill="rgba(255,255,255,0.3)" font-family="Outfit, sans-serif">📖</text>
+      </g>
+
+      <!-- Étoile manga -->
+      <g class="manga-star">
+        <path d="M115 20 L118 28 L126 28 L119.5 33 L121.5 41 L115 36 L108.5 41 L110.5 33 L104 28 L112 28 Z" fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.2)" stroke-width="0.5"/>
+      </g>
+
+      <!-- Traits d'action -->
+      <g class="action-lines">
+        <line x1="20" y1="20" x2="38" y2="30" stroke="rgba(59,130,246,0.2)" stroke-width="1.2"/>
+        <line x1="22" y1="15" x2="35" y2="22" stroke="rgba(59,130,246,0.15)" stroke-width="0.8"/>
+        <line x1="120" y1="130" x2="130" y2="125" stroke="rgba(59,130,246,0.15)" stroke-width="0.8"/>
+      </g>
+
+      <!-- Reflet -->
+      <rect x="30" y="32" width="20" height="60" rx="2" fill="white" opacity="0.03"/>
+
+      <!-- Définitions -->
+      <defs>
+        <linearGradient id="coverGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="rgba(37,99,235,0.12)"/>
+          <stop offset="50%" stop-color="rgba(37,99,235,0.06)"/>
+          <stop offset="100%" stop-color="rgba(37,99,235,0.01)"/>
+        </linearGradient>
+        <filter id="blur">
+          <feGaussianBlur stdDeviation="3"/>
+        </filter>
+      </defs>
+    </svg>
+
+    <div class="shadow-glow"></div>
 
     <!-- TEXTE -->
-    <h1>Connexion perdue</h1>
-    <p class="subtitle">• INKDROP hors ligne •</p>
+    <h1>Chapitre en pause</h1>
+    <p class="subtitle">• <span>INKDROP</span> hors ligne •</p>
 
     <p>
-      Votre connexion internet est momentanément indisponible.<br>
-      Retrouvez vos mangas dès que vous serez reconnecté.
+      Impossible de charger le prochain chapitre.<br>
+      Réessaye dès que ta connexion revient.
     </p>
-
-    <!-- LOADER -->
-    <div class="loader">
-      <span></span>
-      <span></span>
-      <span></span>
-    </div>
 
     <!-- BOUTON -->
     <a href="/" class="btn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 12a9 9 0 1 0 9-9m0 0v6m0-6h-6"/>
       </svg>
-      Réessayer
+      Recharger
     </a>
 
     <!-- BADGE -->
-    <div class="offline-badge">
+    <div class="badge">
       <span class="dot"></span>
       Mode hors ligne
     </div>
