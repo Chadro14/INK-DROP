@@ -119,7 +119,6 @@ export default function Home() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [animes, setAnimes] = useState<Anime[]>(FALLBACK_ANIMES);
   const [loading, setLoading] = useState(true);
-  const [loadingAnimes, setLoadingAnimes] = useState(false);
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [currentTrendIndex, setCurrentTrendIndex] = useState(0);
@@ -176,7 +175,7 @@ export default function Home() {
   }, []);
 
   // ============================================
-  // DÉFILEMENT INFINI
+  // DÉFILEMENT INFINI (TikTok style)
   // ============================================
   useEffect(() => {
     const fetchMoreMangas = async () => {
@@ -184,7 +183,7 @@ export default function Home() {
       setLoadingInfinite(true);
 
       try {
-        const res = await fetch(`${API_URL}/mangas?limit=6&page=${infinitePage}&sort=popular`);
+        const res = await fetch(`${API_URL}/mangas?limit=10&page=${infinitePage}&sort=popular`);
         const data = await res.json();
         const newMangas = data.data || [];
 
@@ -196,6 +195,7 @@ export default function Home() {
         }
       } catch (error) {
         console.error("Erreur chargement infini:", error);
+        setHasMore(false);
       } finally {
         setLoadingInfinite(false);
       }
@@ -216,7 +216,7 @@ export default function Home() {
           fetchMoreMangas();
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.3 }
     );
 
     if (observerRef.current) {
@@ -226,30 +226,8 @@ export default function Home() {
     return () => observer.disconnect();
   }, [loadingInfinite, hasMore]);
 
-  const fetchMoreMangas = async () => {
-    if (loadingInfinite || !hasMore) return;
-    setLoadingInfinite(true);
-
-    try {
-      const res = await fetch(`${API_URL}/mangas?limit=6&page=${infinitePage}&sort=popular`);
-      const data = await res.json();
-      const newMangas = data.data || [];
-
-      if (newMangas.length === 0) {
-        setHasMore(false);
-      } else {
-        setInfiniteMangas((prev) => [...prev, ...newMangas]);
-        setInfinitePage((prev) => prev + 1);
-      }
-    } catch (error) {
-      console.error("Erreur chargement infini:", error);
-    } finally {
-      setLoadingInfinite(false);
-    }
-  };
-
   // ============================================
-  // CARROUSEL TENDANCES
+  // CARROUSEL TENDANCES (3s)
   // ============================================
   useEffect(() => {
     if (trendingMangas.length === 0) return;
@@ -342,68 +320,78 @@ export default function Home() {
         </div>
         <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
           <div className="relative h-48 md:h-56">
-            {trendingMangas.map((manga, index) => (
-              <Link
-                key={manga.id}
-                href={`/manga/${manga.id}`}
-                className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                  index === currentTrendIndex ? "opacity-100 z-10" : "opacity-0 z-0"
-                }`}
-              >
-                <div className="w-full h-full relative">
-                  {manga.coverUrl ? (
-                    <img
-                      src={getImageUrl(manga.coverUrl)}
-                      alt={manga.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
-                      <BookOpen className="w-12 h-12 text-zinc-700" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600/80 text-white border border-blue-400/30">
-                        🔥 Tendance
-                      </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-800/80 text-yellow-400 border border-yellow-500/30 flex items-center gap-0.5">
-                        <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
-                        {manga.likesCount || 0}
-                      </span>
-                    </div>
-                    <h3 className="text-lg md:text-xl font-bold text-white mt-1">{manga.title}</h3>
-                    <p className="text-zinc-400 text-xs">{manga.author?.username || "Inconnu"}</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-
-            <button
-              onClick={prevTrend}
-              className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-zinc-950/60 text-zinc-300 hover:text-white border border-zinc-800 backdrop-blur-md z-20 transition-all"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={nextTrend}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-zinc-950/60 text-zinc-300 hover:text-white border border-zinc-800 backdrop-blur-md z-20 transition-all"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-              {trendingMangas.slice(0, 6).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentTrendIndex(index)}
-                  className={`h-1 rounded-full transition-all duration-300 ${
-                    index === currentTrendIndex ? "w-5 bg-blue-500" : "w-1.5 bg-zinc-600"
+            {trendingMangas.length > 0 ? (
+              trendingMangas.map((manga, index) => (
+                <Link
+                  key={manga.id}
+                  href={`/manga/${manga.id}`}
+                  className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                    index === currentTrendIndex ? "opacity-100 z-10" : "opacity-0 z-0"
                   }`}
-                />
-              ))}
-            </div>
+                >
+                  <div className="w-full h-full relative">
+                    {manga.coverUrl ? (
+                      <img
+                        src={getImageUrl(manga.coverUrl)}
+                        alt={manga.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
+                        <BookOpen className="w-12 h-12 text-zinc-700" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600/80 text-white border border-blue-400/30">
+                          🔥 Tendance
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-800/80 text-yellow-400 border border-yellow-500/30 flex items-center gap-0.5">
+                          <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
+                          {manga.likesCount || 0}
+                        </span>
+                      </div>
+                      <h3 className="text-lg md:text-xl font-bold text-white mt-1">{manga.title}</h3>
+                      <p className="text-zinc-400 text-xs">{manga.author?.username || "Inconnu"}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-zinc-500">
+                <p>Aucune tendance pour le moment</p>
+              </div>
+            )}
+
+            {trendingMangas.length > 1 && (
+              <>
+                <button
+                  onClick={prevTrend}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-zinc-950/60 text-zinc-300 hover:text-white border border-zinc-800 backdrop-blur-md z-20 transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={nextTrend}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-zinc-950/60 text-zinc-300 hover:text-white border border-zinc-800 backdrop-blur-md z-20 transition-all"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+                  {trendingMangas.slice(0, 6).map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentTrendIndex(index)}
+                      className={`h-1 rounded-full transition-all duration-300 ${
+                        index === currentTrendIndex ? "w-5 bg-blue-500" : "w-1.5 bg-zinc-600"
+                      }`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -507,7 +495,7 @@ export default function Home() {
         </div>
       </section>
 
-        {/* ===== ANIMES POPULAIRES (CORRIGÉ) ===== */}
+      {/* ===== ANIMES POPULAIRES (gardé comme fallback) ===== */}
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -560,7 +548,7 @@ export default function Home() {
           </h2>
         </div>
         <div className="space-y-4">
-          {infiniteMangas.map((manga, index) => (
+          {infiniteMangas.map((manga) => (
             <Link
               key={manga.id}
               href={`/manga/${manga.id}`}
@@ -605,6 +593,7 @@ export default function Home() {
             </Link>
           ))}
 
+          {/* OBSERVER */}
           <div ref={observerRef} className="h-4" />
 
           {loadingInfinite && (
@@ -613,6 +602,7 @@ export default function Home() {
             </div>
           )}
 
+          {/* MESSAGE MANGADEX */}
           {!hasMore && infiniteMangas.length > 0 && (
             <div className="text-center py-6">
               <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
