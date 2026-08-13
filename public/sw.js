@@ -1,7 +1,7 @@
-const CACHE_NAME = 'inkdrop-v2';
+const CACHE_NAME = 'inkdrop-v3';
 const OFFLINE_PAGE = '/offline.html';
 
-// ✅ Seulement les fichiers statiques
+// ✅ Fichiers à mettre en cache
 const STATIC_ASSETS = [
   '/offline.html',
   '/manifest.json',
@@ -10,14 +10,18 @@ const STATIC_ASSETS = [
   '/icons/icon-512.png',
 ];
 
-// ✅ Installation
+// ✅ Installation TOLÉRANTE (un échec n'empêche pas tout)
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(STATIC_ASSETS);
-      })
-      .then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) => {
+      return Promise.allSettled(
+        STATIC_ASSETS.map((asset) =>
+          cache.add(asset).catch((err) => {
+            console.warn(`⚠️ Échec de mise en cache : ${asset}`, err);
+          })
+        )
+      );
+    }).then(() => self.skipWaiting())
   );
 });
 
@@ -37,7 +41,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ✅ Interception
+// ✅ Interception des requêtes
 self.addEventListener('fetch', (event) => {
   const request = event.request;
 
@@ -71,6 +75,7 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
+          console.log('📡 Mode hors ligne - affichage de la page offline');
           return caches.match(OFFLINE_PAGE);
         })
     );
@@ -81,6 +86,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
+        // Mise à jour en arrière-plan
         fetch(request).then((networkResponse) => {
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(request, networkResponse);
