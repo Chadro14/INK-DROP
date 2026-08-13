@@ -24,6 +24,58 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 
+// ✅ ANIMES EN DUR (fallback si l'API ne fonctionne pas)
+const FALLBACK_ANIMES = [
+  {
+    id: "jujutsu-kaisen",
+    title: "Jujutsu Kaisen",
+    coverImage: "https://m.media-amazon.com/images/I/81sFGrAbkdL._AC_SL1500_.jpg",
+    rating: 4.8,
+    episodes: 47,
+    genre: ["Action", "Surnaturel"],
+  },
+  {
+    id: "solo-leveling",
+    title: "Solo Leveling",
+    coverImage: "https://m.media-amazon.com/images/I/71yI-pV3KbL._AC_SL1500_.jpg",
+    rating: 4.9,
+    episodes: 12,
+    genre: ["Action", "Fantastique"],
+  },
+  {
+    id: "demon-slayer",
+    title: "Demon Slayer",
+    coverImage: "https://m.media-amazon.com/images/I/81uLEKlS4LL._AC_SL1500_.jpg",
+    rating: 4.7,
+    episodes: 55,
+    genre: ["Action", "Aventure"],
+  },
+  {
+    id: "one-piece",
+    title: "One Piece",
+    coverImage: "https://m.media-amazon.com/images/I/81jQw5Fw-WL._AC_SL1500_.jpg",
+    rating: 4.6,
+    episodes: 1100,
+    genre: ["Aventure", "Comédie"],
+  },
+  {
+    id: "attack-on-titan",
+    title: "Attack on Titan",
+    coverImage: "https://m.media-amazon.com/images/I/81qLpG5TjRL._AC_SL1500_.jpg",
+    rating: 4.8,
+    episodes: 87,
+    genre: ["Action", "Drame"],
+  },
+  {
+    id: "naruto",
+    title: "Naruto",
+    coverImage: "https://m.media-amazon.com/images/I/81xP0l6rS-L._AC_SL1500_.jpg",
+    rating: 4.5,
+    episodes: 220,
+    genre: ["Action", "Aventure"],
+  },
+];
+
 const getImageUrl = (url?: string | null) => {
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://")) {
@@ -65,8 +117,9 @@ export default function Home() {
   const [mangas, setMangas] = useState<Manga[]>([]);
   const [trendingMangas, setTrendingMangas] = useState<Manga[]>([]);
   const [creators, setCreators] = useState<Creator[]>([]);
-  const [animes, setAnimes] = useState<Anime[]>([]);
+  const [animes, setAnimes] = useState<Anime[]>(FALLBACK_ANIMES);
   const [loading, setLoading] = useState(true);
+  const [loadingAnimes, setLoadingAnimes] = useState(false);
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [currentTrendIndex, setCurrentTrendIndex] = useState(0);
@@ -87,7 +140,7 @@ export default function Home() {
           fetch(`${API_URL}/mangas?limit=6&sort=popular`),
           fetch(`${API_URL}/mangas?limit=10&sort=trending`),
           fetch(`${API_URL}/users/top-creators?limit=6`),
-          fetch(`${API_URL}/inkstream/popular?limit=4`).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/inkstream/popular?limit=6`).catch(() => ({ ok: false })),
         ]);
 
         const mangasData = mangasRes.ok ? await mangasRes.json() : { data: [] };
@@ -98,23 +151,22 @@ export default function Home() {
         setTrendingMangas(trendingData.data || []);
         setCreators(creatorsData.data || []);
 
-        // Animes (fallback si API KO)
-        if (animesRes.ok) {
+        // ✅ ANIMES : fallback si l'API ne fonctionne pas
+        if (animesRes && animesRes.ok) {
           const animesData = await animesRes.json();
-          setAnimes(animesData.data || []);
+          if (animesData.data && animesData.data.length > 0) {
+            setAnimes(animesData.data);
+          } else {
+            setAnimes(FALLBACK_ANIMES);
+          }
         } else {
-          setAnimes([
-            { id: "1", title: "Solo Leveling", coverImage: "/anime-placeholder.jpg", rating: 4.9, episodes: 12, genre: ["Action"] },
-            { id: "2", title: "Jujutsu Kaisen", coverImage: "/anime-placeholder.jpg", rating: 4.8, episodes: 47, genre: ["Action"] },
-            { id: "3", title: "Demon Slayer", coverImage: "/anime-placeholder.jpg", rating: 4.7, episodes: 55, genre: ["Action"] },
-            { id: "4", title: "One Piece", coverImage: "/anime-placeholder.jpg", rating: 4.6, episodes: 1100, genre: ["Aventure"] },
-          ]);
+          setAnimes(FALLBACK_ANIMES);
         }
 
-        // Initier le défilement infini
         setInfiniteMangas(mangasData.data || []);
       } catch (error) {
         console.error("Erreur chargement:", error);
+        setAnimes(FALLBACK_ANIMES);
       } finally {
         setLoading(false);
       }
@@ -124,7 +176,7 @@ export default function Home() {
   }, []);
 
   // ============================================
-  // DÉFILEMENT INFINI (TikTok style)
+  // DÉFILEMENT INFINI
   // ============================================
   useEffect(() => {
     const fetchMoreMangas = async () => {
@@ -197,7 +249,7 @@ export default function Home() {
   };
 
   // ============================================
-  // CARROUSEL TENDANCES (3s)
+  // CARROUSEL TENDANCES
   // ============================================
   useEffect(() => {
     if (trendingMangas.length === 0) return;
@@ -277,16 +329,16 @@ export default function Home() {
         )}
       </header>
 
-      {/* ===== TENDANCES (carrousel horizontal) ===== */}
+      {/* ===== TENDANCES ===== */}
       <section className="px-4 pt-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
             <Flame className="w-3.5 h-3.5 text-orange-500" />
             Tendances
           </h2>
-          <button className="text-zinc-500 text-xs font-medium hover:text-white transition-colors">
+          <Link href="/discover" className="text-zinc-500 text-xs font-medium hover:text-white transition-colors">
             Voir tout
-          </button>
+          </Link>
         </div>
         <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
           <div className="relative h-48 md:h-56">
@@ -356,7 +408,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== TOP CRÉATEURS ===== */}
+      {/* ===== CRÉATEURS CERTIFIÉS ===== */}
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -368,33 +420,39 @@ export default function Home() {
           </Link>
         </div>
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-          {creators.map((creator) => (
-            <Link
-              key={creator.id}
-              href={`/creator/${creator.username}`}
-              className="flex flex-col items-center gap-1 flex-shrink-0 group"
-            >
-              <div className="w-14 h-14 rounded-full bg-zinc-900 flex items-center justify-center text-white font-bold text-lg border-2 border-zinc-800 group-hover:border-blue-500 transition-all relative">
-                {creator.avatarUrl ? (
-                  <img src={creator.avatarUrl} alt={creator.username} className="w-full h-full rounded-full object-cover" />
-                ) : (
-                  creator.username?.charAt(0).toUpperCase() || "?"
-                )}
-                {creator.isCertified && (
-                  <span className="absolute -top-0.5 -right-0.5">
-                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                  </span>
-                )}
-              </div>
-              <span className="text-zinc-400 text-[10px] truncate max-w-14 text-center">
-                {creator.username || "Inconnu"}
-              </span>
-            </Link>
-          ))}
+          {creators.length > 0 ? (
+            creators.map((creator) => (
+              <Link
+                key={creator.id}
+                href={`/creator/${creator.username}`}
+                className="flex flex-col items-center gap-1 flex-shrink-0 group"
+              >
+                <div className="w-14 h-14 rounded-full bg-zinc-900 flex items-center justify-center text-white font-bold text-lg border-2 border-zinc-800 group-hover:border-blue-500 transition-all relative">
+                  {creator.avatarUrl ? (
+                    <img src={creator.avatarUrl} alt={creator.username} className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    creator.username?.charAt(0).toUpperCase() || "?"
+                  )}
+                  {creator.isCertified && (
+                    <span className="absolute -top-0.5 -right-0.5">
+                      <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                    </span>
+                  )}
+                </div>
+                <span className="text-zinc-400 text-[10px] truncate max-w-14 text-center">
+                  {creator.username || "Inconnu"}
+                </span>
+              </Link>
+            ))
+          ) : (
+            <div className="flex-1 text-center py-4">
+              <p className="text-zinc-500 text-xs">Aucun créateur certifié pour le moment</p>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* ===== MANGA POPULAIRES (grille) ===== */}
+      {/* ===== MANGA POPULAIRES ===== */}
       <section className="px-4 py-2">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -449,7 +507,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== ANIMES POPULAIRES ===== */}
+        {/* ===== ANIMES POPULAIRES (CORRIGÉ) ===== */}
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -493,7 +551,7 @@ export default function Home() {
         </div>
       </section>
 
-       {/* ===== DÉFILEMENT INFINI (TikTok style) ===== */}
+      {/* ===== DÉFILEMENT INFINI ===== */}
       <section className="px-4 py-2">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -547,7 +605,6 @@ export default function Home() {
             </Link>
           ))}
 
-          {/* Observer pour charger plus */}
           <div ref={observerRef} className="h-4" />
 
           {loadingInfinite && (
@@ -556,7 +613,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Message de transition vers MangaDex */}
           {!hasMore && infiniteMangas.length > 0 && (
             <div className="text-center py-6">
               <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
@@ -582,4 +638,3 @@ export default function Home() {
     </div>
   );
 }
-         
