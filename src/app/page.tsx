@@ -138,13 +138,21 @@ export default function Home() {
         const [mangasRes, trendingRes, creatorsRes, animesRes] = await Promise.all([
           fetch(`${API_URL}/mangas?limit=6&sort=popular`),
           fetch(`${API_URL}/mangas?limit=10&sort=trending`),
-          fetch(`${API_URL}/users/top-creators?limit=6`),
+          // ✅ NOUVELLE ROUTE : creators/top (sans JWT)
+          fetch(`${API_URL}/creators/top?limit=6`),
           fetch(`${API_URL}/inkstream/popular?limit=6`).catch(() => ({ ok: false })),
         ]);
 
         const mangasData = mangasRes.ok ? await mangasRes.json() : { data: [] };
         const trendingData = trendingRes.ok ? await trendingRes.json() : { data: [] };
-        const creatorsData = creatorsRes.ok ? await creatorsRes.json() : { data: [] };
+        
+        // ✅ GESTION DE LA NOUVELLE RÉPONSE
+        let creatorsData = { data: [] };
+        if (creatorsRes.ok) {
+          const json = await creatorsRes.json();
+          // La nouvelle route retourne { success: true, data: [...] }
+          creatorsData = { data: json.data || [] };
+        }
 
         setMangas(mangasData.data || []);
         setTrendingMangas(trendingData.data || []);
@@ -177,34 +185,28 @@ export default function Home() {
   // ============================================
   // DÉFILEMENT INFINI (TikTok style)
   // ============================================
-  useEffect(() => {
-    const fetchMoreMangas = async () => {
-      if (loadingInfinite || !hasMore) return;
-      setLoadingInfinite(true);
+  const fetchMoreMangas = async () => {
+    if (loadingInfinite || !hasMore) return;
+    setLoadingInfinite(true);
 
-      try {
-        const res = await fetch(`${API_URL}/mangas?limit=10&page=${infinitePage}&sort=popular`);
-        const data = await res.json();
-        const newMangas = data.data || [];
+    try {
+      const res = await fetch(`${API_URL}/mangas?limit=10&page=${infinitePage}&sort=popular`);
+      const data = await res.json();
+      const newMangas = data.data || [];
 
-        if (newMangas.length === 0) {
-          setHasMore(false);
-        } else {
-          setInfiniteMangas((prev) => [...prev, ...newMangas]);
-          setInfinitePage((prev) => prev + 1);
-        }
-      } catch (error) {
-        console.error("Erreur chargement infini:", error);
+      if (newMangas.length === 0) {
         setHasMore(false);
-      } finally {
-        setLoadingInfinite(false);
+      } else {
+        setInfiniteMangas((prev) => [...prev, ...newMangas]);
+        setInfinitePage((prev) => prev + 1);
       }
-    };
-
-    if (infiniteMangas.length === 0 && !loading) {
-      fetchMoreMangas();
+    } catch (error) {
+      console.error("Erreur chargement infini:", error);
+      setHasMore(false);
+    } finally {
+      setLoadingInfinite(false);
     }
-  }, [infiniteMangas.length, loading]);
+  };
 
   // ============================================
   // OBSERVER POUR LE DÉFILEMENT INFINI
