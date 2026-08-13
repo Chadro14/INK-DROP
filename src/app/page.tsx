@@ -20,7 +20,8 @@ import {
   Globe,
   Film,
   Library,
-  BadgeCheck
+  BadgeCheck,
+  Loader2
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -98,6 +99,7 @@ type Manga = {
   viewsCount: number;
   genre: string[];
   status: string;
+  source?: "inkdrop" | "mangadex";
 };
 
 type Creator = {
@@ -118,6 +120,18 @@ type Anime = {
   genre: string[];
 };
 
+type MangadexManga = {
+  id: string;
+  title: string;
+  coverImage: string;
+  author: { name: string };
+  rating: string;
+  genres: string[];
+  status: string;
+  chapters: number;
+  source?: "inkdrop" | "mangadex";
+};
+
 export default function Home() {
   const router = useRouter();
   const [mangas, setMangas] = useState<Manga[]>([]);
@@ -128,10 +142,13 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [currentTrendIndex, setCurrentTrendIndex] = useState(0);
-  const [infiniteMangas, setInfiniteMangas] = useState<Manga[]>([]);
+  const [infiniteMangas, setInfiniteMangas] = useState<any[]>([]);
   const [infinitePage, setInfinitePage] = useState(1);
   const [loadingInfinite, setLoadingInfinite] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMoreInkdrop, setHasMoreInkdrop] = useState(true);
+  const [hasMoreMangadex, setHasMoreMangadex] = useState(true);
+  const [phase, setPhase] = useState<"inkdrop" | "transition" | "mangadex" | "end">("inkdrop");
+  const [mangadexPage, setMangadexPage] = useState(1);
   const observerRef = useRef<HTMLDivElement | null>(null);
 
   // ============================================
@@ -157,7 +174,10 @@ export default function Home() {
           creatorsData = { data: json.data || [] };
         }
 
-        setMangas(mangasData.data || []);
+        // Ajouter la source "inkdrop" aux mangas
+        const inkdropMangas = (mangasData.data || []).map((m: any) => ({ ...m, source: "inkdrop" }));
+
+        setMangas(inkdropMangas);
         setTrendingMangas(trendingData.data || []);
         setCreators(creatorsData.data || []);
 
@@ -172,7 +192,7 @@ export default function Home() {
           setAnimes(FALLBACK_ANIMES);
         }
 
-        setInfiniteMangas(mangasData.data || []);
+        setInfiniteMangas(inkdropMangas);
       } catch (error) {
         console.error("Erreur chargement:", error);
         setAnimes(FALLBACK_ANIMES);
@@ -185,10 +205,10 @@ export default function Home() {
   }, []);
 
   // ============================================
-  // DÉFILEMENT INFINI
+  // CHARGER PLUS DE MANGAS INKDROP
   // ============================================
-  const fetchMoreMangas = async () => {
-    if (loadingInfinite || !hasMore) return;
+  const fetchMoreInkdrop = async () => {
+    if (loadingInfinite || !hasMoreInkdrop) return;
     setLoadingInfinite(true);
 
     try {
@@ -197,16 +217,80 @@ export default function Home() {
       const newMangas = data.data || [];
 
       if (newMangas.length === 0) {
-        setHasMore(false);
+        setHasMoreInkdrop(false);
+        // Passer à la phase transition
+        setPhase("transition");
       } else {
-        setInfiniteMangas((prev) => [...prev, ...newMangas]);
+        const inkdropMangas = newMangas.map((m: any) => ({ ...m, source: "inkdrop" }));
+        setInfiniteMangas((prev) => [...prev, ...inkdropMangas]);
         setInfinitePage((prev) => prev + 1);
       }
     } catch (error) {
-      console.error("Erreur chargement infini:", error);
-      setHasMore(false);
+      console.error("Erreur chargement INKDROP:", error);
+      setHasMoreInkdrop(false);
+      setPhase("transition");
     } finally {
       setLoadingInfinite(false);
+    }
+  };
+
+  // ============================================
+  // CHARGER PLUS DE MANGAS MANGADEX
+  // ============================================
+  const fetchMoreMangadex = async () => {
+    if (loadingInfinite || !hasMoreMangadex) return;
+    setLoadingInfinite(true);
+
+    try {
+      const res = await fetch(`${API_URL}/manga-api/search?q=popular&limit=10&page=${mangadexPage}`);
+      let newMangas = [];
+
+      if (res.ok) {
+        const data = await res.json();
+        newMangas = data.data || [];
+      }
+
+      if (newMangas.length === 0) {
+        setHasMoreMangadex(false);
+        setPhase("end");
+      } else {
+        const mangadexMangas = newMangas.map((m: any) => ({
+          id: m.id,
+          title: m.title,
+          coverUrl: m.coverImage,
+          author: { 
+            username: m.author?.name || "Inconnu", 
+            isCertified: false,
+            avatarUrl: null,
+          },
+          likesCount: 0,
+          viewsCount: 0,
+          genre: m.genres || [],
+          status: m.status || "ongoing",
+          source: "mangadex",
+          rating: m.rating,
+          chapters: m.chapters || 0,
+        }));
+        setInfiniteMangas((prev) => [...prev, ...mangadexMangas]);
+        setMangadexPage((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("Erreur chargement MangaDex:", error);
+      setHasMoreMangadex(false);
+      setPhase("end");
+    } finally {
+      setLoadingInfinite(false);
+    }
+  };
+
+  // ============================================
+  // DÉFILEMENT INFINI - GESTION DE LA PHASE
+  // ============================================
+  const fetchMore = () => {
+    if (phase === "inkdrop") {
+      fetchMoreInkdrop();
+    } else if (phase === "mangadex") {
+      fetchMoreMangadex();
     }
   };
 
@@ -216,8 +300,12 @@ export default function Home() {
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !loadingInfinite && hasMore) {
-          fetchMoreMangas();
+        if (entries[0].isIntersecting && !loadingInfinite) {
+          if (phase === "inkdrop" && hasMoreInkdrop) {
+            fetchMoreInkdrop();
+          } else if (phase === "mangadex" && hasMoreMangadex) {
+            fetchMoreMangadex();
+          }
         }
       },
       { threshold: 0.3 }
@@ -228,7 +316,20 @@ export default function Home() {
     }
 
     return () => observer.disconnect();
-  }, [loadingInfinite, hasMore]);
+  }, [phase, loadingInfinite, hasMoreInkdrop, hasMoreMangadex]);
+
+  // ============================================
+  // QUAND LA PHASE PASSE À "transition", démarrer MangaDex après 2s
+  // ============================================
+  useEffect(() => {
+    if (phase === "transition") {
+      const timer = setTimeout(() => {
+        setPhase("mangadex");
+        fetchMoreMangadex();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [phase]);
 
   // ============================================
   // CARROUSEL TENDANCES
@@ -394,7 +495,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== CRÉATEURS CERTIFIÉS - BADGE EN BAS ===== */}
+      {/* ===== CRÉATEURS CERTIFIÉS ===== */}
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -421,7 +522,6 @@ export default function Home() {
                     ) : (
                       creator.username?.charAt(0).toUpperCase() || "?"
                     )}
-                    {/* ✅ BADGE EN BAS */}
                     {creator.isCertified && (
                       <div className="absolute -bottom-0.5 -right-0.5 bg-zinc-950 p-0.5 rounded-full shadow-lg">
                         <BadgeCheck
@@ -572,17 +672,87 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== DÉFILEMENT INFINI ===== */}
+      {/* ===== DÉFILEMENT INFINI AVEC MANGADEX ===== */}
       <section className="px-4 py-2">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
             <Globe className="w-3.5 h-3.5 text-blue-400" />
             Découvrir
           </h2>
+          <span className="text-xs text-zinc-500">
+            {phase === "inkdrop" && "INKDROP"}
+            {phase === "transition" && "⏳ Transition..."}
+            {phase === "mangadex" && "🌐 MangaDex"}
+            {phase === "end" && "✅ Fin"}
+          </span>
         </div>
         <div className="space-y-4">
-          {infiniteMangas.map((manga) => {
+          {infiniteMangas.map((manga, index) => {
+            const isMangadex = manga.source === "mangadex";
             const authorBadgeColor = manga.author?.badgeColor || "#3B82F6";
+
+            // Affichage pour les mangas MangaDex
+            if (isMangadex) {
+              return (
+                <Link
+                  key={`mangadex-${manga.id}-${index}`}
+                  href={`/read/${manga.id}`}
+                  className="block bg-zinc-900/40 border border-purple-800/40 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all active:scale-[0.98]"
+                >
+                  <div className="flex gap-3 p-3">
+                    <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden relative">
+                      {manga.coverUrl ? (
+                        <img
+                          src={manga.coverUrl}
+                          alt={manga.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <BookOpen className="w-6 h-6 text-zinc-700" />
+                        </div>
+                      )}
+                      <div className="absolute top-1 left-1">
+                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-purple-600/80 text-white border border-purple-400/30">
+                          🌐 MD
+                        </span>
+                      </div>
+                      {manga.rating && (
+                        <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-[8px] font-bold flex items-center gap-0.5">
+                          <Star className="w-2.5 h-2.5 fill-yellow-500 text-yellow-500" />
+                          {manga.rating}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">
+                        {manga.title}
+                      </h3>
+                      <p className="text-zinc-400 text-xs truncate">par {manga.author?.username || "Inconnu"}</p>
+                      <div className="flex items-center gap-3 mt-1 text-zinc-500 text-[10px]">
+                        <span className="flex items-center gap-0.5 text-purple-400">
+                          <Globe className="w-3 h-3" />
+                          MangaDex
+                        </span>
+                        {manga.chapters && (
+                          <span className="flex items-center gap-0.5">
+                            <Library className="w-3 h-3" />
+                            {manga.chapters} chapitres
+                          </span>
+                        )}
+                        {manga.genre && manga.genre.length > 0 && (
+                          <span className="px-1.5 py-0.5 rounded bg-purple-900/30 text-purple-300 text-[8px]">
+                            {manga.genre[0]}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            }
+
+            // Affichage pour les mangas INKDROP
             return (
               <Link
                 key={manga.id}
@@ -652,32 +822,69 @@ export default function Home() {
             );
           })}
 
-          {/* OBSERVER */}
-          <div ref={observerRef} className="h-4" />
-
-          {loadingInfinite && (
-            <div className="flex justify-center py-4">
-              <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          {/* ===== MESSAGE DE TRANSITION ===== */}
+          {phase === "transition" && (
+            <div className="text-center py-8 animate-pulse">
+              <div className="bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-blue-950/40 border border-blue-500/30 rounded-2xl p-6">
+                <div className="flex justify-center mb-3">
+                  <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+                </div>
+                <p className="text-white text-lg font-bold">
+                  📚 Tu as atteint la fin des mangas INKDROP
+                </p>
+                <p className="text-zinc-400 text-sm mt-1">
+                  Découvre maintenant plus de <span className="text-purple-400 font-semibold">100 000 mangas</span> sur MangaDex
+                </p>
+                <div className="mt-3 flex justify-center gap-1">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "600ms" }} />
+                </div>
+              </div>
             </div>
           )}
 
-          {!hasMore && infiniteMangas.length > 0 && (
-            <div className="text-center py-6">
-              <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
-                <p className="text-zinc-400 text-sm font-medium">
-                  🌐 Tu as atteint la fin des mangas INKDROP
+          {/* ===== MESSAGE DE FIN TOTALE ===== */}
+          {phase === "end" && (
+            <div className="text-center py-8">
+              <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6">
+                <p className="text-white text-lg font-bold">🎉 Tu as tout vu !</p>
+                <p className="text-zinc-400 text-sm mt-1">
+                  Reviens demain pour découvrir de nouveaux mangas INKDROP
                 </p>
-                <p className="text-zinc-500 text-xs mt-1">
-                  Explore plus de mangas sur <span className="text-purple-400 font-semibold">MangaDex</span>
-                </p>
-                <Link
-                  href="/discover?tab=mangadex"
-                  className="mt-3 inline-block px-5 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-md shadow-purple-900/20"
-                >
-                  🔍 Découvrir MangaDex
-                </Link>
+                <div className="flex justify-center gap-4 mt-3">
+                  <Link
+                    href="/"
+                    className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all"
+                  >
+                    🔄 Recharger
+                  </Link>
+                  <Link
+                    href="/discover?tab=mangadex"
+                    className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all"
+                  >
+                    🌐 Explorer MangaDex
+                  </Link>
+                </div>
               </div>
             </div>
+          )}
+
+          {/* ===== LOADER ===== */}
+          {loadingInfinite && phase !== "transition" && (
+            <div className="flex justify-center py-4">
+              <div className="flex items-center gap-2 text-zinc-500">
+                <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+                <span className="text-xs">
+                  {phase === "inkdrop" ? "Chargement des mangas INKDROP..." : "Chargement des mangas MangaDex..."}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* ===== OBSERVER ===== */}
+          {(phase === "inkdrop" || phase === "mangadex") && (
+            <div ref={observerRef} className="h-4" />
           )}
         </div>
       </section>
