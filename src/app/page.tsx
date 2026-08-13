@@ -89,7 +89,12 @@ type Manga = {
   id: string;
   title: string;
   coverUrl: string;
-  author: { username: string; isCertified: boolean; badgeColor?: string };
+  author: { 
+    username: string; 
+    isCertified: boolean; 
+    badgeColor?: string;
+    avatarUrl?: string;
+  };
   likesCount: number;
   viewsCount: number;
   genre: string[];
@@ -397,7 +402,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== CRÉATEURS CERTIFIÉS (CORRIGÉ) ===== */}
+      {/* ===== CRÉATEURS CERTIFIÉS ===== */}
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -461,46 +466,73 @@ export default function Home() {
           </Link>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {mangas.slice(0, 6).map((manga) => (
-            <Link
-              key={manga.id}
-              href={`/manga/${manga.id}`}
-              className="group bg-zinc-900/40 border border-zinc-800/80 rounded-xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.97]"
-            >
-              <div className="aspect-[2/3] bg-zinc-900 flex items-center justify-center relative overflow-hidden">
-                {manga.coverUrl ? (
-                  <img
-                    src={getImageUrl(manga.coverUrl)}
-                    alt={manga.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <BookOpen className="w-8 h-8 text-zinc-700" />
-                )}
-                <div className="absolute top-1.5 left-1.5">
-                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-blue-600/80 text-white border border-blue-400/30">
-                    {manga.genre?.[0] || "Manga"}
-                  </span>
+          {mangas.slice(0, 6).map((manga) => {
+            const authorBadgeColor = manga.author?.badgeColor || "#3B82F6";
+            return (
+              <Link
+                key={manga.id}
+                href={`/manga/${manga.id}`}
+                className="group bg-zinc-900/40 border border-zinc-800/80 rounded-xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.97]"
+              >
+                <div className="aspect-[2/3] bg-zinc-900 flex items-center justify-center relative overflow-hidden">
+                  {manga.coverUrl ? (
+                    <img
+                      src={getImageUrl(manga.coverUrl)}
+                      alt={manga.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <BookOpen className="w-8 h-8 text-zinc-700" />
+                  )}
+                  <div className="absolute top-1.5 left-1.5">
+                    <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-blue-600/80 text-white border border-blue-400/30">
+                      {manga.genre?.[0] || "Manga"}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="p-2">
-                <h4 className="text-xs font-bold truncate text-white group-hover:text-blue-400 transition-colors">
-                  {manga.title}
-                </h4>
-                <p className="text-zinc-500 text-[9px] truncate">{manga.author?.username || "Inconnu"}</p>
-                <div className="flex items-center gap-2 mt-0.5 text-zinc-500 text-[9px]">
-                  <span className="flex items-center gap-0.5">
-                    <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500/20" />
-                    {manga.likesCount || 0}
-                  </span>
-                  <span className="flex items-center gap-0.5">
-                    <Eye className="w-2.5 h-2.5 text-blue-400" />
-                    {manga.viewsCount || 0}
-                  </span>
+                <div className="p-2">
+                  <h4 className="text-xs font-bold truncate text-white group-hover:text-blue-400 transition-colors">
+                    {manga.title}
+                  </h4>
+                  {/* ===== AUTEUR AVEC PHOTO + BADGE ===== */}
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {manga.author?.avatarUrl ? (
+                      <img 
+                        src={manga.author.avatarUrl} 
+                        alt={manga.author.username} 
+                        className="w-4 h-4 rounded-full object-cover border border-zinc-700"
+                      />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[8px] text-zinc-500 font-bold">
+                        {manga.author?.username?.charAt(0) || "?"}
+                      </div>
+                    )}
+                    <p className="text-zinc-500 text-[9px] truncate flex items-center gap-0.5">
+                      {manga.author?.username || "Inconnu"}
+                      {manga.author?.isCertified && (
+                        <BadgeCheck
+                          className="w-3 h-3"
+                          fill={authorBadgeColor}
+                          color="black"
+                          strokeWidth={1.5}
+                        />
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5 text-zinc-500 text-[9px]">
+                    <span className="flex items-center gap-0.5">
+                      <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500/20" />
+                      {manga.likesCount || 0}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <Eye className="w-2.5 h-2.5 text-blue-400" />
+                      {manga.viewsCount || 0}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       </section>
 
@@ -557,50 +589,77 @@ export default function Home() {
           </h2>
         </div>
         <div className="space-y-4">
-          {infiniteMangas.map((manga) => (
-            <Link
-              key={manga.id}
-              href={`/manga/${manga.id}`}
-              className="block bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.98]"
-            >
-              <div className="flex gap-3 p-3">
-                <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden">
-                  {manga.coverUrl ? (
-                    <img
-                      src={getImageUrl(manga.coverUrl)}
-                      alt={manga.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <BookOpen className="w-6 h-6 text-zinc-700" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">
-                    {manga.title}
-                  </h3>
-                  <p className="text-zinc-400 text-xs truncate">par {manga.author?.username || "Inconnu"}</p>
-                  <div className="flex items-center gap-3 mt-1 text-zinc-500 text-[10px]">
-                    <span className="flex items-center gap-0.5">
-                      <Heart className="w-3 h-3 text-rose-500 fill-rose-500/20" />
-                      {manga.likesCount || 0}
-                    </span>
-                    <span className="flex items-center gap-0.5">
-                      <Eye className="w-3 h-3 text-blue-400" />
-                      {manga.viewsCount || 0}
-                    </span>
-                    {manga.genre && manga.genre.length > 0 && (
-                      <span className="px-1.5 py-0.5 rounded bg-zinc-800/50 text-zinc-400 text-[8px]">
-                        {manga.genre[0]}
-                      </span>
+          {infiniteMangas.map((manga) => {
+            const authorBadgeColor = manga.author?.badgeColor || "#3B82F6";
+            return (
+              <Link
+                key={manga.id}
+                href={`/manga/${manga.id}`}
+                className="block bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.98]"
+              >
+                <div className="flex gap-3 p-3">
+                  <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden">
+                    {manga.coverUrl ? (
+                      <img
+                        src={getImageUrl(manga.coverUrl)}
+                        alt={manga.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <BookOpen className="w-6 h-6 text-zinc-700" />
+                      </div>
                     )}
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">
+                      {manga.title}
+                    </h3>
+                    {/* ===== AUTEUR AVEC PHOTO + BADGE ===== */}
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {manga.author?.avatarUrl ? (
+                        <img 
+                          src={manga.author.avatarUrl} 
+                          alt={manga.author.username} 
+                          className="w-4 h-4 rounded-full object-cover border border-zinc-700"
+                        />
+                      ) : (
+                        <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[8px] text-zinc-500 font-bold">
+                          {manga.author?.username?.charAt(0) || "?"}
+                        </div>
+                      )}
+                      <p className="text-zinc-400 text-xs truncate flex items-center gap-0.5">
+                        {manga.author?.username || "Inconnu"}
+                        {manga.author?.isCertified && (
+                          <BadgeCheck
+                            className="w-3 h-3"
+                            fill={authorBadgeColor}
+                            color="black"
+                            strokeWidth={1.5}
+                          />
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1 text-zinc-500 text-[10px]">
+                      <span className="flex items-center gap-0.5">
+                        <Heart className="w-3 h-3 text-rose-500 fill-rose-500/20" />
+                        {manga.likesCount || 0}
+                      </span>
+                      <span className="flex items-center gap-0.5">
+                        <Eye className="w-3 h-3 text-blue-400" />
+                        {manga.viewsCount || 0}
+                      </span>
+                      {manga.genre && manga.genre.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded bg-zinc-800/50 text-zinc-400 text-[8px]">
+                          {manga.genre[0]}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
 
           {/* OBSERVER */}
           <div ref={observerRef} className="h-4" />
