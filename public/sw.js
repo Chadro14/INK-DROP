@@ -1,15 +1,13 @@
-const CACHE_NAME = 'inkdrop-v1';
+const CACHE_NAME = 'inkdrop-v2';
 const OFFLINE_PAGE = '/offline.html';
 
-// ✅ Fichiers à mettre en cache
+// ✅ Seulement les fichiers statiques
 const STATIC_ASSETS = [
-  '/',
-  '/discover',
+  '/offline.html',
   '/manifest.json',
   '/favicon.ico',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
-  OFFLINE_PAGE,
 ];
 
 // ✅ Installation
@@ -39,7 +37,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ✅ Interception des requêtes
+// ✅ Interception
 self.addEventListener('fetch', (event) => {
   const request = event.request;
 
@@ -83,7 +81,6 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Mise à jour en arrière-plan
         fetch(request).then((networkResponse) => {
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(request, networkResponse);
