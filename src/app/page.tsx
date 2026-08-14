@@ -164,7 +164,6 @@ export default function Home() {
   const [phase, setPhase] = useState<"inkdrop" | "transition" | "mangadex" | "end">("inkdrop");
   const [totalMangas, setTotalMangas] = useState(0);
   const [usedQueries, setUsedQueries] = useState<string[]>([]);
-  const [isBackendRestored, setIsBackendRestored] = useState(false);
   const observerRef = useRef<HTMLDivElement | null>(null);
 
   // ============================================
@@ -320,9 +319,7 @@ export default function Home() {
   // ============================================
   useEffect(() => {
     if (!loading && infiniteMangas.length > 0) {
-      // Sauvegarde locale (rapide)
       saveStateLocal();
-      // Sauvegarde backend (périodique)
       const timeoutId = setTimeout(() => {
         saveStateToBackend();
       }, 2000);
@@ -353,7 +350,7 @@ export default function Home() {
   };
 
   // ============================================
-  // FETCH MANGAS POPULAIRES
+  // FETCH MANGAS POPULAIRES (CORRIGÉ)
   // ============================================
   useEffect(() => {
     const fetchData = async () => {
@@ -361,7 +358,7 @@ export default function Home() {
       try {
         const [mangasRes, trendingRes, creatorsRes, animesRes] = await Promise.all([
           fetch(`${API_URL}/mangas?limit=6&sort=popular`),
-          fetch(`${API_URL}/mangas?limit=10&sort=trending`),
+          fetch(`${API_URL}/mangas?limit=10&sort=popular`), // ✅ CHANGÉ: trending → popular
           fetch(`${API_URL}/creators/top?limit=6`),
           fetch(`${API_URL}/inkstream/popular?limit=6`).catch(() => ({ ok: false })),
         ]);
@@ -372,7 +369,8 @@ export default function Home() {
         let creatorsData = { data: [] };
         if (creatorsRes.ok) {
           const json = await creatorsRes.json();
-          creatorsData = { data: json.data || [] };
+          creatorsData = { data: json.data || json || [] };
+          console.log('👤 Créateurs reçus:', creatorsData.data.length);
         }
 
         const inkdropMangas = (mangasData.data || []).map((m: any) => ({ ...m, source: "inkdrop" }));
@@ -402,7 +400,6 @@ export default function Home() {
       }
     };
 
-    // Tentative de restauration : backend d'abord, puis local
     const restore = async () => {
       const restored = await restoreStateFromBackend();
       if (!restored) {
@@ -534,20 +531,22 @@ export default function Home() {
   // ============================================
   // CARROUSEL TENDANCES
   // ============================================
+  const displayTrending = trendingMangas.length > 0 ? trendingMangas : mangas.slice(0, 6);
+
   useEffect(() => {
-    if (trendingMangas.length === 0) return;
+    if (displayTrending.length === 0) return;
     const interval = setInterval(() => {
-      setCurrentTrendIndex((prev) => (prev + 1) % trendingMangas.length);
+      setCurrentTrendIndex((prev) => (prev + 1) % displayTrending.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, [trendingMangas.length]);
+  }, [displayTrending.length]);
 
   const nextTrend = () => {
-    setCurrentTrendIndex((prev) => (prev + 1) % trendingMangas.length);
+    setCurrentTrendIndex((prev) => (prev + 1) % displayTrending.length);
   };
 
   const prevTrend = () => {
-    setCurrentTrendIndex((prev) => (prev - 1 + trendingMangas.length) % trendingMangas.length);
+    setCurrentTrendIndex((prev) => (prev - 1 + displayTrending.length) % displayTrending.length);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -630,7 +629,7 @@ export default function Home() {
         )}
       </header>
 
-      {/* ===== TENDANCES ===== */}
+      {/* ===== TENDANCES (CORRIGÉ AVEC FALLBACK) ===== */}
       <section className="px-4 pt-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -643,8 +642,8 @@ export default function Home() {
         </div>
         <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
           <div className="relative h-48 md:h-56">
-            {trendingMangas.length > 0 ? (
-              trendingMangas.map((manga, index) => (
+            {displayTrending.length > 0 ? (
+              displayTrending.map((manga, index) => (
                 <Link
                   key={manga.id}
                   href={`/manga/${manga.id}`}
@@ -687,7 +686,7 @@ export default function Home() {
               </div>
             )}
 
-            {trendingMangas.length > 1 && (
+            {displayTrending.length > 1 && (
               <>
                 <button
                   onClick={prevTrend}
@@ -703,7 +702,7 @@ export default function Home() {
                 </button>
 
                 <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-                  {trendingMangas.slice(0, 6).map((_, index) => (
+                  {displayTrending.slice(0, 6).map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentTrendIndex(index)}
@@ -896,7 +895,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== DÉFILEMENT INFINI AVEC BOUTON MANGADROP ===== */}
+      {/* ===== DÉFILEMENT INFINI ===== */}
       <section className="px-4 py-2">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
