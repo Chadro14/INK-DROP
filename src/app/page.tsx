@@ -27,29 +27,6 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 
-// ============================================
-// NETTOYAGE AUTOMATIQUE DU CACHE
-// ============================================
-if (typeof window !== 'undefined') {
-  try {
-    const saved = localStorage.getItem('inkdrop_state');
-    if (saved) {
-      const state = JSON.parse(saved);
-      // Vérifier si les données sont valides
-      const isCorrupted = !state.mangas || !Array.isArray(state.mangas);
-      const isTooOld = state.timestamp && Date.now() - state.timestamp > 24 * 60 * 60 * 1000;
-      
-      if (isCorrupted || isTooOld) {
-        localStorage.removeItem('inkdrop_state');
-        console.log('🧹 Cache nettoyé automatiquement');
-      }
-    }
-  } catch (e) {
-    localStorage.removeItem('inkdrop_state');
-    console.log('🧹 Cache corrompu, nettoyé');
-  }
-}
-
 const FALLBACK_ANIMES = [
   {
     id: "jujutsu-kaisen",
@@ -103,7 +80,6 @@ const FALLBACK_ANIMES = [
 
 // ✅ CATÉGORIES AVEC LANGUES (60% FR, 40% EN)
 const MANGADEX_QUERIES = [
-  // 🔵 FRANÇAIS (60%) - 12 requêtes
   { query: "popular", lang: "fr" },
   { query: "action", lang: "fr" },
   { query: "romance", lang: "fr" },
@@ -116,8 +92,6 @@ const MANGADEX_QUERIES = [
   { query: "slice of life", lang: "fr" },
   { query: "supernatural", lang: "fr" },
   { query: "seinen", lang: "fr" },
-  
-  // 🟢 ANGLAIS (40%) - 8 requêtes
   { query: "popular", lang: "en" },
   { query: "action", lang: "en" },
   { query: "romance", lang: "en" },
@@ -190,16 +164,113 @@ export default function Home() {
   const [phase, setPhase] = useState<"inkdrop" | "transition" | "mangadex" | "end">("inkdrop");
   const [totalMangas, setTotalMangas] = useState(0);
   const [usedQueries, setUsedQueries] = useState<string[]>([]);
+  const [isBackendRestored, setIsBackendRestored] = useState(false);
   const observerRef = useRef<HTMLDivElement | null>(null);
 
   // ============================================
-  // SAUVEGARDER L'ÉTAT (localStorage)
+  // NETTOYAGE AUTOMATIQUE DU CACHE LOCAL
   // ============================================
-  const saveState = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('inkdrop_state');
+      if (saved) {
+        const state = JSON.parse(saved);
+        const isCorrupted = !state.mangas || !Array.isArray(state.mangas);
+        const isTooOld = state.timestamp && Date.now() - state.timestamp > 24 * 60 * 60 * 1000;
+        if (isCorrupted || isTooOld) {
+          localStorage.removeItem('inkdrop_state');
+          console.log('🧹 Cache local nettoyé');
+        }
+      }
+    } catch (e) {
+      localStorage.removeItem('inkdrop_state');
+      console.log('🧹 Cache local corrompu, nettoyé');
+    }
+  }
+
+  // ============================================
+  // SAUVEGARDER DANS LE BACKEND
+  // ============================================
+  const saveStateToBackend = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const state = {
+        scrollY: window.scrollY,
+        mangas: infiniteMangas.slice(-100),
+        phase: phase,
+        usedQueries: usedQueries,
+        hasMoreInkdrop: hasMoreInkdrop,
+        hasMoreMangadex: hasMoreMangadex,
+        infinitePage: infinitePage,
+        timestamp: Date.now(),
+      };
+
+      await fetch(`${API_URL}/users/state`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(state),
+      });
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde backend:', error);
+    }
+  };
+
+  // ============================================
+  // RESTAURER DEPUIS LE BACKEND
+  // ============================================
+  const restoreStateFromBackend = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return false;
+
+      const res = await fetch(`${API_URL}/users/state`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) return false;
+
+      const data = await res.json();
+      if (!data || !data.appState) return false;
+
+      const state = data.appState;
+      if (!state.mangas || !Array.isArray(state.mangas)) return false;
+
+      setInfiniteMangas(state.mangas || []);
+      setPhase(state.phase || "inkdrop");
+      setUsedQueries(state.usedQueries || []);
+      setHasMoreInkdrop(state.hasMoreInkdrop !== undefined ? state.hasMoreInkdrop : true);
+      setHasMoreMangadex(state.hasMoreMangadex !== undefined ? state.hasMoreMangadex : true);
+      setInfinitePage(state.infinitePage || 1);
+
+      setTimeout(() => {
+        if (state.scrollY) {
+          window.scrollTo(0, state.scrollY);
+        }
+      }, 100);
+
+      console.log(`✅ État restauré depuis le backend (${state.mangas.length} mangas)`);
+      return true;
+    } catch (error) {
+      console.error('❌ Erreur restauration backend:', error);
+      return false;
+    }
+  };
+
+  // ============================================
+  // SAUVEGARDER LOCALEMENT (fallback rapide)
+  // ============================================
+  const saveStateLocal = () => {
     try {
       const state = {
         scrollY: window.scrollY,
-        mangas: infiniteMangas,
+        mangas: infiniteMangas.slice(-100),
         phase: phase,
         usedQueries: usedQueries,
         hasMoreInkdrop: hasMoreInkdrop,
@@ -209,20 +280,21 @@ export default function Home() {
       };
       localStorage.setItem('inkdrop_state', JSON.stringify(state));
     } catch (error) {
-      console.error('Erreur sauvegarde:', error);
+      console.error('Erreur sauvegarde locale:', error);
     }
   };
 
   // ============================================
-  // RESTAURER L'ÉTAT (localStorage)
+  // RESTAURER LOCALEMENT (fallback)
   // ============================================
-  const restoreState = () => {
+  const restoreStateLocal = () => {
     try {
       const saved = localStorage.getItem('inkdrop_state');
       if (!saved) return false;
 
       const state = JSON.parse(saved);
-      
+      if (!state.mangas || !Array.isArray(state.mangas)) return false;
+
       setInfiniteMangas(state.mangas || []);
       setPhase(state.phase || "inkdrop");
       setUsedQueries(state.usedQueries || []);
@@ -238,17 +310,33 @@ export default function Home() {
 
       return true;
     } catch (error) {
-      console.error('Erreur restauration:', error);
+      console.error('Erreur restauration locale:', error);
       return false;
     }
   };
 
   // ============================================
-  // SAUVEGARDER AVANT DE QUITTER LA PAGE
+  // SAUVEGARDE AUTOMATIQUE (local + backend)
+  // ============================================
+  useEffect(() => {
+    if (!loading && infiniteMangas.length > 0) {
+      // Sauvegarde locale (rapide)
+      saveStateLocal();
+      // Sauvegarde backend (périodique)
+      const timeoutId = setTimeout(() => {
+        saveStateToBackend();
+      }, 2000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage, loading]);
+
+  // ============================================
+  // SAUVEGARDER AVANT DE QUITTER
   // ============================================
   useEffect(() => {
     const handleBeforeUnload = () => {
-      saveState();
+      saveStateLocal();
+      saveStateToBackend();
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -256,19 +344,11 @@ export default function Home() {
   }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage]);
 
   // ============================================
-  // SAUVEGARDE AUTOMATIQUE À CHAQUE CHANGEMENT
-  // ============================================
-  useEffect(() => {
-    if (!loading && infiniteMangas.length > 0) {
-      saveState();
-    }
-  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage, loading]);
-
-  // ============================================
   // SAUVEGARDER AVANT DE QUITTER POUR UN MANGA
   // ============================================
   const handleMangaClick = (mangaId: string) => {
-    saveState();
+    saveStateLocal();
+    saveStateToBackend();
     router.push(`/read/${mangaId}`);
   };
 
@@ -322,20 +402,32 @@ export default function Home() {
       }
     };
 
-    const hasRestored = restoreState();
-    if (!hasRestored) {
-      fetchData();
-    }
+    // Tentative de restauration : backend d'abord, puis local
+    const restore = async () => {
+      const restored = await restoreStateFromBackend();
+      if (!restored) {
+        const localRestored = restoreStateLocal();
+        if (!localRestored) {
+          fetchData();
+        } else {
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+
+    restore();
   }, []);
 
   // ============================================
   // FORCER LA TRANSITION SI TOUS LES MANGAS SONT CHARGÉS
   // ============================================
   useEffect(() => {
-    if (totalMangas > 0 && infiniteMangas.length >= totalMangas && hasMoreInkdrop) {
+    if (totalMangas > 0 && infiniteMangas.filter(m => m.source === "inkdrop").length >= totalMangas && hasMoreInkdrop) {
       setHasMoreInkdrop(false);
     }
-  }, [infiniteMangas.length, totalMangas, hasMoreInkdrop]);
+  }, [infiniteMangas, totalMangas, hasMoreInkdrop]);
 
   // ============================================
   // CHARGER PLUS DE MANGAS INKDROP
