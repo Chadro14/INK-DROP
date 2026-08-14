@@ -78,7 +78,6 @@ const FALLBACK_ANIMES = [
   },
 ];
 
-// ✅ CATÉGORIES AVEC LANGUES (60% FR, 40% EN)
 const MANGADEX_QUERIES = [
   { query: "popular", lang: "fr" },
   { query: "action", lang: "fr" },
@@ -165,28 +164,6 @@ export default function Home() {
   const [totalMangas, setTotalMangas] = useState(0);
   const [usedQueries, setUsedQueries] = useState<string[]>([]);
   const observerRef = useRef<HTMLDivElement | null>(null);
-  const [isRestored, setIsRestored] = useState(false);
-
-  // ============================================
-  // NETTOYAGE AUTOMATIQUE DU CACHE LOCAL
-  // ============================================
-  if (typeof window !== 'undefined') {
-    try {
-      const saved = localStorage.getItem('inkdrop_state');
-      if (saved) {
-        const state = JSON.parse(saved);
-        const isCorrupted = !state.mangas || !Array.isArray(state.mangas);
-        const isTooOld = state.timestamp && Date.now() - state.timestamp > 24 * 60 * 60 * 1000;
-        if (isCorrupted || isTooOld) {
-          localStorage.removeItem('inkdrop_state');
-          console.log('🧹 Cache local nettoyé');
-        }
-      }
-    } catch (e) {
-      localStorage.removeItem('inkdrop_state');
-      console.log('🧹 Cache local corrompu, nettoyé');
-    }
-  }
 
   // ============================================
   // SAUVEGARDER DANS LE BACKEND
@@ -264,76 +241,10 @@ export default function Home() {
   };
 
   // ============================================
-  // SAUVEGARDER LOCALEMENT (fallback rapide)
-  // ============================================
-  const saveStateLocal = () => {
-    try {
-      const state = {
-        scrollY: window.scrollY,
-        mangas: infiniteMangas.slice(-100),
-        phase: phase,
-        usedQueries: usedQueries,
-        hasMoreInkdrop: hasMoreInkdrop,
-        hasMoreMangadex: hasMoreMangadex,
-        infinitePage: infinitePage,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem('inkdrop_state', JSON.stringify(state));
-    } catch (error) {
-      console.error('Erreur sauvegarde locale:', error);
-    }
-  };
-
-  // ============================================
-  // RESTAURER LOCALEMENT (fallback)
-  // ============================================
-  const restoreStateLocal = () => {
-    try {
-      const saved = localStorage.getItem('inkdrop_state');
-      if (!saved) return false;
-
-      const state = JSON.parse(saved);
-      if (!state.mangas || !Array.isArray(state.mangas)) return false;
-
-      setInfiniteMangas(state.mangas || []);
-      setPhase(state.phase || "inkdrop");
-      setUsedQueries(state.usedQueries || []);
-      setHasMoreInkdrop(state.hasMoreInkdrop !== undefined ? state.hasMoreInkdrop : true);
-      setHasMoreMangadex(state.hasMoreMangadex !== undefined ? state.hasMoreMangadex : true);
-      setInfinitePage(state.infinitePage || 1);
-
-      setTimeout(() => {
-        if (state.scrollY) {
-          window.scrollTo(0, state.scrollY);
-        }
-      }, 100);
-
-      return true;
-    } catch (error) {
-      console.error('Erreur restauration locale:', error);
-      return false;
-    }
-  };
-
-  // ============================================
-  // SAUVEGARDE AUTOMATIQUE (local + backend)
-  // ============================================
-  useEffect(() => {
-    if (!loading && infiniteMangas.length > 0 && isRestored) {
-      saveStateLocal();
-      const timeoutId = setTimeout(() => {
-        saveStateToBackend();
-      }, 2000);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage, loading, isRestored]);
-
-  // ============================================
   // SAUVEGARDER AVANT DE QUITTER
   // ============================================
   useEffect(() => {
     const handleBeforeUnload = () => {
-      saveStateLocal();
       saveStateToBackend();
     };
 
@@ -345,18 +256,26 @@ export default function Home() {
   // SAUVEGARDER AVANT DE QUITTER POUR UN MANGA
   // ============================================
   const handleMangaClick = (mangaId: string) => {
-    saveStateLocal();
     saveStateToBackend();
     router.push(`/read/${mangaId}`);
   };
 
   // ============================================
-  // FETCH MANGAS POPULAIRES (VERSION ANCIENNE QUI FONCTIONNE)
+  // FETCH MANGAS POPULAIRES (SANS localStorage)
   // ============================================
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // ✅ 1. TENTER DE RESTAURER DEPUIS LE BACKEND
+        const restored = await restoreStateFromBackend();
+        
+        if (restored) {
+          setLoading(false);
+          return;
+        }
+
+        // ✅ 2. SINON, CHARGER LES DONNÉES
         const [mangasRes, trendingRes, creatorsRes, animesRes] = await Promise.all([
           fetch(`${API_URL}/mangas?limit=6&sort=popular`),
           fetch(`${API_URL}/mangas?limit=10&sort=trending`),
@@ -379,6 +298,7 @@ export default function Home() {
         setTrendingMangas(trendingData.data || []);
         setCreators(creatorsData.data || []);
         setTotalMangas(mangasData.total || 0);
+        setInfiniteMangas(inkdropMangas);
 
         if (animesRes && animesRes.ok) {
           const animesData = await animesRes.json();
@@ -390,39 +310,28 @@ export default function Home() {
         } else {
           setAnimes(FALLBACK_ANIMES);
         }
-
-        setInfiniteMangas(inkdropMangas);
-        setIsRestored(true);
       } catch (error) {
         console.error("Erreur chargement:", error);
         setAnimes(FALLBACK_ANIMES);
-        setIsRestored(true);
       } finally {
         setLoading(false);
       }
     };
 
-    // ✅ RESTAURATION : Backend d'abord, puis local, puis fetch
-    const restore = async () => {
-      const backendRestored = await restoreStateFromBackend();
-      if (backendRestored) {
-        setIsRestored(true);
-        setLoading(false);
-        return;
-      }
-
-      const localRestored = restoreStateLocal();
-      if (localRestored) {
-        setIsRestored(true);
-        setLoading(false);
-        return;
-      }
-
-      fetchData();
-    };
-
-    restore();
+    fetchData();
   }, []);
+
+  // ============================================
+  // SAUVEGARDE AUTOMATIQUE (UNIQUEMENT BACKEND)
+  // ============================================
+  useEffect(() => {
+    if (!loading && infiniteMangas.length > 0) {
+      const timeoutId = setTimeout(() => {
+        saveStateToBackend();
+      }, 3000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage, loading]);
 
   // ============================================
   // FORCER LA TRANSITION SI TOUS LES MANGAS SONT CHARGÉS
@@ -461,7 +370,7 @@ export default function Home() {
   };
 
   // ============================================
-  // CHARGER PLUS DE MANGAS MANGADROP (FR + EN)
+  // CHARGER PLUS DE MANGAS MANGADROP
   // ============================================
   const fetchMoreMangadex = async () => {
     if (loadingInfinite || !hasMoreMangadex) return;
@@ -900,7 +809,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== DÉFILEMENT INFINI AVEC BOUTON MANGADROP ===== */}
+      {/* ===== DÉFILEMENT INFINI ===== */}
       <section className="px-4 py-2">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -916,7 +825,6 @@ export default function Home() {
         </div>
 
         <div className="space-y-4">
-          {/* LISTE DES MANGAS INKDROP */}
           {infiniteMangas
             .filter((m) => m.source === "inkdrop")
             .map((manga) => {
@@ -1015,7 +923,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* ===== MESSAGE DE TRANSITION ===== */}
           {phase === "transition" && (
             <div className="text-center py-8 animate-pulse">
               <div className="bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-blue-950/40 border border-blue-500/30 rounded-2xl p-6">
@@ -1032,7 +939,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* ===== MANGAS MANGADROP ===== */}
           {phase === "mangadex" && (
             <>
               {infiniteMangas
@@ -1101,7 +1007,6 @@ export default function Home() {
                   </div>
                 ))}
 
-              {/* ===== LOADER MANGADROP ===== */}
               {loadingInfinite && phase === "mangadex" && (
                 <div className="flex justify-center py-4">
                   <div className="flex items-center gap-2 text-zinc-500">
@@ -1115,17 +1020,14 @@ export default function Home() {
             </>
           )}
 
-          {/* ===== OBSERVER POUR INKDROP ===== */}
           {(phase === "inkdrop" && hasMoreInkdrop) && (
             <div ref={observerRef} className="h-4" />
           )}
 
-          {/* ===== OBSERVER POUR MANGADROP ===== */}
           {(phase === "mangadex" && hasMoreMangadex) && (
             <div ref={observerRef} className="h-4" />
           )}
 
-          {/* ===== MESSAGE DE FIN TOTALE ===== */}
           {phase === "end" && (
             <div className="text-center py-8">
               <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6">
