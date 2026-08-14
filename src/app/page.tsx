@@ -78,6 +78,30 @@ const FALLBACK_ANIMES = [
   },
 ];
 
+// ✅ 20 CATÉGORIES POUR LA VARIÉTÉ
+const MANGADEX_QUERIES = [
+  "popular",
+  "action",
+  "romance",
+  "fantasy",
+  "adventure",
+  "comedy",
+  "drama",
+  "horror",
+  "mystery",
+  "sci-fi",
+  "slice of life",
+  "supernatural",
+  "psychological",
+  "seinen",
+  "shounen",
+  "shoujo",
+  "josei",
+  "sports",
+  "music",
+  "historical"
+];
+
 const getImageUrl = (url?: string | null) => {
   if (!url) return null;
   if (url.startsWith("http://") || url.startsWith("https://")) {
@@ -137,8 +161,8 @@ export default function Home() {
   const [hasMoreInkdrop, setHasMoreInkdrop] = useState(true);
   const [hasMoreMangadex, setHasMoreMangadex] = useState(true);
   const [phase, setPhase] = useState<"inkdrop" | "transition" | "mangadex" | "end">("inkdrop");
-  const [currentLetter, setCurrentLetter] = useState("a"); // ✅ POUR MANGADROP
   const [totalMangas, setTotalMangas] = useState(0);
+  const [usedQueries, setUsedQueries] = useState<string[]>([]); // ✅ SUIVI DES CATÉGORIES UTILISÉES
   const observerRef = useRef<HTMLDivElement | null>(null);
 
   // ============================================
@@ -231,21 +255,37 @@ export default function Home() {
   };
 
   // ============================================
-  // CHARGER PLUS DE MANGAS MANGADROP (PAR LETTRES)
+  // CHARGER PLUS DE MANGAS MANGADROP (20 CATÉGORIES)
   // ============================================
   const fetchMoreMangadex = async () => {
     if (loadingInfinite || !hasMoreMangadex) return;
     setLoadingInfinite(true);
 
     try {
-      // 🔤 Charger par lettre
-      const res = await fetch(`${API_URL}/manga-api/search?q=${currentLetter}&limit=50`);
+      // 🎲 Trouver une catégorie non utilisée
+      const availableQueries = MANGADEX_QUERIES.filter(q => !usedQueries.includes(q));
+      
+      if (availableQueries.length === 0) {
+        setHasMoreMangadex(false);
+        setPhase("end");
+        setLoadingInfinite(false);
+        return;
+      }
+
+      // Choisir une catégorie aléatoire parmi celles disponibles
+      const randomQuery = availableQueries[Math.floor(Math.random() * availableQueries.length)];
+      setUsedQueries(prev => [...prev, randomQuery]);
+
+      const res = await fetch(`${API_URL}/manga-api/search?q=${randomQuery}&limit=50`);
       let newMangas = [];
 
       if (res.ok) {
         const data = await res.json();
         newMangas = data.data || [];
       }
+
+      // 🔀 Mélanger les résultats
+      const shuffledMangas = newMangas.sort(() => Math.random() - 0.5);
 
       // 🔍 Éviter les doublons
       const existingIds = new Set(
@@ -254,40 +294,14 @@ export default function Home() {
           .map(m => m.id)
       );
 
-      const uniqueNewMangas = newMangas.filter((m: any) => !existingIds.has(m.id));
+      const uniqueNewMangas = shuffledMangas.filter((m: any) => !existingIds.has(m.id));
 
       if (uniqueNewMangas.length === 0) {
-        // ➡️ Passer à la lettre suivante
-        const nextLetter = String.fromCharCode(currentLetter.charCodeAt(0) + 1);
-        if (nextLetter <= "z") {
-          setCurrentLetter(nextLetter);
-          // Recharger avec la nouvelle lettre
-          const nextRes = await fetch(`${API_URL}/manga-api/search?q=${nextLetter}&limit=50`);
-          let nextData = [];
-          if (nextRes.ok) {
-            const data = await nextRes.json();
-            nextData = data.data || [];
-          }
-          const nextUnique = nextData.filter((m: any) => !existingIds.has(m.id));
-          if (nextUnique.length === 0) {
-            setHasMoreMangadex(false);
-            setPhase("end");
-          } else {
-            const mangadexMangas = nextUnique.map((m: any) => ({
-              id: m.id,
-              title: m.title,
-              coverUrl: m.coverImage,
-              author: { username: m.author?.name || "Inconnu", isCertified: false, avatarUrl: null },
-              likesCount: 0,
-              viewsCount: 0,
-              genre: m.genres || [],
-              status: m.status || "ongoing",
-              source: "mangadex",
-              rating: m.rating,
-              chapters: m.chapters || 0,
-            }));
-            setInfiniteMangas((prev) => [...prev, ...mangadexMangas]);
-          }
+        // Si la catégorie n'a pas donné de nouveaux mangas, réessayer avec une autre
+        const remainingQueries = MANGADEX_QUERIES.filter(q => !usedQueries.includes(q) && q !== randomQuery);
+        if (remainingQueries.length > 0) {
+          setUsedQueries(prev => prev.filter(q => q !== randomQuery)); // Retirer la catégorie vide
+          await fetchMoreMangadex(); // Réessayer
         } else {
           setHasMoreMangadex(false);
           setPhase("end");
@@ -668,7 +682,7 @@ export default function Home() {
           <span className="text-xs text-zinc-500">
             {phase === "inkdrop" && "INKDROP"}
             {phase === "transition" && "⏳ Transition..."}
-            {phase === "mangadex" && "🌐 MangaDrop"}
+            {phase === "mangadex" && `🌐 MangaDrop (${usedQueries.length}/${MANGADEX_QUERIES.length})`}
             {phase === "end" && "✅ Fin"}
           </span>
         </div>
@@ -859,7 +873,7 @@ export default function Home() {
                   <div className="flex items-center gap-2 text-zinc-500">
                     <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
                     <span className="text-xs">
-                      Chargement des mangas MangaDrop ({currentLetter.toUpperCase()})...
+                      Chargement des mangas MangaDrop ({usedQueries.length}/{MANGADEX_QUERIES.length})
                     </span>
                   </div>
                 </div>
