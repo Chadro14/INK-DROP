@@ -120,18 +120,6 @@ type Anime = {
   genre: string[];
 };
 
-type MangadexManga = {
-  id: string;
-  title: string;
-  coverImage: string;
-  author: { name: string };
-  rating: string;
-  genres: string[];
-  status: string;
-  chapters: number;
-  source?: "inkdrop" | "mangadex";
-};
-
 export default function Home() {
   const router = useRouter();
   const [mangas, setMangas] = useState<Manga[]>([]);
@@ -149,6 +137,7 @@ export default function Home() {
   const [hasMoreMangadex, setHasMoreMangadex] = useState(true);
   const [phase, setPhase] = useState<"inkdrop" | "transition" | "mangadex" | "end">("inkdrop");
   const [mangadexPage, setMangadexPage] = useState(1);
+  const [totalMangas, setTotalMangas] = useState(0);
   const observerRef = useRef<HTMLDivElement | null>(null);
 
   // ============================================
@@ -165,7 +154,7 @@ export default function Home() {
           fetch(`${API_URL}/inkstream/popular?limit=6`).catch(() => ({ ok: false })),
         ]);
 
-        const mangasData = mangasRes.ok ? await mangasRes.json() : { data: [] };
+        const mangasData = mangasRes.ok ? await mangasRes.json() : { data: [], total: 0 };
         const trendingData = trendingRes.ok ? await trendingRes.json() : { data: [] };
         
         let creatorsData = { data: [] };
@@ -174,12 +163,12 @@ export default function Home() {
           creatorsData = { data: json.data || [] };
         }
 
-        // Ajouter la source "inkdrop" aux mangas
         const inkdropMangas = (mangasData.data || []).map((m: any) => ({ ...m, source: "inkdrop" }));
 
         setMangas(inkdropMangas);
         setTrendingMangas(trendingData.data || []);
         setCreators(creatorsData.data || []);
+        setTotalMangas(mangasData.total || 0);
 
         if (animesRes && animesRes.ok) {
           const animesData = await animesRes.json();
@@ -205,6 +194,15 @@ export default function Home() {
   }, []);
 
   // ============================================
+  // FORCER LA TRANSITION SI TOUS LES MANGAS SONT CHARGÉS
+  // ============================================
+  useEffect(() => {
+    if (totalMangas > 0 && infiniteMangas.length >= totalMangas && hasMoreInkdrop) {
+      setHasMoreInkdrop(false);
+    }
+  }, [infiniteMangas.length, totalMangas, hasMoreInkdrop]);
+
+  // ============================================
   // CHARGER PLUS DE MANGAS INKDROP
   // ============================================
   const fetchMoreInkdrop = async () => {
@@ -218,8 +216,6 @@ export default function Home() {
 
       if (newMangas.length === 0) {
         setHasMoreInkdrop(false);
-        // Passer à la phase transition
-        setPhase("transition");
       } else {
         const inkdropMangas = newMangas.map((m: any) => ({ ...m, source: "inkdrop" }));
         setInfiniteMangas((prev) => [...prev, ...inkdropMangas]);
@@ -228,14 +224,13 @@ export default function Home() {
     } catch (error) {
       console.error("Erreur chargement INKDROP:", error);
       setHasMoreInkdrop(false);
-      setPhase("transition");
     } finally {
       setLoadingInfinite(false);
     }
   };
 
   // ============================================
-  // CHARGER PLUS DE MANGAS MANGADEX
+  // CHARGER PLUS DE MANGAS MANGADROP
   // ============================================
   const fetchMoreMangadex = async () => {
     if (loadingInfinite || !hasMoreMangadex) return;
@@ -275,61 +270,13 @@ export default function Home() {
         setMangadexPage((prev) => prev + 1);
       }
     } catch (error) {
-      console.error("Erreur chargement MangaDex:", error);
+      console.error("Erreur chargement MangaDrop:", error);
       setHasMoreMangadex(false);
       setPhase("end");
     } finally {
       setLoadingInfinite(false);
     }
   };
-
-  // ============================================
-  // DÉFILEMENT INFINI - GESTION DE LA PHASE
-  // ============================================
-  const fetchMore = () => {
-    if (phase === "inkdrop") {
-      fetchMoreInkdrop();
-    } else if (phase === "mangadex") {
-      fetchMoreMangadex();
-    }
-  };
-
-  // ============================================
-  // OBSERVER POUR LE DÉFILEMENT INFINI
-  // ============================================
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !loadingInfinite) {
-          if (phase === "inkdrop" && hasMoreInkdrop) {
-            fetchMoreInkdrop();
-          } else if (phase === "mangadex" && hasMoreMangadex) {
-            fetchMoreMangadex();
-          }
-        }
-      },
-      { threshold: 0.3 }
-    );
-
-    if (observerRef.current) {
-      observer.observe(observerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [phase, loadingInfinite, hasMoreInkdrop, hasMoreMangadex]);
-
-  // ============================================
-  // QUAND LA PHASE PASSE À "transition", démarrer MangaDex après 2s
-  // ============================================
-  useEffect(() => {
-    if (phase === "transition") {
-      const timer = setTimeout(() => {
-        setPhase("mangadex");
-        fetchMoreMangadex();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [phase]);
 
   // ============================================
   // CARROUSEL TENDANCES
@@ -672,7 +619,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== DÉFILEMENT INFINI AVEC MANGADEX ===== */}
+      {/* ===== DÉFILEMENT INFINI AVEC BOUTON MANGADROP ===== */}
       <section className="px-4 py-2">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -682,28 +629,28 @@ export default function Home() {
           <span className="text-xs text-zinc-500">
             {phase === "inkdrop" && "INKDROP"}
             {phase === "transition" && "⏳ Transition..."}
-            {phase === "mangadex" && "🌐 MangaDex"}
+            {phase === "mangadex" && "🌐 MangaDrop"}
             {phase === "end" && "✅ Fin"}
           </span>
         </div>
-        <div className="space-y-4">
-          {infiniteMangas.map((manga, index) => {
-            const isMangadex = manga.source === "mangadex";
-            const authorBadgeColor = manga.author?.badgeColor || "#3B82F6";
 
-            // Affichage pour les mangas MangaDex
-            if (isMangadex) {
+        <div className="space-y-4">
+          {/* LISTE DES MANGAS INKDROP */}
+          {infiniteMangas
+            .filter((m) => m.source === "inkdrop")
+            .map((manga) => {
+              const authorBadgeColor = manga.author?.badgeColor || "#3B82F6";
               return (
                 <Link
-                  key={`mangadex-${manga.id}-${index}`}
-                  href={`/read/${manga.id}`}
-                  className="block bg-zinc-900/40 border border-purple-800/40 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all active:scale-[0.98]"
+                  key={manga.id}
+                  href={`/manga/${manga.id}`}
+                  className="block bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.98]"
                 >
                   <div className="flex gap-3 p-3">
-                    <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden relative">
+                    <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden">
                       {manga.coverUrl ? (
                         <img
-                          src={manga.coverUrl}
+                          src={getImageUrl(manga.coverUrl)}
                           alt={manga.title}
                           className="w-full h-full object-cover"
                         />
@@ -712,36 +659,46 @@ export default function Home() {
                           <BookOpen className="w-6 h-6 text-zinc-700" />
                         </div>
                       )}
-                      <div className="absolute top-1 left-1">
-                        <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-purple-600/80 text-white border border-purple-400/30">
-                          🌐 MD
-                        </span>
-                      </div>
-                      {manga.rating && (
-                        <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-[8px] font-bold flex items-center gap-0.5">
-                          <Star className="w-2.5 h-2.5 fill-yellow-500 text-yellow-500" />
-                          {manga.rating}
-                        </div>
-                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">
+                      <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">
                         {manga.title}
                       </h3>
-                      <p className="text-zinc-400 text-xs truncate">par {manga.author?.username || "Inconnu"}</p>
-                      <div className="flex items-center gap-3 mt-1 text-zinc-500 text-[10px]">
-                        <span className="flex items-center gap-0.5 text-purple-400">
-                          <Globe className="w-3 h-3" />
-                          MangaDex
-                        </span>
-                        {manga.chapters && (
-                          <span className="flex items-center gap-0.5">
-                            <Library className="w-3 h-3" />
-                            {manga.chapters} chapitres
-                          </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {manga.author?.avatarUrl ? (
+                          <img 
+                            src={manga.author.avatarUrl} 
+                            alt={manga.author.username} 
+                            className="w-4 h-4 rounded-full object-cover border border-zinc-700"
+                          />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[8px] text-zinc-500 font-bold">
+                            {manga.author?.username?.charAt(0) || "?"}
+                          </div>
                         )}
+                        <p className="text-zinc-400 text-xs truncate flex items-center gap-0.5">
+                          {manga.author?.username || "Inconnu"}
+                          {manga.author?.isCertified && (
+                            <BadgeCheck
+                              className="w-3 h-3"
+                              fill={authorBadgeColor}
+                              color="black"
+                              strokeWidth={1.5}
+                            />
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-zinc-500 text-[10px]">
+                        <span className="flex items-center gap-0.5">
+                          <Heart className="w-3 h-3 text-rose-500 fill-rose-500/20" />
+                          {manga.likesCount || 0}
+                        </span>
+                        <span className="flex items-center gap-0.5">
+                          <Eye className="w-3 h-3 text-blue-400" />
+                          {manga.viewsCount || 0}
+                        </span>
                         {manga.genre && manga.genre.length > 0 && (
-                          <span className="px-1.5 py-0.5 rounded bg-purple-900/30 text-purple-300 text-[8px]">
+                          <span className="px-1.5 py-0.5 rounded bg-zinc-800/50 text-zinc-400 text-[8px]">
                             {manga.genre[0]}
                           </span>
                         )}
@@ -750,77 +707,53 @@ export default function Home() {
                   </div>
                 </Link>
               );
-            }
+            })}
 
-            // Affichage pour les mangas INKDROP
-            return (
-              <Link
-                key={manga.id}
-                href={`/manga/${manga.id}`}
-                className="block bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.98]"
+          {/* ===== BOUTON MANGADROP ===== */}
+          {!hasMoreInkdrop && phase === "inkdrop" && infiniteMangas.filter(m => m.source === "inkdrop").length > 0 && (
+            <div className="text-center py-6">
+              <button
+                onClick={() => {
+                  setPhase("mangadex");
+                  fetchMoreMangadex();
+                }}
+                className="group relative overflow-hidden w-full max-w-md mx-auto px-6 py-4 rounded-2xl bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-blue-600/20 border-2 border-blue-500/30 hover:border-purple-500/50 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
               >
-                <div className="flex gap-3 p-3">
-                  <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden">
-                    {manga.coverUrl ? (
-                      <img
-                        src={getImageUrl(manga.coverUrl)}
-                        alt={manga.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <BookOpen className="w-6 h-6 text-zinc-700" />
-                      </div>
-                    )}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                
+                <div className="relative z-10">
+                  <div className="flex items-center justify-center gap-3 mb-1">
+                    <span className="text-2xl">🔥</span>
+                    <span className="text-lg md:text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400">
+                      Découvre MangaDrop
+                    </span>
+                    <span className="text-2xl">✨</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">
-                      {manga.title}
-                    </h3>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      {manga.author?.avatarUrl ? (
-                        <img 
-                          src={manga.author.avatarUrl} 
-                          alt={manga.author.username} 
-                          className="w-4 h-4 rounded-full object-cover border border-zinc-700"
-                        />
-                      ) : (
-                        <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[8px] text-zinc-500 font-bold">
-                          {manga.author?.username?.charAt(0) || "?"}
-                        </div>
-                      )}
-                      <p className="text-zinc-400 text-xs truncate flex items-center gap-0.5">
-                        {manga.author?.username || "Inconnu"}
-                        {manga.author?.isCertified && (
-                          <BadgeCheck
-                            className="w-3 h-3"
-                            fill={authorBadgeColor}
-                            color="black"
-                            strokeWidth={1.5}
-                          />
-                        )}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1 text-zinc-500 text-[10px]">
-                      <span className="flex items-center gap-0.5">
-                        <Heart className="w-3 h-3 text-rose-500 fill-rose-500/20" />
-                        {manga.likesCount || 0}
-                      </span>
-                      <span className="flex items-center gap-0.5">
-                        <Eye className="w-3 h-3 text-blue-400" />
-                        {manga.viewsCount || 0}
-                      </span>
-                      {manga.genre && manga.genre.length > 0 && (
-                        <span className="px-1.5 py-0.5 rounded bg-zinc-800/50 text-zinc-400 text-[8px]">
-                          {manga.genre[0]}
-                        </span>
-                      )}
-                    </div>
+                  <p className="text-zinc-400 text-sm font-medium">
+                    Explore plus de <span className="text-purple-400 font-bold">100 000 mangas</span> en un clic
+                  </p>
+                  <div className="flex items-center justify-center gap-2 mt-3 text-xs text-zinc-500">
+                    <span className="flex items-center gap-1">
+                      <Globe className="w-3.5 h-3.5 text-purple-400" />
+                      MangaDrop
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                    <span className="flex items-center gap-1">
+                      <Library className="w-3.5 h-3.5 text-blue-400" />
+                      Illimité
+                    </span>
+                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                    <span className="flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 text-yellow-400" />
+                      Top 10
+                    </span>
                   </div>
                 </div>
-              </Link>
-            );
-          })}
+
+                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
+              </button>
+            </div>
+          )}
 
           {/* ===== MESSAGE DE TRANSITION ===== */}
           {phase === "transition" && (
@@ -830,18 +763,93 @@ export default function Home() {
                   <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
                 </div>
                 <p className="text-white text-lg font-bold">
-                  📚 Tu as atteint la fin des mangas INKDROP
+                  📚 Chargement des mangas MangaDrop...
                 </p>
                 <p className="text-zinc-400 text-sm mt-1">
-                  Découvre maintenant plus de <span className="text-purple-400 font-semibold">100 000 mangas</span> sur MangaDex
+                  Prépare-toi à découvrir de nouveaux mondes
                 </p>
-                <div className="mt-3 flex justify-center gap-1">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: "600ms" }} />
-                </div>
               </div>
             </div>
+          )}
+
+          {/* ===== MANGAS MANGADROP ===== */}
+          {phase === "mangadex" && (
+            <>
+              {infiniteMangas
+                .filter((m) => m.source === "mangadex")
+                .map((manga, index) => (
+                  <Link
+                    key={`mangadex-${manga.id}-${index}`}
+                    href={`/read/${manga.id}`}
+                    className="block bg-zinc-900/40 border border-purple-800/40 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all active:scale-[0.98]"
+                  >
+                    <div className="flex gap-3 p-3">
+                      <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden relative">
+                        {manga.coverUrl ? (
+                          <img
+                            src={manga.coverUrl}
+                            alt={manga.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <BookOpen className="w-6 h-6 text-zinc-700" />
+                          </div>
+                        )}
+                        <div className="absolute top-1 left-1">
+                          <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-purple-600/80 text-white border border-purple-400/30">
+                            🌐 MD
+                          </span>
+                        </div>
+                        {manga.rating && (
+                          <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-[8px] font-bold flex items-center gap-0.5">
+                            <Star className="w-2.5 h-2.5 fill-yellow-500 text-yellow-500" />
+                            {manga.rating}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">
+                          {manga.title}
+                        </h3>
+                        <p className="text-zinc-400 text-xs truncate">par {manga.author?.username || "Inconnu"}</p>
+                        <div className="flex items-center gap-3 mt-1 text-zinc-500 text-[10px]">
+                          <span className="flex items-center gap-0.5 text-purple-400">
+                            <Globe className="w-3 h-3" />
+                            MangaDrop
+                          </span>
+                          {manga.chapters && (
+                            <span className="flex items-center gap-0.5">
+                              <Library className="w-3 h-3" />
+                              {manga.chapters} chapitres
+                            </span>
+                          )}
+                          {manga.genre && manga.genre.length > 0 && (
+                            <span className="px-1.5 py-0.5 rounded bg-purple-900/30 text-purple-300 text-[8px]">
+                              {manga.genre[0]}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+
+              {/* ===== LOADER MANGADROP ===== */}
+              {loadingInfinite && phase === "mangadex" && (
+                <div className="flex justify-center py-4">
+                  <div className="flex items-center gap-2 text-zinc-500">
+                    <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
+                    <span className="text-xs">Chargement des mangas MangaDrop...</span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ===== OBSERVER ===== */}
+          {(phase === "inkdrop" && hasMoreInkdrop) && (
+            <div ref={observerRef} className="h-4" />
           )}
 
           {/* ===== MESSAGE DE FIN TOTALE ===== */}
@@ -863,28 +871,11 @@ export default function Home() {
                     href="/discover?tab=mangadex"
                     className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all"
                   >
-                    🌐 Explorer MangaDex
+                    🌐 Explorer MangaDrop
                   </Link>
                 </div>
               </div>
             </div>
-          )}
-
-          {/* ===== LOADER ===== */}
-          {loadingInfinite && phase !== "transition" && (
-            <div className="flex justify-center py-4">
-              <div className="flex items-center gap-2 text-zinc-500">
-                <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
-                <span className="text-xs">
-                  {phase === "inkdrop" ? "Chargement des mangas INKDROP..." : "Chargement des mangas MangaDex..."}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* ===== OBSERVER ===== */}
-          {(phase === "inkdrop" || phase === "mangadex") && (
-            <div ref={observerRef} className="h-4" />
           )}
         </div>
       </section>
