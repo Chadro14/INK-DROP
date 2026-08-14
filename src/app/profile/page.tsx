@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { Loader } from "@/components/ui/loader"; // ✅ AJOUT
 import { 
   BookOpen, 
   Heart, 
@@ -134,12 +135,9 @@ export default function ProfilePage() {
     }
   };
 
+  // ✅ REMPLACÉ par le Loader artistique
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-zinc-950 text-white">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <Loader message="Chargement du profil..." />;
   }
 
   if (error || !profile) {
