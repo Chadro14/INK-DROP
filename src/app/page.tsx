@@ -21,7 +21,8 @@ import {
   Film,
   Library,
   BadgeCheck,
-  Loader2
+  Loader2,
+  RotateCcw
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -203,7 +204,7 @@ export default function Home() {
   }, [infiniteMangas.length, totalMangas, hasMoreInkdrop]);
 
   // ============================================
-  // CHARGER PLUS DE MANGAS INKDROP
+  // CHARGER PLUS DE MANGAS INKDROP (INFINI)
   // ============================================
   const fetchMoreInkdrop = async () => {
     if (loadingInfinite || !hasMoreInkdrop) return;
@@ -230,7 +231,7 @@ export default function Home() {
   };
 
   // ============================================
-  // CHARGER PLUS DE MANGAS MANGADROP
+  // CHARGER PLUS DE MANGAS MANGADROP (INFINI)
   // ============================================
   const fetchMoreMangadex = async () => {
     if (loadingInfinite || !hasMoreMangadex) return;
@@ -709,45 +710,24 @@ export default function Home() {
               );
             })}
 
-          {/* ===== BOUTON MANGADROP ===== */}
+          {/* ===== BOUTON MANGADROP (REDUIT, SANS EMOJI) ===== */}
           {!hasMoreInkdrop && phase === "inkdrop" && infiniteMangas.filter(m => m.source === "inkdrop").length > 0 && (
-            <div className="text-center py-6">
+            <div className="text-center py-4">
               <button
                 onClick={() => {
                   setPhase("mangadex");
                   fetchMoreMangadex();
                 }}
-                className="group relative overflow-hidden w-full max-w-md mx-auto px-6 py-4 rounded-2xl bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-blue-600/20 border-2 border-blue-500/30 hover:border-purple-500/50 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                className="group relative overflow-hidden w-full max-w-sm mx-auto px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-blue-600/20 border border-blue-500/30 hover:border-purple-500/50 transition-all duration-300 hover:scale-[1.01] active:scale-[0.98]"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 
-                <div className="relative z-10">
-                  <div className="flex items-center justify-center gap-3 mb-1">
-                    <span className="text-2xl">🔥</span>
-                    <span className="text-lg md:text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400">
-                      Découvre MangaDrop
-                    </span>
-                    <span className="text-2xl">✨</span>
-                  </div>
-                  <p className="text-zinc-400 text-sm font-medium">
-                    Explore plus de <span className="text-purple-400 font-bold">100 000 mangas</span> en un clic
-                  </p>
-                  <div className="flex items-center justify-center gap-2 mt-3 text-xs text-zinc-500">
-                    <span className="flex items-center gap-1">
-                      <Globe className="w-3.5 h-3.5 text-purple-400" />
-                      MangaDrop
-                    </span>
-                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                    <span className="flex items-center gap-1">
-                      <Library className="w-3.5 h-3.5 text-blue-400" />
-                      Illimité
-                    </span>
-                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                    <span className="flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 text-yellow-400" />
-                      Top 10
-                    </span>
-                  </div>
+                <div className="relative z-10 flex items-center justify-center gap-3">
+                  <Globe className="w-4 h-4 text-purple-400" />
+                  <span className="text-sm font-semibold text-white">
+                    Explore plus de <span className="text-purple-400 font-bold">100 000 mangas</span>, clique ici pour en découvrir.
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
                 </div>
 
                 <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
@@ -798,7 +778,7 @@ export default function Home() {
                         )}
                         <div className="absolute top-1 left-1">
                           <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-purple-600/80 text-white border border-purple-400/30">
-                            🌐 MD
+                            <Globe className="w-3 h-3" />
                           </span>
                         </div>
                         {manga.rating && (
@@ -847,7 +827,7 @@ export default function Home() {
             </>
           )}
 
-          {/* ===== OBSERVER ===== */}
+          {/* ===== OBSERVER (pour le chargement infini) ===== */}
           {(phase === "inkdrop" && hasMoreInkdrop) && (
             <div ref={observerRef} className="h-4" />
           )}
@@ -863,15 +843,17 @@ export default function Home() {
                 <div className="flex justify-center gap-4 mt-3">
                   <Link
                     href="/"
-                    className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all"
+                    className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all flex items-center gap-1.5"
                   >
-                    🔄 Recharger
+                    <RotateCcw className="w-4 h-4" />
+                    Recharger
                   </Link>
                   <Link
                     href="/discover?tab=mangadex"
-                    className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all"
+                    className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center gap-1.5"
                   >
-                    🌐 Explorer MangaDrop
+                    <Globe className="w-4 h-4" />
+                    Explorer MangaDrop
                   </Link>
                 </div>
               </div>
