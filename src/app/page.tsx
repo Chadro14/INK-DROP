@@ -78,28 +78,31 @@ const FALLBACK_ANIMES = [
   },
 ];
 
-// ✅ 20 CATÉGORIES POUR LA VARIÉTÉ
+// ✅ CATÉGORIES AVEC LANGUES (60% FR, 40% EN)
 const MANGADEX_QUERIES = [
-  "popular",
-  "action",
-  "romance",
-  "fantasy",
-  "adventure",
-  "comedy",
-  "drama",
-  "horror",
-  "mystery",
-  "sci-fi",
-  "slice of life",
-  "supernatural",
-  "psychological",
-  "seinen",
-  "shounen",
-  "shoujo",
-  "josei",
-  "sports",
-  "music",
-  "historical"
+  // 🔵 FRANÇAIS (60%) - 12 requêtes
+  { query: "popular", lang: "fr" },
+  { query: "action", lang: "fr" },
+  { query: "romance", lang: "fr" },
+  { query: "fantasy", lang: "fr" },
+  { query: "adventure", lang: "fr" },
+  { query: "comedy", lang: "fr" },
+  { query: "drama", lang: "fr" },
+  { query: "mystery", lang: "fr" },
+  { query: "sci-fi", lang: "fr" },
+  { query: "slice of life", lang: "fr" },
+  { query: "supernatural", lang: "fr" },
+  { query: "seinen", lang: "fr" },
+  
+  // 🟢 ANGLAIS (40%) - 8 requêtes
+  { query: "popular", lang: "en" },
+  { query: "action", lang: "en" },
+  { query: "romance", lang: "en" },
+  { query: "fantasy", lang: "en" },
+  { query: "adventure", lang: "en" },
+  { query: "comedy", lang: "en" },
+  { query: "shounen", lang: "en" },
+  { query: "shoujo", lang: "en" },
 ];
 
 const getImageUrl = (url?: string | null) => {
@@ -125,6 +128,7 @@ type Manga = {
   genre: string[];
   status: string;
   source?: "inkdrop" | "mangadex";
+  language?: string;
 };
 
 type Creator = {
@@ -162,8 +166,87 @@ export default function Home() {
   const [hasMoreMangadex, setHasMoreMangadex] = useState(true);
   const [phase, setPhase] = useState<"inkdrop" | "transition" | "mangadex" | "end">("inkdrop");
   const [totalMangas, setTotalMangas] = useState(0);
-  const [usedQueries, setUsedQueries] = useState<string[]>([]); // ✅ SUIVI DES CATÉGORIES UTILISÉES
+  const [usedQueries, setUsedQueries] = useState<string[]>([]);
   const observerRef = useRef<HTMLDivElement | null>(null);
+
+  // ============================================
+  // SAUVEGARDER L'ÉTAT (localStorage)
+  // ============================================
+  const saveState = () => {
+    try {
+      const state = {
+        scrollY: window.scrollY,
+        mangas: infiniteMangas,
+        phase: phase,
+        usedQueries: usedQueries,
+        hasMoreInkdrop: hasMoreInkdrop,
+        hasMoreMangadex: hasMoreMangadex,
+        infinitePage: infinitePage,
+      };
+      localStorage.setItem('inkdrop_state', JSON.stringify(state));
+    } catch (error) {
+      console.error('Erreur sauvegarde:', error);
+    }
+  };
+
+  // ============================================
+  // RESTAURER L'ÉTAT (localStorage)
+  // ============================================
+  const restoreState = () => {
+    try {
+      const saved = localStorage.getItem('inkdrop_state');
+      if (!saved) return false;
+
+      const state = JSON.parse(saved);
+      
+      setInfiniteMangas(state.mangas || []);
+      setPhase(state.phase || "inkdrop");
+      setUsedQueries(state.usedQueries || []);
+      setHasMoreInkdrop(state.hasMoreInkdrop !== undefined ? state.hasMoreInkdrop : true);
+      setHasMoreMangadex(state.hasMoreMangadex !== undefined ? state.hasMoreMangadex : true);
+      setInfinitePage(state.infinitePage || 1);
+
+      setTimeout(() => {
+        if (state.scrollY) {
+          window.scrollTo(0, state.scrollY);
+        }
+      }, 100);
+
+      return true;
+    } catch (error) {
+      console.error('Erreur restauration:', error);
+      return false;
+    }
+  };
+
+  // ============================================
+  // SAUVEGARDER AVANT DE QUITTER LA PAGE
+  // ============================================
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      saveState();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage]);
+
+  // ============================================
+  // SAUVEGARDE AUTOMATIQUE À CHAQUE CHANGEMENT
+  // ============================================
+  useEffect(() => {
+    if (!loading && infiniteMangas.length > 0) {
+      saveState();
+    }
+  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage, loading]);
+
+  // ============================================
+  // SAUVEGARDER AVANT DE QUITTER POUR UN MANGA
+  // ============================================
+  const handleMangaClick = (mangaId: string) => {
+    saveState();
+    router.push(`/read/${mangaId}`);
+  };
 
   // ============================================
   // FETCH MANGAS POPULAIRES
@@ -215,7 +298,10 @@ export default function Home() {
       }
     };
 
-    fetchData();
+    const hasRestored = restoreState();
+    if (!hasRestored) {
+      fetchData();
+    }
   }, []);
 
   // ============================================
@@ -255,15 +341,14 @@ export default function Home() {
   };
 
   // ============================================
-  // CHARGER PLUS DE MANGAS MANGADROP (20 CATÉGORIES)
+  // CHARGER PLUS DE MANGAS MANGADROP (FR + EN)
   // ============================================
   const fetchMoreMangadex = async () => {
     if (loadingInfinite || !hasMoreMangadex) return;
     setLoadingInfinite(true);
 
     try {
-      // 🎲 Trouver une catégorie non utilisée
-      const availableQueries = MANGADEX_QUERIES.filter(q => !usedQueries.includes(q));
+      const availableQueries = MANGADEX_QUERIES.filter(q => !usedQueries.includes(q.query + q.lang));
       
       if (availableQueries.length === 0) {
         setHasMoreMangadex(false);
@@ -272,11 +357,12 @@ export default function Home() {
         return;
       }
 
-      // Choisir une catégorie aléatoire parmi celles disponibles
-      const randomQuery = availableQueries[Math.floor(Math.random() * availableQueries.length)];
-      setUsedQueries(prev => [...prev, randomQuery]);
+      const randomIndex = Math.floor(Math.random() * availableQueries.length);
+      const selected = availableQueries[randomIndex];
+      setUsedQueries(prev => [...prev, selected.query + selected.lang]);
 
-      const res = await fetch(`${API_URL}/manga-api/search?q=${randomQuery}&limit=50`);
+      const langParam = selected.lang === "fr" ? "&availableTranslatedLanguage[]=fr" : "&availableTranslatedLanguage[]=en";
+      const res = await fetch(`${API_URL}/manga-api/search?q=${selected.query}&limit=50${langParam}`);
       let newMangas = [];
 
       if (res.ok) {
@@ -284,10 +370,8 @@ export default function Home() {
         newMangas = data.data || [];
       }
 
-      // 🔀 Mélanger les résultats
       const shuffledMangas = newMangas.sort(() => Math.random() - 0.5);
 
-      // 🔍 Éviter les doublons
       const existingIds = new Set(
         infiniteMangas
           .filter(m => m.source === "mangadex")
@@ -297,11 +381,10 @@ export default function Home() {
       const uniqueNewMangas = shuffledMangas.filter((m: any) => !existingIds.has(m.id));
 
       if (uniqueNewMangas.length === 0) {
-        // Si la catégorie n'a pas donné de nouveaux mangas, réessayer avec une autre
-        const remainingQueries = MANGADEX_QUERIES.filter(q => !usedQueries.includes(q) && q !== randomQuery);
-        if (remainingQueries.length > 0) {
-          setUsedQueries(prev => prev.filter(q => q !== randomQuery)); // Retirer la catégorie vide
-          await fetchMoreMangadex(); // Réessayer
+        const remaining = MANGADEX_QUERIES.filter(q => !usedQueries.includes(q.query + q.lang));
+        if (remaining.length > 0) {
+          setUsedQueries(prev => prev.filter(q => q !== selected.query + selected.lang));
+          await fetchMoreMangadex();
         } else {
           setHasMoreMangadex(false);
           setPhase("end");
@@ -319,6 +402,7 @@ export default function Home() {
           source: "mangadex",
           rating: m.rating,
           chapters: m.chapters || 0,
+          language: selected.lang === "fr" ? "🇫🇷" : "🇬🇧",
         }));
         setInfiniteMangas((prev) => [...prev, ...mangadexMangas]);
       }
@@ -356,6 +440,30 @@ export default function Home() {
       router.push(`/discover?search=${encodeURIComponent(search)}`);
     }
   };
+
+  // ============================================
+  // OBSERVER POUR LE DÉFILEMENT INFINI
+  // ============================================
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loadingInfinite) {
+          if (phase === "inkdrop" && hasMoreInkdrop) {
+            fetchMoreInkdrop();
+          } else if (phase === "mangadex" && hasMoreMangadex) {
+            fetchMoreMangadex();
+          }
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [phase, loadingInfinite, hasMoreInkdrop, hasMoreMangadex]);
 
   if (loading) {
     return (
@@ -810,10 +918,10 @@ export default function Home() {
               {infiniteMangas
                 .filter((m) => m.source === "mangadex")
                 .map((manga, index) => (
-                  <Link
+                  <div
                     key={`mangadex-${manga.id}-${index}`}
-                    href={`/read/${manga.id}`}
-                    className="block bg-zinc-900/40 border border-purple-800/40 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all active:scale-[0.98]"
+                    onClick={() => handleMangaClick(manga.id)}
+                    className="block bg-zinc-900/40 border border-purple-800/40 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all active:scale-[0.98] cursor-pointer"
                   >
                     <div className="flex gap-3 p-3">
                       <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden relative">
@@ -828,9 +936,12 @@ export default function Home() {
                             <BookOpen className="w-6 h-6 text-zinc-700" />
                           </div>
                         )}
-                        <div className="absolute top-1 left-1">
+                        <div className="absolute top-1 left-1 flex gap-1">
                           <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-purple-600/80 text-white border border-purple-400/30">
                             <Globe className="w-3 h-3" />
+                          </span>
+                          <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-black/70 text-white border border-white/20">
+                            {manga.language || "🌐"}
                           </span>
                         </div>
                         {manga.rating && (
@@ -850,6 +961,9 @@ export default function Home() {
                             <Globe className="w-3 h-3" />
                             MangaDrop
                           </span>
+                          <span className="flex items-center gap-0.5 text-zinc-400">
+                            {manga.language || "🌐"}
+                          </span>
                           {manga.chapters && (
                             <span className="flex items-center gap-0.5">
                               <Library className="w-3 h-3" />
@@ -864,7 +978,7 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                  </Link>
+                  </div>
                 ))}
 
               {/* ===== LOADER MANGADROP ===== */}
@@ -881,8 +995,13 @@ export default function Home() {
             </>
           )}
 
-          {/* ===== OBSERVER ===== */}
+          {/* ===== OBSERVER POUR INKDROP ===== */}
           {(phase === "inkdrop" && hasMoreInkdrop) && (
+            <div ref={observerRef} className="h-4" />
+          )}
+
+          {/* ===== OBSERVER POUR MANGADROP ===== */}
+          {(phase === "mangadex" && hasMoreMangadex) && (
             <div ref={observerRef} className="h-4" />
           )}
 
