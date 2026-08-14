@@ -8,493 +8,114 @@ interface LoaderProps {
   onComplete?: () => void;
 }
 
-interface Particle {
-  x: number;
-  y: number;
-  size: number;
-  speedX: number;
-  speedY: number;
-  opacity: number;
-  color: string;
-}
+const statuses = [
+  "Préparation de votre espace",
+  "Chargement des créations",
+  "Préparation de l’encre",
+  "Synchronisation",
+  "Presque prêt",
+];
 
-export function Loader({ 
-  message = "Chargement de l'encre",
+export function Loader({
+  message = "Chargement de l’encre",
   fullScreen = true,
-  onComplete
+  onComplete,
 }: LoaderProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [particles, setParticles] = useState<Particle[]>([]);
   const [progress, setProgress] = useState(0);
-  const [phase, setPhase] = useState<"drop" | "spread" | "pulse" | "complete">("drop");
-  const [displayText, setDisplayText] = useState("");
-  const fullText = message || "Chargement de l'encre";
-  const [textIndex, setTextIndex] = useState(0);
-  const [showCursor, setShowCursor] = useState(true);
+  const [status, setStatus] = useState(statuses[0]);
+  const completed = useRef(false);
 
-  // ============================================
-  // PARTICLES SYSTEM
-  // ============================================
   useEffect(() => {
-    const colors = ["#3B82F6", "#8B5CF6", "#60A5FA", "#A78BFA", "#2563EB", "#7C3AED"];
-    const newParticles: Particle[] = [];
-    for (let i = 0; i < 30; i++) {
-      newParticles.push({
-        x: Math.random() * 120,
-        y: Math.random() * 120,
-        size: Math.random() * 4 + 1,
-        speedX: (Math.random() - 0.5) * 2,
-        speedY: (Math.random() - 0.5) * 2 - 1,
-        opacity: Math.random() * 0.5 + 0.2,
-        color: colors[Math.floor(Math.random() * colors.length)],
-      });
-    }
-    setParticles(newParticles);
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const value = Math.min(100, (now - start) / 48);
+      setProgress(value);
+      setStatus(statuses[Math.min(statuses.length - 1, Math.floor(value / 20))]);
+      if (value < 100) raf = requestAnimationFrame(tick);
+      else if (!completed.current) {
+        completed.current = true;
+        setStatus("Prêt à créer.");
+        window.setTimeout(() => onComplete?.(), 550);
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [onComplete]);
 
-    // Animation des particules
-    const interval = setInterval(() => {
-      setParticles(prev => prev.map(p => ({
-        ...p,
-        x: p.x + p.speedX,
-        y: p.y + p.speedY,
-        opacity: p.opacity + (Math.random() - 0.5) * 0.05,
-        size: p.size + (Math.random() - 0.5) * 0.5,
-      })));
-    }, 50);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // ============================================
-  // PROGRESSION
-  // ============================================
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        const newProgress = prev + Math.random() * 2 + 0.5;
-        if (newProgress >= 100) {
-          clearInterval(interval);
-          setPhase("complete");
-          if (onComplete) setTimeout(onComplete, 500);
-          return 100;
-        }
-        
-        if (newProgress > 30 && phase === "drop") setPhase("spread");
-        if (newProgress > 70 && phase === "spread") setPhase("pulse");
-        
-        return newProgress;
-      });
-    }, 80);
-
-    return () => clearInterval(interval);
-  }, [phase, onComplete]);
-
-  // ============================================
-  // MACHINE À ÉCRIRE
-  // ============================================
-  useEffect(() => {
-    if (textIndex < fullText.length) {
-      const timer = setTimeout(() => {
-        setDisplayText(prev => prev + fullText[textIndex]);
-        setTextIndex(prev => prev + 1);
-      }, 80);
-      return () => clearTimeout(timer);
-    }
-  }, [textIndex, fullText]);
-
-  // ============================================
-  // CURSEUR CLIGNOTANT
-  // ============================================
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setShowCursor(prev => !prev);
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  // ============================================
-  // CALCUL DES DÉGAGÉS POUR LE CERCLE
-  // ============================================
-  const radius = 54;
+  const radius = 108;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (progress / 100) * circumference;
-
-  const containerClasses = fullScreen
-    ? "fixed inset-0 flex flex-col items-center justify-center bg-zinc-950 z-50 overflow-hidden"
-    : "flex flex-col items-center justify-center py-12";
+  const root = fullScreen ? "loader loader--full" : "loader";
 
   return (
-    <div ref={containerRef} className={containerClasses}>
-      {/* ===== FOND ANIMÉ ===== */}
-      <div className="absolute inset-0 overflow-hidden">
-        {/* Onde de fond */}
-        <div className="absolute -inset-[100px] bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5">
-          <div 
-            className="absolute inset-0"
-            style={{
-              background: "radial-gradient(circle at 50% 50%, rgba(59,130,246,0.1) 0%, transparent 70%)",
-              animation: "pulse 4s ease-in-out infinite",
-            }}
-          />
-        </div>
-      </div>
+    <section className={root} role="status" aria-label={`${message} ${Math.round(progress)}%`}>
+      <div className="ambient" />
+      <div className="brush brush--one" />
+      <div className="brush brush--two" />
 
-      {/* ===== SVG PRINCIPAL ===== */}
-      <div className="relative w-48 h-48 md:w-56 md:h-56">
-        <svg
-          className="w-full h-full"
-          viewBox="0 0 140 140"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* ===== PARTICULES ===== */}
-          {particles.map((p, i) => (
-            <circle
-              key={i}
-              cx={p.x}
-              cy={p.y}
-              r={p.size}
-              fill={p.color}
-              opacity={p.opacity}
-            >
-              <animate
-                attributeName="cx"
-                values={`${p.x};${p.x + p.speedX * 10};${p.x}`}
-                dur="3s"
-                repeatCount="indefinite"
-              />
-              <animate
-                attributeName="cy"
-                values={`${p.y};${p.y + p.speedY * 10};${p.y}`}
-                dur="3s"
-                repeatCount="indefinite"
-              />
-            </circle>
-          ))}
-
-          {/* ===== CERCLE DE FOND ===== */}
-          <circle
-            cx="70"
-            cy="70"
-            r={radius}
-            stroke="rgba(59, 130, 246, 0.08)"
-            strokeWidth="4"
-            className="animate-spin-slow"
-          />
-
-          {/* ===== CERCLE DE PROGRESSION ===== */}
-          <circle
-            cx="70"
-            cy="70"
-            r={radius}
-            stroke="url(#gradient)"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            transform="rotate(-90 70 70)"
-            className="transition-all duration-200"
-          >
-            <animate
-              attributeName="stroke-dashoffset"
-              values={`${circumference};${offset}`}
-              dur="0.3s"
-              fill="freeze"
-            />
-          </circle>
-
-          {/* ===== GOUTTE D'ENCRE ===== */}
-          <g className="ink-drop">
-            <path
-              d="M70 25 C55 45 45 60 45 75 C45 89 56 100 70 100 C84 100 95 89 95 75 C95 60 85 45 70 25Z"
-              fill="url(#inkGradient)"
-              className="ink-drop__path"
-            >
-              <animate
-                attributeName="d"
-                values="M70 25 C55 45 45 60 45 75 C45 89 56 100 70 100 C84 100 95 89 95 75 C95 60 85 45 70 25Z;M70 20 C50 40 38 60 38 78 C38 95 52 108 70 108 C88 108 102 95 102 78 C102 60 90 40 70 20Z;M70 25 C55 45 45 60 45 75 C45 89 56 100 70 100 C84 100 95 89 95 75 C95 60 85 45 70 25Z"
-                dur="3s"
-                repeatCount="indefinite"
-                calcMode="spline"
-                keySplines="0.4 0 0.2 1;0.4 0 0.2 1"
-              />
-            </path>
-
-            {/* Reflet sur la goutte */}
-            <ellipse
-              cx="65"
-              cy="65"
-              rx="10"
-              ry="14"
-              fill="rgba(255,255,255,0.15)"
-              className="ink-drop__highlight"
-            >
-              <animate
-                attributeName="cy"
-                values="65;58;65"
-                dur="3s"
-                repeatCount="indefinite"
-                calcMode="spline"
-                keySplines="0.4 0 0.2 1;0.4 0 0.2 1"
-              />
-            </ellipse>
-
-            {/* Petit point lumineux */}
-            <circle cx="62" cy="55" r="3" fill="rgba(255,255,255,0.2)">
-              <animate
-                attributeName="cy"
-                values="55;50;55"
-                dur="3s"
-                repeatCount="indefinite"
-                calcMode="spline"
-                keySplines="0.4 0 0.2 1;0.4 0 0.2 1"
-              />
-            </circle>
-          </g>
-
-          {/* ===== SPLASH (éclaboussures) ===== */}
-          <g className="ink-splashes">
-            <circle cx="25" cy="95" r="3" fill="#3B82F6" opacity="0">
-              <animate
-                attributeName="r"
-                values="0;6;0"
-                dur="2.5s"
-                repeatCount="indefinite"
-                begin="0s"
-              />
-              <animate
-                attributeName="opacity"
-                values="0;0.5;0"
-                dur="2.5s"
-                repeatCount="indefinite"
-                begin="0s"
-              />
-            </circle>
-            <circle cx="115" cy="95" r="3" fill="#8B5CF6" opacity="0">
-              <animate
-                attributeName="r"
-                values="0;5;0"
-                dur="2.8s"
-                repeatCount="indefinite"
-                begin="0.5s"
-              />
-              <animate
-                attributeName="opacity"
-                values="0;0.4;0"
-                dur="2.8s"
-                repeatCount="indefinite"
-                begin="0.5s"
-              />
-            </circle>
-            <circle cx="35" cy="50" r="2" fill="#60A5FA" opacity="0">
-              <animate
-                attributeName="r"
-                values="0;4;0"
-                dur="3s"
-                repeatCount="indefinite"
-                begin="1s"
-              />
-              <animate
-                attributeName="opacity"
-                values="0;0.3;0"
-                dur="3s"
-                repeatCount="indefinite"
-                begin="1s"
-              />
-            </circle>
-            <circle cx="105" cy="50" r="2" fill="#A78BFA" opacity="0">
-              <animate
-                attributeName="r"
-                values="0;4;0"
-                dur="3.2s"
-                repeatCount="indefinite"
-                begin="1.5s"
-              />
-              <animate
-                attributeName="opacity"
-                values="0;0.3;0"
-                dur="3.2s"
-                repeatCount="indefinite"
-                begin="1.5s"
-              />
-            </circle>
-          </g>
-
-          {/* ===== ÉTOILE CENTRALE ===== */}
-          <g className="ink-star">
-            <path
-              d="M70 45 L74 61 L90 61 L78 72 L82 88 L70 77 L58 88 L62 72 L50 61 L66 61 Z"
-              fill="url(#starGradient)"
-              opacity="0"
-            >
-              <animate
-                attributeName="opacity"
-                values="0;1;1;0"
-                dur="5s"
-                repeatCount="indefinite"
-                begin="3s"
-              />
-              <animateTransform
-                attributeName="transform"
-                type="rotate"
-                values="0 70 70;360 70 70"
-                dur="15s"
-                repeatCount="indefinite"
-              />
-            </path>
-          </g>
-
-          {/* ===== VAGUE D'ENCRE ===== */}
-          <g className="ink-wave" opacity="0.15">
-            <path
-              d="M20 110 Q50 100 70 110 Q90 100 120 110"
-              stroke="#3B82F6"
-              strokeWidth="2"
-              fill="none"
-            >
-              <animate
-                attributeName="d"
-                values="M20 110 Q50 100 70 110 Q90 100 120 110;M20 110 Q50 120 70 110 Q90 100 120 110;M20 110 Q50 100 70 110 Q90 100 120 110"
-                dur="3s"
-                repeatCount="indefinite"
-                calcMode="spline"
-                keySplines="0.4 0 0.2 1;0.4 0 0.2 1"
-              />
-            </path>
-            <path
-              d="M20 118 Q50 108 70 118 Q90 108 120 118"
-              stroke="#8B5CF6"
-              strokeWidth="1.5"
-              fill="none"
-            >
-              <animate
-                attributeName="d"
-                values="M20 118 Q50 128 70 118 Q90 108 120 118;M20 118 Q50 108 70 118 Q90 128 120 118;M20 118 Q50 128 70 118 Q90 108 120 118"
-                dur="3.5s"
-                repeatCount="indefinite"
-                calcMode="spline"
-                keySplines="0.4 0 0.2 1;0.4 0 0.2 1"
-              />
-            </path>
-          </g>
-
-          {/* ===== DÉFINITIONS ===== */}
+      <div className={`scene ${progress >= 100 ? "scene--done" : ""}`}>
+        <div className="halo" />
+        <svg viewBox="0 0 260 260" className="art" aria-hidden="true">
           <defs>
-            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#3B82F6" />
-              <stop offset="50%" stopColor="#8B5CF6" />
-              <stop offset="100%" stopColor="#3B82F6" />
-              <animateTransform
-                attributeName="gradientTransform"
-                type="rotate"
-                from="0 0.5 0.5"
-                to="360 0.5 0.5"
-                dur="4s"
-                repeatCount="indefinite"
-              />
+            <linearGradient id="ring" x1="35" y1="35" x2="225" y2="225">
+              <stop stopColor="#fff" /><stop offset=".55" stopColor="#bfd7ff" /><stop offset="1" stopColor="#3b82f6" />
             </linearGradient>
-            <linearGradient id="inkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#3B82F6">
-                <animate
-                  attributeName="stop-color"
-                  values="#3B82F6;#8B5CF6;#3B82F6"
-                  dur="3s"
-                  repeatCount="indefinite"
-                />
-              </stop>
-              <stop offset="100%" stopColor="#1E40AF">
-                <animate
-                  attributeName="stop-color"
-                  values="#1E40AF;#6D28D9;#1E40AF"
-                  dur="3s"
-                  repeatCount="indefinite"
-                />
-              </stop>
+            <linearGradient id="ink" x1="75" y1="52" x2="185" y2="218">
+              <stop stopColor="#fff" /><stop offset=".35" stopColor="#dce9ff" /><stop offset=".72" stopColor="#2f6fea" /><stop offset="1" stopColor="#0b2d70" />
             </linearGradient>
-            <linearGradient id="starGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#FCD34D" />
-              <stop offset="100%" stopColor="#F59E0B" />
-              <animate
-                attributeName="gradientTransform"
-                type="rotate"
-                from="0 0.5 0.5"
-                to="360 0.5 0.5"
-                dur="8s"
-                repeatCount="indefinite"
-              />
-            </linearGradient>
-            <radialGradient id="glow">
-              <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="#3B82F6" stopOpacity="0" />
-            </radialGradient>
+            <radialGradient id="glow"><stop stopColor="#60a5fa" stopOpacity=".35" /><stop offset="1" stopColor="#60a5fa" stopOpacity="0" /></radialGradient>
+            <filter id="blur"><feGaussianBlur stdDeviation="7" /></filter>
+            <clipPath id="dropClip"><path d="M130 42C111 72 73 113 73 153c0 39 25 67 57 67s57-28 57-67c0-40-38-81-57-111Z" /></clipPath>
           </defs>
+          <circle cx="130" cy="130" r="112" fill="url(#glow)" filter="url(#blur)" />
+          <circle cx="130" cy="130" r={radius} stroke="rgba(255,255,255,.08)" strokeWidth="2" />
+          <circle cx="130" cy="130" r={radius} stroke="url(#ring)" strokeWidth="2.8" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} transform="rotate(-90 130 130)" className="progress" />
+          <circle cx="130" cy="130" r="119" stroke="#3b82f6" strokeOpacity=".28" strokeWidth="1" strokeDasharray="2 16" className="orbit" />
+
+          <g className="fall">
+            <path d="M130 7C123 17 117 25 117 34c0 9 6 15 13 15s13-6 13-15c0-9-6-17-13-27Z" fill="#fff" />
+            <path d="M130 10C127 17 125 23 125 29" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" />
+          </g>
+
+          <g className="drop">
+            <path d="M130 42C111 72 73 113 73 153c0 39 25 67 57 67s57-28 57-67c0-40-38-81-57-111Z" fill="url(#ink)" />
+            <g clipPath="url(#dropClip)" opacity=".2">
+              <path d="M62 142L116 91M72 170L147 93M90 199L171 115M124 218L188 154" stroke="#fff" strokeWidth="2" />
+            </g>
+            <path d="M99 101C88 120 82 136 82 151c0 22 12 39 29 45" stroke="#fff" strokeOpacity=".58" strokeWidth="5" strokeLinecap="round" />
+            <path d="M130 92L104 155h20l-4 37 32-57h-20l7-43-9 0Z" fill="#fff" />
+            <circle cx="111" cy="126" r="4" fill="#fff" opacity=".8" />
+          </g>
+
+          <g className="splash">
+            <circle cx="65" cy="154" r="3" fill="#60a5fa" /><circle cx="195" cy="153" r="2.5" fill="#fff" />
+            <circle cx="84" cy="207" r="2" fill="#3b82f6" /><circle cx="178" cy="204" r="2" fill="#60a5fa" />
+          </g>
+          <circle cx="130" cy="155" r="31" fill="none" stroke="#fff" strokeOpacity=".16" className="core" />
+          <circle cx="130" cy="155" r="3" fill="#fff" className="core-dot" />
         </svg>
-
-        {/* ===== LUEUR NÉON ===== */}
-        <div 
-          className="absolute inset-0 rounded-full blur-3xl opacity-20"
-          style={{
-            background: "radial-gradient(circle at 50% 50%, #3B82F6, transparent 70%)",
-            animation: "pulse 2s ease-in-out infinite",
-          }}
-        />
+        <div className="percent">{String(Math.round(progress)).padStart(2, "0")}<small>%</small></div>
       </div>
 
-      {/* ===== TEXTE AVEC EFFET MACHINE À ÉCRIRE ===== */}
-      <div className="mt-10 text-center">
-        <div className="flex items-center justify-center gap-1">
-          <p className="text-sm md:text-base font-light text-zinc-300 tracking-[0.05em]">
-            {displayText}
-            <span 
-              className={`inline-block w-0.5 h-4 bg-blue-400 ml-0.5 transition-opacity duration-100 ${
-                showCursor ? "opacity-100" : "opacity-0"
-              }`}
-            />
-          </p>
-        </div>
-        
-        {/* Sous-texte animé */}
-        <div className="mt-3 overflow-hidden">
-          <p className="text-[10px] md:text-xs text-zinc-500 font-light tracking-[0.15em] uppercase animate-slide-up">
-            {progress >= 100 
-              ? "✦ Prêt à créer ✦" 
-              : phase === "drop" 
-              ? "💧 L'encre coule..." 
-              : phase === "spread" 
-              ? "🌊 L'encre s'étale..." 
-              : "✨ L'encre vit..."}
-          </p>
-        </div>
-
-        {/* Pourcentage */}
-        <div className="mt-4">
-          <p className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
-            {Math.round(progress)}%
-          </p>
-        </div>
+      <div className="copy">
+        <div className="brand"><strong>INK</strong><span>drop</span></div>
+        <p>{message}</p>
+        <div className="status"><i />{status}</div>
+        <div className="bar"><span style={{ width: `${progress}%` }} /></div>
       </div>
 
-      {/* ===== STYLES CSS ===== */}
       <style jsx>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 0.5; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.05); }
-        }
-        @keyframes spin-slow {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes slide-up {
-          0% { opacity: 0; transform: translateY(10px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        .animate-spin-slow {
-          animation: spin-slow 8s linear infinite;
-        }
-        .animate-slide-up {
-          animation: slide-up 0.6s ease-out forwards;
-        }
+        .loader{--blue:#3b82f6;--light:#60a5fa;position:relative;min-height:100%;width:100%;overflow:hidden;isolation:isolate;background:radial-gradient(circle at 50% 45%,rgba(59,130,246,.09),transparent 28%),#050505;color:#fff}
+        .loader--full{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;align-content:center;gap:20px}
+        .ambient{position:absolute;width:42vw;height:42vw;min-width:300px;min-height:300px;border-radius:50%;filter:blur(70px);opacity:.12;background:#2563eb;left:22%;top:18%;animation:ambient 7s ease-in-out infinite;z-index:-1}
+        .brush{position:absolute;width:50vw;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent);opacity:.35}.brush--one{top:23%;left:-10%;transform:rotate(-18deg)}.brush--two{bottom:25%;right:-10%;transform:rotate(18deg)}
+        .scene{position:relative;width:min(72vw,320px);aspect-ratio:1;display:grid;place-items:center}.halo{position:absolute;width:58%;height:58%;border-radius:50%;background:rgba(59,130,246,.18);filter:blur(38px);animation:halo 2.8s ease-in-out infinite}.art{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.progress{filter:drop-shadow(0 0 5px rgba(59,130,246,.35));transition:stroke-dashoffset .08s linear}.orbit{transform-origin:130px 130px;animation:orbit 9s linear infinite}.fall{transform-origin:130px 32px;animation:fall 2.7s cubic-bezier(.2,.8,.2,1) infinite}.drop{transform-origin:130px 155px;animation:breathe 2.8s ease-in-out infinite;filter:drop-shadow(0 8px 20px rgba(59,130,246,.16))}.splash{animation:splash 2.4s ease-in-out infinite}.core{transform-origin:130px 155px;animation:core 2.4s ease-in-out infinite}.core-dot{animation:dot 1.7s ease-in-out infinite}
+        .percent{position:relative;z-index:2;margin-top:150px;font:700 40px/1 system-ui,sans-serif;letter-spacing:-.06em}.percent small{color:var(--light);font-size:16px;margin-left:3px}
+        .copy{width:min(82vw,360px);text-align:center}.brand{font:800 18px/1 system-ui,sans-serif;letter-spacing:-.04em;margin-bottom:13px}.brand span{color:var(--light);font-weight:500}.copy p{margin:0;color:rgba(255,255,255,.86);font:400 14px/1.5 system-ui,sans-serif;letter-spacing:.03em}.status{margin-top:9px;min-height:18px;display:flex;justify-content:center;align-items:center;gap:8px;color:rgba(255,255,255,.4);font:400 10px/1.5 system-ui,sans-serif;text-transform:uppercase;letter-spacing:.16em}.status i{width:5px;height:5px;border-radius:50%;background:var(--light);box-shadow:0 0 9px rgba(96,165,250,.7);animation:dot 1s ease-in-out infinite}.bar{height:2px;margin-top:15px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}.bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#fff,var(--light));box-shadow:0 0 10px rgba(96,165,250,.45);transition:width .08s linear}
+        @keyframes fall{0%,100%{transform:translateY(-9px) scale(.82);opacity:.55}42%{transform:translateY(62px) scale(1);opacity:1}55%{transform:translateY(78px) scale(1.35,.7);opacity:.9}70%{transform:translateY(56px) scale(.85);opacity:.25}}@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.025)}}@keyframes orbit{to{transform:rotate(360deg)}}@keyframes halo{0%,100%{transform:scale(.86);opacity:.55}50%{transform:scale(1.08);opacity:1}}@keyframes splash{0%,100%{transform:scale(.8);opacity:.35}50%{transform:scale(1.35);opacity:1}}@keyframes core{0%,100%{transform:scale(.75);opacity:.2}50%{transform:scale(1.1);opacity:.65}}@keyframes dot{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1.15)}}@keyframes ambient{0%,100%{transform:scale(.9)}50%{transform:scale(1.08) translateY(-10px)}}
+        @media(max-width:480px){.scene{width:72vw;max-width:285px}.copy{width:84vw}.copy p{font-size:13px}}@media(prefers-reduced-motion:reduce){.loader *{animation-duration:.01ms!important;animation-iteration-count:1!important}.progress,.bar span{transition:none}}
       `}</style>
-    </div>
+    </section>
   );
 }
