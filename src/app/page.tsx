@@ -28,7 +28,6 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 const SAVE_DEBOUNCE = 500;
-const CACHE_KEY = "inkdrop_state";
 
 const FALLBACK_ANIMES = [
   {
@@ -114,6 +113,7 @@ const getImageUrl = (url?: string | null) => {
 
 type Manga = {
   id: string;
+  slug?: string; // ✅ AJOUTÉ - Pour les URLs propres
   title: string;
   coverUrl: string;
   author: { 
@@ -167,17 +167,8 @@ export default function Home() {
   const [totalMangas, setTotalMangas] = useState(0);
   const [usedQueries, setUsedQueries] = useState<string[]>([]);
   const [isRestored, setIsRestored] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const observerRef = useRef<HTMLDivElement | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // ============================================
-  // VÉRIFICATION DE LA CONNEXION
-  // ============================================
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsLoggedIn(!!token);
-  }, []);
 
   // ============================================
   // SAUVEGARDER DANS LE BACKEND
@@ -212,27 +203,6 @@ export default function Home() {
   }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage]);
 
   // ============================================
-  // SAUVEGARDER LOCALEMENT (fallback)
-  // ============================================
-  const saveStateLocal = useCallback(() => {
-    try {
-      const state = {
-        scrollY: window.scrollY,
-        mangas: infiniteMangas.slice(-100),
-        phase: phase,
-        usedQueries: usedQueries,
-        hasMoreInkdrop: hasMoreInkdrop,
-        hasMoreMangadex: hasMoreMangadex,
-        infinitePage: infinitePage,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem(CACHE_KEY, JSON.stringify(state));
-    } catch (error) {
-      console.error('Erreur sauvegarde locale:', error);
-    }
-  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage]);
-
-  // ============================================
   // SAUVEGARDE AVEC DEBOUNCE
   // ============================================
   const saveStateDebounced = useCallback(() => {
@@ -241,9 +211,8 @@ export default function Home() {
     }
     saveTimeoutRef.current = setTimeout(() => {
       saveStateToBackend();
-      saveStateLocal();
     }, SAVE_DEBOUNCE);
-  }, [saveStateToBackend, saveStateLocal]);
+  }, [saveStateToBackend]);
 
   // ============================================
   // RESTAURER DEPUIS LE BACKEND
@@ -277,7 +246,7 @@ export default function Home() {
       if (state.scrollY) {
         setTimeout(() => {
           window.scrollTo({ top: state.scrollY, behavior: 'instant' });
-        }, 500);
+        }, 200);
       }
 
       console.log(`✅ État restauré depuis le backend (${state.mangas.length} mangas)`);
@@ -289,48 +258,16 @@ export default function Home() {
   }, []);
 
   // ============================================
-  // RESTAURER LOCALEMENT (fallback)
-  // ============================================
-  const restoreStateLocal = useCallback(() => {
-    try {
-      const saved = localStorage.getItem(CACHE_KEY);
-      if (!saved) return false;
-
-      const state = JSON.parse(saved);
-      if (!state.mangas || !Array.isArray(state.mangas)) return false;
-
-      setInfiniteMangas(state.mangas || []);
-      setPhase(state.phase || "inkdrop");
-      setUsedQueries(state.usedQueries || []);
-      setHasMoreInkdrop(state.hasMoreInkdrop !== undefined ? state.hasMoreInkdrop : true);
-      setHasMoreMangadex(state.hasMoreMangadex !== undefined ? state.hasMoreMangadex : true);
-      setInfinitePage(state.infinitePage || 1);
-
-      if (state.scrollY) {
-        setTimeout(() => {
-          window.scrollTo({ top: state.scrollY, behavior: 'instant' });
-        }, 500);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Erreur restauration locale:', error);
-      return false;
-    }
-  }, []);
-
-  // ============================================
   // SAUVEGARDER AVANT DE QUITTER
   // ============================================
   useEffect(() => {
     const handleBeforeUnload = () => {
       saveStateToBackend();
-      saveStateLocal();
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [saveStateToBackend, saveStateLocal]);
+  }, [saveStateToBackend]);
 
   // ============================================
   // SAUVEGARDER LE SCROLL EN TEMPS RÉEL
@@ -342,7 +279,6 @@ export default function Home() {
       if (scrollTimeout) clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         saveStateToBackend(window.scrollY);
-        saveStateLocal();
       }, SAVE_DEBOUNCE);
     };
 
@@ -351,7 +287,7 @@ export default function Home() {
       window.removeEventListener('scroll', handleScroll);
       if (scrollTimeout) clearTimeout(scrollTimeout);
     };
-  }, [saveStateToBackend, saveStateLocal]);
+  }, [saveStateToBackend]);
 
   // ============================================
   // SAUVEGARDE À CHAQUE CHANGEMENT
@@ -366,28 +302,18 @@ export default function Home() {
   // NAVIGATION VERS LE PROFIL D'UN CRÉATEUR
   // ============================================
   const handleCreatorClick = (username: string) => {
-    if (isLoggedIn) {
-      saveStateToBackend();
-      saveStateLocal();
-    }
+    saveStateToBackend();
     router.push(`/creator/${username}`);
   };
 
   // ============================================
-  // ✅ NAVIGATION VERS UN MANGA (CORRIGÉ)
+  // NAVIGATION VERS UN MANGA (AVEC SLUG)
   // ============================================
-  const handleMangaClick = (manga: any) => {
-    if (isLoggedIn) {
-      saveStateToBackend();
-      saveStateLocal();
-    }
-    
-    // ✅ REDIRECTION VERS LA BONNE PAGE
-    if (manga.source === "mangadex") {
-      router.push(`/read/${manga.id}`);
-    } else {
-      router.push(`/manga/${manga.id}`);
-    }
+  const handleMangaClick = (mangaId: string, slug?: string) => {
+    saveStateToBackend();
+    // ✅ Utiliser le slug si disponible, sinon l'ID
+    const url = slug ? `/manga/${slug}` : `/manga/${mangaId}`;
+    router.push(url);
   };
 
   // ============================================
@@ -413,7 +339,11 @@ export default function Home() {
           creatorsData = { data: json.data || [] };
         }
 
-        const inkdropMangas = (mangasData.data || []).map((m: any) => ({ ...m, source: "inkdrop" }));
+        const inkdropMangas = (mangasData.data || []).map((m: any) => ({ 
+          ...m, 
+          source: "inkdrop",
+          slug: m.slug || m.id // ✅ S'assurer qu'un slug existe
+        }));
 
         setMangas(inkdropMangas);
         setTrendingMangas(trendingData.data || []);
@@ -449,17 +379,11 @@ export default function Home() {
         setLoading(false);
         return;
       }
-      const localRestored = restoreStateLocal();
-      if (localRestored) {
-        setIsRestored(true);
-        setLoading(false);
-        return;
-      }
       fetchData();
     };
 
     restore();
-  }, [restoreStateFromBackend, restoreStateLocal]);
+  }, [restoreStateFromBackend]);
 
   // ============================================
   // FORCER LA TRANSITION
@@ -485,7 +409,11 @@ export default function Home() {
       if (newMangas.length === 0) {
         setHasMoreInkdrop(false);
       } else {
-        const inkdropMangas = newMangas.map((m: any) => ({ ...m, source: "inkdrop" }));
+        const inkdropMangas = newMangas.map((m: any) => ({ 
+          ...m, 
+          source: "inkdrop",
+          slug: m.slug || m.id // ✅ S'assurer qu'un slug existe
+        }));
         setInfiniteMangas((prev) => [...prev, ...inkdropMangas]);
         setInfinitePage((prev) => prev + 1);
       }
@@ -549,18 +477,23 @@ export default function Home() {
       } else {
         const mangadexMangas = uniqueNewMangas.map((m: any) => ({
           id: m.id,
+          slug: m.id, // ✅ Utiliser l'ID MangaDex comme slug
           title: m.title,
           coverUrl: m.coverImage,
-          author: { username: m.author?.name || "Inconnu", isCertified: false, avatarUrl: null },
+          author: { 
+            username: m.author?.name || "Inconnu", 
+            isCertified: false, 
+            avatarUrl: null,
+            badgeColor: '#7C3AED', // 🟣 Couleur distinctive pour MangaDrop
+          },
           likesCount: 0,
           viewsCount: 0,
           genre: m.genres || [],
-          status: m.status || "ongoing",
+          status: m.status || "ONGOING",
           source: "mangadex",
           rating: m.rating,
           chapters: m.chapters || 0,
           language: selected.lang === "fr" ? "🇫🇷" : "🇬🇧",
-          languageCode: selected.lang,
         }));
         setInfiniteMangas((prev) => [...prev, ...mangadexMangas]);
       }
@@ -670,18 +603,6 @@ export default function Home() {
         )}
       </header>
 
-      {/* ===== BANDEAU NON-CONNECTÉ ===== */}
-      {!isLoggedIn && (
-        <div className="bg-blue-950/30 border-b border-blue-500/20 px-4 py-2 text-center">
-          <p className="text-blue-300 text-xs">
-            🔑 Connecte-toi pour sauvegarder ta progression et retrouver ta position !
-            <Link href="/login" className="text-blue-400 font-semibold hover:underline ml-1">
-              Se connecter
-            </Link>
-          </p>
-        </div>
-      )}
-
       {/* ===== TENDANCES ===== */}
       <section className="px-4 pt-4">
         <div className="flex items-center justify-between mb-3">
@@ -699,7 +620,7 @@ export default function Home() {
               displayTrending.map((manga, index) => (
                 <div
                   key={manga.id}
-                  onClick={() => handleMangaClick(manga)}
+                  onClick={() => handleMangaClick(manga.id, manga.slug)} // ✅ AVEC SLUG
                   className={`absolute inset-0 transition-opacity duration-700 ease-in-out cursor-pointer ${
                     index === currentTrendIndex ? "opacity-100 z-10" : "opacity-0 z-0"
                   }`}
@@ -850,7 +771,7 @@ export default function Home() {
             return (
               <div
                 key={manga.id}
-                onClick={() => handleMangaClick(manga)}
+                onClick={() => handleMangaClick(manga.id, manga.slug)} // ✅ AVEC SLUG
                 className="group bg-zinc-900/40 border border-zinc-800/80 rounded-xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.97] cursor-pointer"
               >
                 <div className="aspect-[2/3] bg-zinc-900 flex items-center justify-center relative overflow-hidden">
@@ -989,7 +910,7 @@ export default function Home() {
               return (
                 <div
                   key={manga.id}
-                  onClick={() => handleMangaClick(manga)}
+                  onClick={() => handleMangaClick(manga.id, manga.slug)} // ✅ AVEC SLUG
                   className="block bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex gap-3 p-3">
@@ -1111,7 +1032,7 @@ export default function Home() {
                 .map((manga, index) => (
                   <div
                     key={`mangadex-${manga.id}-${index}`}
-                    onClick={() => handleMangaClick(manga)}
+                    onClick={() => handleMangaClick(manga.id, manga.slug)} // ✅ AVEC SLUG
                     className="block bg-zinc-900/40 border border-purple-800/40 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all active:scale-[0.98] cursor-pointer"
                   >
                     <div className="flex gap-3 p-3">
