@@ -1,312 +1,146 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-
 interface LoaderProps {
+  /** Plein écran avec fond noir, ou petit loader inline (dans un bouton, une carte...) */
+  fullScreen?: boolean;
+  /** Texte affiché sous l'animation (mode plein écran uniquement) */
+  label?: string;
+  /** Taille du loader compact, en pixels (mode inline uniquement) */
   size?: number;
-  speed?: number;
-  className?: string;
 }
 
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  life: number;
-  maxLife: number;
-  size: number;
-}
+export default function Loader({
+  fullScreen = true,
+  label = "Chargement…",
+  size = 22,
+}: LoaderProps) {
+  const drop = (
+    <div className="ink-loader" style={!fullScreen ? { width: size, height: size * 1.6 } : undefined}>
+      <svg viewBox="0 0 40 64" className="ink-drop" aria-hidden="true">
+        <path
+          d="M20 2 C20 2 4 26 4 40 C4 51 11 58 20 58 C29 58 36 51 36 40 C36 26 20 2 20 2 Z"
+          fill="url(#inkGradient)"
+        />
+        <defs>
+          <linearGradient id="inkGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#60a5fa" />
+            <stop offset="55%" stopColor="#3b82f6" />
+            <stop offset="100%" stopColor="#2563eb" />
+          </linearGradient>
+        </defs>
+      </svg>
 
-export function Loader({ size = 48, speed = 1, className = "" }: LoaderProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>(0);
-  const timeRef = useRef<number>(0);
-  const particlesRef = useRef<Particle[]>([]);
-  const flashRef = useRef<number>(0);
-  const phaseRef = useRef<number>(0);
-  const rotationCountRef = useRef<number>(0);
-  const isFusingRef = useRef<boolean>(false);
-  const scaleRef = useRef<number>(1);
+      <span className="ink-ripple ink-ripple-1" />
+      <span className="ink-ripple ink-ripple-2" />
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.parentElement?.getBoundingClientRect();
-    const baseSize = size || 48;
-    const canvasSize = Math.max(baseSize, 48);
-
-    canvas.width = canvasSize * dpr;
-    canvas.height = canvasSize * dpr;
-    canvas.style.width = `${canvasSize}px`;
-    canvas.style.height = `${canvasSize}px`;
-
-    ctx.scale(dpr, dpr);
-
-    const centerX = canvasSize / 2;
-    const centerY = canvasSize / 2;
-    const radius = canvasSize * 0.32;
-
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const speedMultiplier = prefersReducedMotion ? 0 : speed;
-
-    let particles: Particle[] = [];
-    let flashIntensity = 0;
-    let phase = 0;
-    let rotationCount = 0;
-    let isFusing = false;
-    let scale = 1;
-
-    // ============================================
-    // CRÉER UNE TRAÎNÉE (particule)
-    // ============================================
-    function createTrail(x: number, y: number, color: string): Particle {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = (0.5 + Math.random() * 0.5) * 1.5;
-      return {
-        x,
-        y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 0.3,
-        life: 1,
-        maxLife: 0.4 + Math.random() * 0.3,
-        size: 0.5 + Math.random() * 1.5,
-      };
-    }
-
-    // ============================================
-    // POSITION DES BOULES
-    // ============================================
-    function getBallPositions(t: number, scale: number): { x1: number; y1: number; x2: number; y2: number } {
-      const angle = t * 2.5 * speedMultiplier;
-      const currentRadius = radius * scale;
-      const separation = 0.08;
-
-      const x1 = centerX + Math.cos(angle) * currentRadius;
-      const y1 = centerY + Math.sin(angle) * currentRadius;
-      const x2 = centerX + Math.cos(angle + Math.PI + separation) * currentRadius * 0.95;
-      const y2 = centerY + Math.sin(angle + Math.PI + separation) * currentRadius * 0.95;
-
-      return { x1, y1, x2, y2 };
-    }
-
-    // ============================================
-    // ANIMATION PRINCIPALE
-    // ============================================
-    function animate(timestamp: number) {
-      if (!timeRef.current) timeRef.current = timestamp;
-      const delta = (timestamp - timeRef.current) / 16.67;
-      timeRef.current = timestamp;
-
-      const t = phase;
-
-      // Rotation
-      const angle = t * 2.5 * speedMultiplier;
-      const currentRadius = radius * scale;
-
-      // Détection de la 4e rotation
-      const currentRotation = t / (2 * Math.PI);
-      if (currentRotation >= 3 && !isFusing) {
-        isFusing = true;
-        rotationCount = 3;
-      }
-
-      // Fusion
-      if (isFusing) {
-        const fuseProgress = (currentRotation - 3) / 0.3;
-        if (fuseProgress < 1) {
-          scale = 1 - fuseProgress * 0.6;
-          flashIntensity = Math.sin(fuseProgress * Math.PI) * 0.8;
-        } else {
-          // Flash
-          flashIntensity = 1;
-          // Disparition
-          setTimeout(() => {
-            // Reset
-            phase = 0;
-            rotationCount = 0;
-            isFusing = false;
-            scale = 1;
-            flashIntensity = 0;
-            particles = [];
-          }, 50);
-          phase += delta * 0.001;
-          return;
+      <style jsx>{`
+        .ink-loader {
+          position: relative;
+          width: ${fullScreen ? "56px" : `${size}px`};
+          height: ${fullScreen ? "88px" : `${size * 1.6}px`};
+          margin: 0 auto;
         }
-      }
 
-      const pos = getBallPositions(t, scale);
-
-      // Ajouter des traînées
-      if (Math.random() < 0.6 * speedMultiplier) {
-        const color1 = `hsl(217, 91%, ${60 + Math.random() * 30}%)`;
-        const color2 = `hsl(0, 0%, ${80 + Math.random() * 20}%)`;
-        particles.push(createTrail(pos.x1, pos.y1, color1));
-        particles.push(createTrail(pos.x2, pos.y2, color2));
-      }
-
-      // Limiter les particules
-      if (particles.length > 120) {
-        particles = particles.slice(-100);
-      }
-
-      // Mettre à jour les particules
-      particles = particles
-        .map((p) => {
-          p.x += p.vx;
-          p.y += p.vy;
-          p.vy += 0.02;
-          p.life -= 0.02;
-          return p;
-        })
-        .filter((p) => p.life > 0);
-
-      // ===== DESSIN =====
-      ctx.clearRect(0, 0, canvasSize, canvasSize);
-
-      // Flash
-      if (flashIntensity > 0.01) {
-        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 0.8);
-        gradient.addColorStop(0, `rgba(147, 197, 253, ${flashIntensity * 0.6})`);
-        gradient.addColorStop(1, `rgba(147, 197, 253, 0)`);
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvasSize, canvasSize);
-
-        // Lignes électriques
-        for (let i = 0; i < 8; i++) {
-          const angle2 = (i / 8) * Math.PI * 2 + t * 2;
-          const len = (10 + Math.random() * 20) * flashIntensity * scale;
-          const startX = centerX + Math.cos(angle2) * radius * scale * 0.3;
-          const startY = centerY + Math.sin(angle2) * radius * scale * 0.3;
-          const endX = startX + Math.cos(angle2 + (Math.random() - 0.5) * 1.2) * len;
-          const endY = startY + Math.sin(angle2 + (Math.random() - 0.5) * 1.2) * len;
-
-          ctx.beginPath();
-          ctx.moveTo(startX, startY);
-          ctx.lineTo(endX, endY);
-          ctx.strokeStyle = `rgba(147, 197, 253, ${flashIntensity * 0.5})`;
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
+        .ink-drop {
+          position: absolute;
+          left: 50%;
+          bottom: 8%;
+          width: 62%;
+          height: 62%;
+          transform-origin: 50% 100%;
+          transform: translateX(-50%);
+          animation: ink-fall 1.8s cubic-bezier(0.55, 0, 0.85, 0.35) infinite;
+          filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.35));
         }
-      }
 
-      // Traînées
-      for (const p of particles) {
-        const alpha = p.life / p.maxLife;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(147, 197, 253, ${alpha * 0.4})`;
-        ctx.fill();
-      }
+        .ink-ripple {
+          position: absolute;
+          left: 50%;
+          bottom: 6%;
+          width: 40%;
+          height: 14%;
+          border-radius: 50%;
+          border: 1.5px solid #3b82f6;
+          transform: translate(-50%, 50%) scale(0.3);
+          opacity: 0;
+          animation: ink-ripple 1.8s ease-out infinite;
+        }
 
-      // ===== BOULE 1 : BLEUE =====
-      const radius1 = 4.5 * scale;
-      const glow1 = ctx.createRadialGradient(
-        pos.x1 - radius1 * 0.3,
-        pos.y1 - radius1 * 0.3,
-        0,
-        pos.x1,
-        pos.y1,
-        radius1 * 3
-      );
-      glow1.addColorStop(0, `rgba(59, 130, 246, ${0.6 + flashIntensity * 0.3})`);
-      glow1.addColorStop(0.3, `rgba(59, 130, 246, ${0.2 + flashIntensity * 0.2})`);
-      glow1.addColorStop(1, `rgba(59, 130, 246, 0)`);
-      ctx.fillStyle = glow1;
-      ctx.beginPath();
-      ctx.arc(pos.x1, pos.y1, radius1 * 3, 0, Math.PI * 2);
-      ctx.fill();
+        .ink-ripple-2 {
+          animation-delay: 0.15s;
+          border-color: #60a5fa;
+        }
 
-      ctx.beginPath();
-      ctx.arc(pos.x1, pos.y1, radius1, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(147, 197, 253, ${0.9 + flashIntensity * 0.1})`;
-      ctx.fill();
+        @keyframes ink-fall {
+          0% {
+            transform: translateX(-50%) translateY(-120%) scale(1);
+            opacity: 0;
+          }
+          14% {
+            opacity: 1;
+          }
+          54% {
+            transform: translateX(-50%) translateY(0%) scale(1);
+            opacity: 1;
+          }
+          58% {
+            transform: translateX(-50%) translateY(6%) scaleY(0.35) scaleX(1.5);
+            opacity: 1;
+          }
+          68% {
+            transform: translateX(-50%) translateY(6%) scaleY(0.35) scaleX(1.5);
+            opacity: 0;
+          }
+          100% {
+            transform: translateX(-50%) translateY(-120%) scale(1);
+            opacity: 0;
+          }
+        }
 
-      ctx.beginPath();
-      ctx.arc(pos.x1 - radius1 * 0.3, pos.y1 - radius1 * 0.3, radius1 * 0.4, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + flashIntensity * 0.2})`;
-      ctx.fill();
+        @keyframes ink-ripple {
+          0%,
+          52% {
+            transform: translate(-50%, 50%) scale(0.3);
+            opacity: 0;
+          }
+          58% {
+            opacity: 0.55;
+          }
+          100% {
+            transform: translate(-50%, 50%) scale(2.6);
+            opacity: 0;
+          }
+        }
 
-      // ===== BOULE 2 : BLANC/NOIR =====
-      const radius2 = 4.5 * scale;
-      const glow2 = ctx.createRadialGradient(
-        pos.x2 - radius2 * 0.3,
-        pos.y2 - radius2 * 0.3,
-        0,
-        pos.x2,
-        pos.y2,
-        radius2 * 3
-      );
-      glow2.addColorStop(0, `rgba(200, 200, 210, ${0.5 + flashIntensity * 0.3})`);
-      glow2.addColorStop(0.3, `rgba(180, 180, 190, ${0.15 + flashIntensity * 0.2})`);
-      glow2.addColorStop(1, `rgba(180, 180, 190, 0)`);
-      ctx.fillStyle = glow2;
-      ctx.beginPath();
-      ctx.arc(pos.x2, pos.y2, radius2 * 3, 0, Math.PI * 2);
-      ctx.fill();
+        @media (prefers-reduced-motion: reduce) {
+          .ink-drop,
+          .ink-ripple {
+            animation: none;
+          }
+          .ink-drop {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0%);
+          }
+          .ink-ripple {
+            display: none;
+          }
+        }
+      `}</style>
+    </div>
+  );
 
-      ctx.beginPath();
-      ctx.arc(pos.x2, pos.y2, radius2, 0, Math.PI * 2);
-      const grayValue = Math.min(180 + Math.random() * 20, 220);
-      ctx.fillStyle = `rgba(${grayValue}, ${grayValue}, ${grayValue + 10}, ${0.85 + flashIntensity * 0.1})`;
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(pos.x2 - radius2 * 0.3, pos.y2 - radius2 * 0.3, radius2 * 0.4, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.4 + flashIntensity * 0.2})`;
-      ctx.fill();
-
-      // Énergie de fusion (mélange des couleurs)
-      if (isFusing && flashIntensity > 0.1) {
-        const mixX = (pos.x1 + pos.x2) / 2;
-        const mixY = (pos.y1 + pos.y2) / 2;
-        const mixRadius = radius1 * 2 * flashIntensity;
-
-        const mixGlow = ctx.createRadialGradient(mixX, mixY, 0, mixX, mixY, mixRadius);
-        mixGlow.addColorStop(0, `rgba(147, 197, 253, ${flashIntensity * 0.4})`);
-        mixGlow.addColorStop(0.4, `rgba(200, 200, 220, ${flashIntensity * 0.3})`);
-        mixGlow.addColorStop(1, `rgba(147, 197, 253, 0)`);
-        ctx.fillStyle = mixGlow;
-        ctx.beginPath();
-        ctx.arc(mixX, mixY, mixRadius, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Mise à jour de la phase
-      phase += delta * 0.001 * speedMultiplier;
-
-      // Flash intensity fade
-      if (flashIntensity > 0.01) {
-        flashIntensity *= 0.9;
-      }
-
-      particlesRef.current = particles;
-      flashRef.current = flashIntensity;
-      phaseRef.current = phase;
-      rotationCountRef.current = rotationCount;
-      isFusingRef.current = isFusing;
-      scaleRef.current = scale;
-
-      animationRef.current = requestAnimationFrame(animate);
-    }
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [size, speed]);
+  if (!fullScreen) {
+    return drop;
+  }
 
   return (
-    <div className={`flex items-center justify-center ${className}`} style={{ width: size, height: size }}>
-      <canvas ref={canvasRef} className="block" />
+    <div className="flex flex-col items-center justify-center h-screen w-full bg-black">
+      {drop}
+      {label && (
+        <p className="mt-6 text-zinc-400 text-xs font-medium tracking-widest uppercase">
+          {label}
+        </p>
+      )}
     </div>
   );
 }
