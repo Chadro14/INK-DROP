@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { Loader } from "@/components/ui/loader"; // ✅ AJOUT
+import { Loader } from "@/components/ui/loader";
 import { 
   BookOpen, 
   Heart, 
@@ -24,7 +24,10 @@ import {
   Shield, 
   Palette,
   Grid,
-  Sparkles
+  Sparkles,
+  User,
+  Globe,
+  Users
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -135,9 +138,8 @@ export default function ProfilePage() {
     }
   };
 
-  // ✅ REMPLACÉ par le Loader artistique
   if (loading) {
-    return <Loader message="Chargement du profil..." />;
+    return <Loader message="Chargement de votre profil" />;
   }
 
   if (error || !profile) {
@@ -146,7 +148,7 @@ export default function ProfilePage() {
         <p className="text-zinc-400 text-center">{error || "Profil non trouvé"}</p>
         <button
           onClick={() => router.push("/login")}
-          className="mt-4 px-6 py-2.5 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all"
+          className="mt-4 px-6 py-2.5 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
         >
           Se connecter
         </button>
@@ -159,6 +161,7 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
+      {/* ===== HEADER ===== */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <span className="text-base font-bold tracking-tight text-white/90">
@@ -178,12 +181,14 @@ export default function ProfilePage() {
         </div>
       </header>
 
+      {/* ===== BANNIÈRE ===== */}
       <div className="h-32 md:h-48 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
       </div>
 
       <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
 
+        {/* ===== AVATAR ===== */}
         <div className="relative mb-3 group">
           <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 overflow-hidden border-4 border-zinc-950 shadow-2xl ring-2 ring-blue-500/30 shrink-0">
             {profile.avatarUrl ? (
@@ -210,25 +215,45 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <div className="flex items-center gap-2 mb-1">
+        {/* ===== NOM & BADGES ===== */}
+        <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
+          {profile.isCertified && (
+            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] md:text-xs font-bold border border-blue-500/30">
+              Certifié
+            </span>
+          )}
           {profile.premiumActive && (
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-500 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm">
+            <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm">
               PRO
             </span>
           )}
         </div>
 
+        {/* ===== BIO ===== */}
         <p className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal">
           {profile.bio || "Créateur sur INKDROP 🎨"}
         </p>
 
+        {/* ===== INFOS ===== */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-6">
-          <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-blue-400" /> {profile.email}</span>
+          <span className="flex items-center gap-1.5">
+            <Mail className="w-3.5 h-3.5 text-blue-400" /> 
+            {profile.email}
+          </span>
           <span>•</span>
-          <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-blue-400" /> Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
+          <span className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-blue-400" /> 
+            Membre depuis {new Date(profile.createdAt).toLocaleDateString()}
+          </span>
+          <span>•</span>
+          <span className="flex items-center gap-1.5">
+            <Globe className="w-3.5 h-3.5 text-blue-400" />
+            {profile.role === 'CREATOR' ? 'Créateur' : 'Membre'}
+          </span>
         </div>
 
+        {/* ===== STATS SOCIALES ===== */}
         <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
           <div className="text-center">
             <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
@@ -246,20 +271,23 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* ===== BOUTONS D'ACTION ===== */}
         <div className="flex gap-2.5 w-full max-w-md md:max-w-lg mb-8">
           <Link
             href="/profile/edit"
             className="flex-1 py-2.5 rounded-full bg-white hover:bg-zinc-200 text-black text-xs md:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2"
           >
             <Edit className="w-4 h-4" />
-            Modifier le profil
+            <span className="hidden sm:inline">Modifier le profil</span>
+            <span className="sm:hidden">Modifier</span>
           </Link>
           <Link
             href="/creator/upload"
-            className="px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-1.5"
+            className="px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-bold transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
-            Publier
+            <span className="hidden sm:inline">Publier</span>
+            <span className="sm:hidden">➕</span>
           </Link>
           <button
             onClick={handleShare}
@@ -270,6 +298,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
+        {/* ===== BARRE D'ONGLETS ===== */}
         <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
           <button
             onClick={() => setActiveTab("mangas")}
@@ -306,6 +335,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
+        {/* ===== TAB 1 : MANGAS ===== */}
         {activeTab === "mangas" && (
           <div className="w-full">
             {!profile.mangas || profile.mangas.length === 0 ? (
@@ -314,7 +344,7 @@ export default function ProfilePage() {
                 <p className="text-zinc-400 mt-3 text-sm font-medium">Aucun manga publié</p>
                 <Link
                   href="/creator/upload"
-                  className="mt-4 px-5 py-2 rounded-full bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-all shadow"
+                  className="mt-4 px-5 py-2 rounded-full bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-all shadow shadow-blue-600/20"
                 >
                   Publier ton premier projet
                 </Link>
@@ -383,6 +413,7 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* ===== TAB 2 : STATS ===== */}
         {activeTab === "stats" && (
           <div className="w-full max-w-xl mx-auto space-y-3">
             <div className="grid grid-cols-3 gap-2.5">
@@ -402,9 +433,33 @@ export default function ProfilePage() {
                 <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Revenus</p>
               </div>
             </div>
+
+            {/* ===== DÉTAIL DES REVENUS ===== */}
+            {profile.earnings && (
+              <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
+                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
+                  Détail des revenus
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Total</span>
+                    <span className="text-white font-bold">{profile.earnings.total}$</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Payé</span>
+                    <span className="text-emerald-400">{profile.earnings.paid}$</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">En attente</span>
+                    <span className="text-yellow-400">{profile.earnings.pending}$</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
+        {/* ===== TAB 3 : MENU ===== */}
         {activeTab === "menu" && (
           <div className="w-full max-w-xl mx-auto space-y-2.5">
             <Link
@@ -440,18 +495,40 @@ export default function ProfilePage() {
               </Link>
             )}
 
+            <Link
+              href="/profile/settings"
+              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Settings className="w-5 h-5 text-zinc-400" />
+                <span className="text-sm font-semibold text-white">Paramètres du compte</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-500" />
+            </Link>
+
             {profile.role === 'ADMIN' && (
               <Link
                 href="/admin/certify"
-                className="flex items-center justify-between p-4 bg-purple-950/40 rounded-xl border border-purple-500/30 hover:border-purple-500/60 transition-all"
+                className="flex items-center justify-between p-4 bg-blue-950/40 rounded-xl border border-blue-500/30 hover:border-blue-500/60 transition-all"
               >
                 <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-purple-400" />
+                  <Shield className="w-5 h-5 text-blue-400" />
                   <span className="text-sm font-semibold text-white">Panneau d'administration</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-purple-400" />
+                <ChevronRight className="w-4 h-4 text-blue-400" />
               </Link>
             )}
+
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-between p-4 bg-rose-950/30 rounded-xl border border-rose-500/30 hover:bg-rose-950/50 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <LogOut className="w-5 h-5 text-rose-400" />
+                <span className="text-sm font-semibold text-rose-300">Se déconnecter</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-rose-400" />
+            </button>
           </div>
         )}
 
