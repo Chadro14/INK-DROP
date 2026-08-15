@@ -28,7 +28,6 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 const SAVE_DEBOUNCE = 500;
-const CACHE_KEY = "inkdrop_state";
 
 const FALLBACK_ANIMES = [
   {
@@ -167,17 +166,12 @@ export default function Home() {
   const [totalMangas, setTotalMangas] = useState(0);
   const [usedQueries, setUsedQueries] = useState<string[]>([]);
   const [isRestored, setIsRestored] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const observerRef = useRef<HTMLDivElement | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ============================================
-  // VÉRIFICATION DE LA CONNEXION
-  // ============================================
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsLoggedIn(!!token);
-  }, []);
+  // ✅ PWA : État pour le popup d'installation
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   // ============================================
   // SAUVEGARDER DANS LE BACKEND
@@ -212,27 +206,6 @@ export default function Home() {
   }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage]);
 
   // ============================================
-  // SAUVEGARDER LOCALEMENT (fallback)
-  // ============================================
-  const saveStateLocal = useCallback(() => {
-    try {
-      const state = {
-        scrollY: window.scrollY,
-        mangas: infiniteMangas.slice(-100),
-        phase: phase,
-        usedQueries: usedQueries,
-        hasMoreInkdrop: hasMoreInkdrop,
-        hasMoreMangadex: hasMoreMangadex,
-        infinitePage: infinitePage,
-        timestamp: Date.now(),
-      };
-      localStorage.setItem(CACHE_KEY, JSON.stringify(state));
-    } catch (error) {
-      console.error('Erreur sauvegarde locale:', error);
-    }
-  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage]);
-
-  // ============================================
   // SAUVEGARDE AVEC DEBOUNCE
   // ============================================
   const saveStateDebounced = useCallback(() => {
@@ -241,9 +214,8 @@ export default function Home() {
     }
     saveTimeoutRef.current = setTimeout(() => {
       saveStateToBackend();
-      saveStateLocal();
     }, SAVE_DEBOUNCE);
-  }, [saveStateToBackend, saveStateLocal]);
+  }, [saveStateToBackend]);
 
   // ============================================
   // RESTAURER DEPUIS LE BACKEND
@@ -274,11 +246,10 @@ export default function Home() {
       setHasMoreMangadex(state.hasMoreMangadex !== undefined ? state.hasMoreMangadex : true);
       setInfinitePage(state.infinitePage || 1);
 
-      // ✅ CORRECTION : Restauration du scroll avec 500ms
       if (state.scrollY) {
         setTimeout(() => {
           window.scrollTo({ top: state.scrollY, behavior: 'instant' });
-        }, 500);
+        }, 200);
       }
 
       console.log(`✅ État restauré depuis le backend (${state.mangas.length} mangas)`);
@@ -290,48 +261,16 @@ export default function Home() {
   }, []);
 
   // ============================================
-  // RESTAURER LOCALEMENT (fallback)
-  // ============================================
-  const restoreStateLocal = useCallback(() => {
-    try {
-      const saved = localStorage.getItem(CACHE_KEY);
-      if (!saved) return false;
-
-      const state = JSON.parse(saved);
-      if (!state.mangas || !Array.isArray(state.mangas)) return false;
-
-      setInfiniteMangas(state.mangas || []);
-      setPhase(state.phase || "inkdrop");
-      setUsedQueries(state.usedQueries || []);
-      setHasMoreInkdrop(state.hasMoreInkdrop !== undefined ? state.hasMoreInkdrop : true);
-      setHasMoreMangadex(state.hasMoreMangadex !== undefined ? state.hasMoreMangadex : true);
-      setInfinitePage(state.infinitePage || 1);
-
-      if (state.scrollY) {
-        setTimeout(() => {
-          window.scrollTo({ top: state.scrollY, behavior: 'instant' });
-        }, 500);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Erreur restauration locale:', error);
-      return false;
-    }
-  }, []);
-
-  // ============================================
   // SAUVEGARDER AVANT DE QUITTER
   // ============================================
   useEffect(() => {
     const handleBeforeUnload = () => {
       saveStateToBackend();
-      saveStateLocal();
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [saveStateToBackend, saveStateLocal]);
+  }, [saveStateToBackend]);
 
   // ============================================
   // SAUVEGARDER LE SCROLL EN TEMPS RÉEL
@@ -343,7 +282,6 @@ export default function Home() {
       if (scrollTimeout) clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         saveStateToBackend(window.scrollY);
-        saveStateLocal();
       }, SAVE_DEBOUNCE);
     };
 
@@ -352,7 +290,7 @@ export default function Home() {
       window.removeEventListener('scroll', handleScroll);
       if (scrollTimeout) clearTimeout(scrollTimeout);
     };
-  }, [saveStateToBackend, saveStateLocal]);
+  }, [saveStateToBackend]);
 
   // ============================================
   // SAUVEGARDE À CHAQUE CHANGEMENT
@@ -364,31 +302,69 @@ export default function Home() {
   }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage, loading, isRestored, saveStateDebounced]);
 
   // ============================================
-  // ✅ NAVIGATION VERS LE PROFIL D'UN CRÉATEUR
+  // ✅ CORRECTION 1 : NAVIGATION VERS LE PROFIL D'UN CRÉATEUR
   // ============================================
   const handleCreatorClick = (username: string) => {
-    if (isLoggedIn) {
-      saveStateToBackend();
-      saveStateLocal();
-    }
+    saveStateToBackend();
     router.push(`/creator/${username}`);
   };
 
   // ============================================
-  // ✅ NAVIGATION VERS UN MANGA (CORRIGÉ)
+  // ✅ CORRECTION 2 : NAVIGATION VERS UN MANGA (avec source)
   // ============================================
   const handleMangaClick = (manga: any) => {
-    if (isLoggedIn) {
-      saveStateToBackend();
-      saveStateLocal();
-    }
-    
-    // ✅ REDIRECTION VERS LA BONNE PAGE
+    saveStateToBackend();
     if (manga.source === "mangadex") {
       router.push(`/read/${manga.id}`);
     } else {
       router.push(`/manga/${manga.id}`);
     }
+  };
+
+  // ============================================
+  // ✅ PWA : ÉCOUTE DU POPUP D'INSTALLATION
+  // ============================================
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+      console.log('✅ Popup d\'installation disponible');
+    });
+
+    window.addEventListener('appinstalled', () => {
+      setShowInstallBanner(false);
+      setDeferredPrompt(null);
+      console.log('✅ App installée avec succès');
+    });
+
+    const hasRefused = localStorage.getItem('pwa_install_refused');
+    if (hasRefused === 'true') {
+      setShowInstallBanner(false);
+    }
+  }, []);
+
+  const handleInstall = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult: any) => {
+        if (choiceResult.outcome === 'accepted') {
+          console.log('✅ Utilisateur a accepté l\'installation');
+          setShowInstallBanner(false);
+          localStorage.removeItem('pwa_install_refused');
+        } else {
+          console.log('❌ Utilisateur a refusé l\'installation');
+          localStorage.setItem('pwa_install_refused', 'true');
+          setShowInstallBanner(false);
+        }
+        setDeferredPrompt(null);
+      });
+    }
+  };
+
+  const handleDismissInstall = () => {
+    localStorage.setItem('pwa_install_refused', 'true');
+    setShowInstallBanner(false);
   };
 
   // ============================================
@@ -443,16 +419,9 @@ export default function Home() {
       }
     };
 
-    // ✅ RESTAURATION : Backend d'abord, puis local
     const restore = async () => {
       const restored = await restoreStateFromBackend();
       if (restored) {
-        setIsRestored(true);
-        setLoading(false);
-        return;
-      }
-      const localRestored = restoreStateLocal();
-      if (localRestored) {
         setIsRestored(true);
         setLoading(false);
         return;
@@ -461,7 +430,7 @@ export default function Home() {
     };
 
     restore();
-  }, [restoreStateFromBackend, restoreStateLocal]);
+  }, [restoreStateFromBackend]);
 
   // ============================================
   // FORCER LA TRANSITION
@@ -670,18 +639,6 @@ export default function Home() {
           </form>
         )}
       </header>
-
-      {/* ===== BANDEAU NON-CONNECTÉ ===== */}
-      {!isLoggedIn && (
-        <div className="bg-blue-950/30 border-b border-blue-500/20 px-4 py-2 text-center">
-          <p className="text-blue-300 text-xs">
-            🔑 Connecte-toi pour sauvegarder ta progression et retrouver ta position !
-            <Link href="/login" className="text-blue-400 font-semibold hover:underline ml-1">
-              Se connecter
-            </Link>
-          </p>
-        </div>
-      )}
 
       {/* ===== TENDANCES ===== */}
       <section className="px-4 pt-4">
@@ -1222,6 +1179,34 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* ===== BANDEAU D'INSTALLATION PWA ===== */}
+      {showInstallBanner && (
+        <div className="fixed bottom-20 left-0 right-0 z-50 bg-zinc-900/95 border-t border-blue-500/30 backdrop-blur-xl p-3 animate-slide-up">
+          <div className="max-w-md mx-auto flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+              <span className="text-lg">📱</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white">Installer INKDROP</p>
+              <p className="text-xs text-zinc-400">Ajoutez l'app à votre écran d'accueil</p>
+            </div>
+            <button
+              onClick={handleInstall}
+              className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
+            >
+              Installer
+            </button>
+            <button
+              onClick={handleDismissInstall}
+              className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors"
+              aria-label="Fermer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>
