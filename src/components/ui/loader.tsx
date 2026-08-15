@@ -11,7 +11,7 @@ interface LoaderProps {
   color?: string;
 }
 
-export default function Loader({
+function Loader({
   fullScreen = true,
   label = "Chargement…",
   size = 22,
@@ -145,7 +145,6 @@ export default function Loader({
           }
         }
 
-        /* Mode inline : suppression du fond */
         .ink-loader:not(.fullscreen) {
           background: transparent;
         }
@@ -168,3 +167,7 @@ export default function Loader({
     </div>
   );
 }
+
+// ✅ EXPORT NOMÉ + DEFAULT
+export { Loader };
+export default Loader;
