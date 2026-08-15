@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { Loader } from "@/components/ui/loader";
 import { 
   Heart, 
   Eye, 
@@ -26,6 +27,8 @@ import {
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
+const SAVE_DEBOUNCE = 500;
+const CACHE_KEY = "inkdrop_state";
 
 const FALLBACK_ANIMES = [
   {
@@ -78,6 +81,7 @@ const FALLBACK_ANIMES = [
   },
 ];
 
+// ✅ CATÉGORIES AVEC LANGUES (60% FR, 40% EN)
 const MANGADEX_QUERIES = [
   { query: "popular", lang: "fr" },
   { query: "action", lang: "fr" },
@@ -163,18 +167,29 @@ export default function Home() {
   const [phase, setPhase] = useState<"inkdrop" | "transition" | "mangadex" | "end">("inkdrop");
   const [totalMangas, setTotalMangas] = useState(0);
   const [usedQueries, setUsedQueries] = useState<string[]>([]);
+  const [isRestored, setIsRestored] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const observerRef = useRef<HTMLDivElement | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // ============================================
-  // SAUVEGARDER DANS LE BACKEND
+  // VÉRIFICATION DE LA CONNEXION
   // ============================================
-  const saveStateToBackend = async () => {
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+  }, []);
+
+  // ============================================
+  // SAUVEGARDER DANS LE BACKEND (protégé)
+  // ============================================
+  const saveStateToBackend = useCallback(async (scrollY?: number) => {
+    const token = localStorage.getItem('token');
+    if (!token) return; // ✅ PROTECTION : pas de sauvegarde sans token
+
     try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
       const state = {
-        scrollY: window.scrollY,
+        scrollY: scrollY !== undefined ? scrollY : window.scrollY,
         mangas: infiniteMangas.slice(-100),
         phase: phase,
         usedQueries: usedQueries,
@@ -195,16 +210,50 @@ export default function Home() {
     } catch (error) {
       console.error('❌ Erreur sauvegarde backend:', error);
     }
-  };
+  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage]);
+
+  // ============================================
+  // SAUVEGARDER LOCALEMENT (fallback)
+  // ============================================
+  const saveStateLocal = useCallback(() => {
+    try {
+      const state = {
+        scrollY: window.scrollY,
+        mangas: infiniteMangas.slice(-100),
+        phase: phase,
+        usedQueries: usedQueries,
+        hasMoreInkdrop: hasMoreInkdrop,
+        hasMoreMangadex: hasMoreMangadex,
+        infinitePage: infinitePage,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(CACHE_KEY, JSON.stringify(state));
+    } catch (error) {
+      console.error('Erreur sauvegarde locale:', error);
+    }
+  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage]);
+
+  // ============================================
+  // SAUVEGARDE AVEC DEBOUNCE
+  // ============================================
+  const saveStateDebounced = useCallback(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      saveStateToBackend();
+      saveStateLocal(); // ✅ Sauvegarde locale en parallèle
+    }, SAVE_DEBOUNCE);
+  }, [saveStateToBackend, saveStateLocal]);
 
   // ============================================
   // RESTAURER DEPUIS LE BACKEND
   // ============================================
-  const restoreStateFromBackend = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return false;
+  const restoreStateFromBackend = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return false; // ✅ PROTECTION : pas de restauration sans token
 
+    try {
       const res = await fetch(`${API_URL}/users/state`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -214,9 +263,9 @@ export default function Home() {
       if (!res.ok) return false;
 
       const data = await res.json();
-      if (!data || !data.appState) return false;
+      if (!data || !data.data) return false;
 
-      const state = data.appState;
+      const state = data.data;
       if (!state.mangas || !Array.isArray(state.mangas)) return false;
 
       setInfiniteMangas(state.mangas || []);
@@ -226,11 +275,12 @@ export default function Home() {
       setHasMoreMangadex(state.hasMoreMangadex !== undefined ? state.hasMoreMangadex : true);
       setInfinitePage(state.infinitePage || 1);
 
-      setTimeout(() => {
-        if (state.scrollY) {
-          window.scrollTo(0, state.scrollY);
-        }
-      }, 100);
+      // ✅ RESTAURATION DU SCROLL (500ms pour être sûr)
+      if (state.scrollY) {
+        setTimeout(() => {
+          window.scrollTo({ top: state.scrollY, behavior: 'instant' });
+        }, 500);
+      }
 
       console.log(`✅ État restauré depuis le backend (${state.mangas.length} mangas)`);
       return true;
@@ -238,44 +288,111 @@ export default function Home() {
       console.error('❌ Erreur restauration backend:', error);
       return false;
     }
-  };
+  }, []);
 
   // ============================================
-  // SAUVEGARDER AVANT DE QUITTER
+  // RESTAURER LOCALEMENT (fallback)
+  // ============================================
+  const restoreStateLocal = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(CACHE_KEY);
+      if (!saved) return false;
+
+      const state = JSON.parse(saved);
+      if (!state.mangas || !Array.isArray(state.mangas)) return false;
+
+      setInfiniteMangas(state.mangas || []);
+      setPhase(state.phase || "inkdrop");
+      setUsedQueries(state.usedQueries || []);
+      setHasMoreInkdrop(state.hasMoreInkdrop !== undefined ? state.hasMoreInkdrop : true);
+      setHasMoreMangadex(state.hasMoreMangadex !== undefined ? state.hasMoreMangadex : true);
+      setInfinitePage(state.infinitePage || 1);
+
+      if (state.scrollY) {
+        setTimeout(() => {
+          window.scrollTo({ top: state.scrollY, behavior: 'instant' });
+        }, 500);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Erreur restauration locale:', error);
+      return false;
+    }
+  }, []);
+
+  // ============================================
+  // SAUVEGARDER AVANT DE QUITTER (beforeunload)
   // ============================================
   useEffect(() => {
     const handleBeforeUnload = () => {
       saveStateToBackend();
+      saveStateLocal();
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage]);
+  }, [saveStateToBackend, saveStateLocal]);
 
   // ============================================
-  // SAUVEGARDER AVANT DE QUITTER POUR UN MANGA
+  // SAUVEGARDER LE SCROLL EN TEMPS RÉEL
   // ============================================
-  const handleMangaClick = (mangaId: string) => {
-    saveStateToBackend();
-    router.push(`/read/${mangaId}`);
+  useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+
+    const handleScroll = () => {
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        saveStateToBackend(window.scrollY);
+        saveStateLocal();
+      }, SAVE_DEBOUNCE);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+    };
+  }, [saveStateToBackend, saveStateLocal]);
+
+  // ============================================
+  // SAUVEGARDE À CHAQUE CHANGEMENT
+  // ============================================
+  useEffect(() => {
+    if (!loading && infiniteMangas.length > 0 && isRestored) {
+      saveStateDebounced();
+    }
+  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage, loading, isRestored, saveStateDebounced]);
+
+  // ============================================
+  // NAVIGATION VERS LE PROFIL D'UN CRÉATEUR
+  // ============================================
+  const handleCreatorClick = (username: string) => {
+    if (isLoggedIn) {
+      saveStateToBackend();
+      saveStateLocal();
+    }
+    router.push(`/creator/${username}`);
   };
 
   // ============================================
-  // FETCH MANGAS POPULAIRES (SANS localStorage)
+  // NAVIGATION VERS UN MANGA
+  // ============================================
+  const handleMangaClick = (mangaId: string) => {
+    if (isLoggedIn) {
+      saveStateToBackend();
+      saveStateLocal();
+    }
+    router.push(`/manga/${mangaId}`);
+  };
+
+  // ============================================
+  // FETCH MANGAS POPULAIRES
   // ============================================
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // ✅ 1. TENTER DE RESTAURER DEPUIS LE BACKEND
-        const restored = await restoreStateFromBackend();
-        
-        if (restored) {
-          setLoading(false);
-          return;
-        }
-
-        // ✅ 2. SINON, CHARGER LES DONNÉES
         const [mangasRes, trendingRes, creatorsRes, animesRes] = await Promise.all([
           fetch(`${API_URL}/mangas?limit=6&sort=popular`),
           fetch(`${API_URL}/mangas?limit=10&sort=trending`),
@@ -310,31 +427,39 @@ export default function Home() {
         } else {
           setAnimes(FALLBACK_ANIMES);
         }
+
+        setIsRestored(true);
       } catch (error) {
         console.error("Erreur chargement:", error);
         setAnimes(FALLBACK_ANIMES);
+        setIsRestored(true);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
-  }, []);
+    // ✅ RESTAURATION : Backend d'abord, puis local
+    const restore = async () => {
+      const backendRestored = await restoreStateFromBackend();
+      if (!backendRestored) {
+        const localRestored = restoreStateLocal();
+        if (!localRestored) {
+          fetchData();
+        } else {
+          setIsRestored(true);
+          setLoading(false);
+        }
+      } else {
+        setIsRestored(true);
+        setLoading(false);
+      }
+    };
+
+    restore();
+  }, [restoreStateFromBackend, restoreStateLocal]);
 
   // ============================================
-  // SAUVEGARDE AUTOMATIQUE (UNIQUEMENT BACKEND)
-  // ============================================
-  useEffect(() => {
-    if (!loading && infiniteMangas.length > 0) {
-      const timeoutId = setTimeout(() => {
-        saveStateToBackend();
-      }, 3000);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage, loading]);
-
-  // ============================================
-  // FORCER LA TRANSITION SI TOUS LES MANGAS SONT CHARGÉS
+  // FORCER LA TRANSITION
   // ============================================
   useEffect(() => {
     if (totalMangas > 0 && infiniteMangas.filter(m => m.source === "inkdrop").length >= totalMangas && hasMoreInkdrop) {
@@ -432,6 +557,7 @@ export default function Home() {
           rating: m.rating,
           chapters: m.chapters || 0,
           language: selected.lang === "fr" ? "🇫🇷" : "🇬🇧",
+          languageCode: selected.lang, // ✅ AJOUT : stocker le code langue
         }));
         setInfiniteMangas((prev) => [...prev, ...mangadexMangas]);
       }
@@ -447,20 +573,22 @@ export default function Home() {
   // ============================================
   // CARROUSEL TENDANCES
   // ============================================
+  const displayTrending = trendingMangas.length > 0 ? trendingMangas : mangas.slice(0, 6);
+
   useEffect(() => {
-    if (trendingMangas.length === 0) return;
+    if (displayTrending.length === 0) return;
     const interval = setInterval(() => {
-      setCurrentTrendIndex((prev) => (prev + 1) % trendingMangas.length);
+      setCurrentTrendIndex((prev) => (prev + 1) % displayTrending.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, [trendingMangas.length]);
+  }, [displayTrending.length]);
 
   const nextTrend = () => {
-    setCurrentTrendIndex((prev) => (prev + 1) % trendingMangas.length);
+    setCurrentTrendIndex((prev) => (prev + 1) % displayTrending.length);
   };
 
   const prevTrend = () => {
-    setCurrentTrendIndex((prev) => (prev - 1 + trendingMangas.length) % trendingMangas.length);
+    setCurrentTrendIndex((prev) => (prev - 1 + displayTrending.length) % displayTrending.length);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -495,11 +623,7 @@ export default function Home() {
   }, [phase, loadingInfinite, hasMoreInkdrop, hasMoreMangadex]);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-zinc-950">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <Loader message="Chargement des mangas" />;
   }
 
   return (
@@ -543,6 +667,18 @@ export default function Home() {
         )}
       </header>
 
+      {/* ===== BANDEAU NON-CONNECTÉ ===== */}
+      {!isLoggedIn && (
+        <div className="bg-blue-950/30 border-b border-blue-500/20 px-4 py-2 text-center">
+          <p className="text-blue-300 text-xs">
+            🔑 Connecte-toi pour sauvegarder ta progression et retrouver ta position !
+            <Link href="/login" className="text-blue-400 font-semibold hover:underline ml-1">
+              Se connecter
+            </Link>
+          </p>
+        </div>
+      )}
+
       {/* ===== TENDANCES ===== */}
       <section className="px-4 pt-4">
         <div className="flex items-center justify-between mb-3">
@@ -556,12 +692,12 @@ export default function Home() {
         </div>
         <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
           <div className="relative h-48 md:h-56">
-            {trendingMangas.length > 0 ? (
-              trendingMangas.map((manga, index) => (
-                <Link
+            {displayTrending.length > 0 ? (
+              displayTrending.map((manga, index) => (
+                <div
                   key={manga.id}
-                  href={`/manga/${manga.id}`}
-                  className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                  onClick={() => handleMangaClick(manga.id)}
+                  className={`absolute inset-0 transition-opacity duration-700 ease-in-out cursor-pointer ${
                     index === currentTrendIndex ? "opacity-100 z-10" : "opacity-0 z-0"
                   }`}
                 >
@@ -589,10 +725,20 @@ export default function Home() {
                         </span>
                       </div>
                       <h3 className="text-lg md:text-xl font-bold text-white mt-1">{manga.title}</h3>
-                      <p className="text-zinc-400 text-xs">{manga.author?.username || "Inconnu"}</p>
+                      <p 
+                        className="text-zinc-400 text-xs hover:text-blue-400 transition-colors cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (manga.author?.username) {
+                            handleCreatorClick(manga.author.username);
+                          }
+                        }}
+                      >
+                        {manga.author?.username || "Inconnu"}
+                      </p>
                     </div>
                   </div>
-                </Link>
+                </div>
               ))
             ) : (
               <div className="w-full h-full flex items-center justify-center text-zinc-500">
@@ -600,7 +746,7 @@ export default function Home() {
               </div>
             )}
 
-            {trendingMangas.length > 1 && (
+            {displayTrending.length > 1 && (
               <>
                 <button
                   onClick={prevTrend}
@@ -616,7 +762,7 @@ export default function Home() {
                 </button>
 
                 <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
-                  {trendingMangas.slice(0, 6).map((_, index) => (
+                  {displayTrending.slice(0, 6).map((_, index) => (
                     <button
                       key={index}
                       onClick={() => setCurrentTrendIndex(index)}
@@ -648,10 +794,10 @@ export default function Home() {
             creators.map((creator) => {
               const badgeColor = creator.badgeColor || "#3B82F6";
               return (
-                <Link
+                <div
                   key={creator.id}
-                  href={`/creator/${creator.username}`}
-                  className="flex flex-col items-center gap-1 flex-shrink-0 group"
+                  onClick={() => handleCreatorClick(creator.username)}
+                  className="flex flex-col items-center gap-1 flex-shrink-0 group cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-full bg-zinc-900 flex items-center justify-center text-white font-bold text-lg border-2 border-zinc-800 group-hover:border-blue-500 transition-all relative">
                     {creator.avatarUrl ? (
@@ -670,10 +816,10 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-                  <span className="text-zinc-400 text-[10px] truncate max-w-14 text-center">
+                  <span className="text-zinc-400 text-[10px] truncate max-w-14 text-center group-hover:text-blue-400 transition-colors">
                     {creator.username || "Inconnu"}
                   </span>
-                </Link>
+                </div>
               );
             })
           ) : (
@@ -699,10 +845,10 @@ export default function Home() {
           {mangas.slice(0, 6).map((manga) => {
             const authorBadgeColor = manga.author?.badgeColor || "#3B82F6";
             return (
-              <Link
+              <div
                 key={manga.id}
-                href={`/manga/${manga.id}`}
-                className="group bg-zinc-900/40 border border-zinc-800/80 rounded-xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.97]"
+                onClick={() => handleMangaClick(manga.id)}
+                className="group bg-zinc-900/40 border border-zinc-800/80 rounded-xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.97] cursor-pointer"
               >
                 <div className="aspect-[2/3] bg-zinc-900 flex items-center justify-center relative overflow-hidden">
                   {manga.coverUrl ? (
@@ -724,7 +870,15 @@ export default function Home() {
                   <h4 className="text-xs font-bold truncate text-white group-hover:text-blue-400 transition-colors">
                     {manga.title}
                   </h4>
-                  <div className="flex items-center gap-1.5 mt-1">
+                  <div 
+                    className="flex items-center gap-1.5 mt-1 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (manga.author?.username) {
+                        handleCreatorClick(manga.author.username);
+                      }
+                    }}
+                  >
                     {manga.author?.avatarUrl ? (
                       <img 
                         src={manga.author.avatarUrl} 
@@ -736,7 +890,7 @@ export default function Home() {
                         {manga.author?.username?.charAt(0) || "?"}
                       </div>
                     )}
-                    <p className="text-zinc-500 text-[9px] truncate flex items-center gap-0.5">
+                    <p className="text-zinc-500 text-[9px] truncate flex items-center gap-0.5 group-hover:text-blue-400 transition-colors">
                       {manga.author?.username || "Inconnu"}
                       {manga.author?.isCertified && (
                         <BadgeCheck
@@ -759,7 +913,7 @@ export default function Home() {
                     </span>
                   </div>
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
@@ -830,10 +984,10 @@ export default function Home() {
             .map((manga) => {
               const authorBadgeColor = manga.author?.badgeColor || "#3B82F6";
               return (
-                <Link
+                <div
                   key={manga.id}
-                  href={`/manga/${manga.id}`}
-                  className="block bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.98]"
+                  onClick={() => handleMangaClick(manga.id)}
+                  className="block bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex gap-3 p-3">
                     <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden">
@@ -853,7 +1007,15 @@ export default function Home() {
                       <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">
                         {manga.title}
                       </h3>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div 
+                        className="flex items-center gap-1.5 mt-0.5 cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (manga.author?.username) {
+                            handleCreatorClick(manga.author.username);
+                          }
+                        }}
+                      >
                         {manga.author?.avatarUrl ? (
                           <img 
                             src={manga.author.avatarUrl} 
@@ -865,7 +1027,7 @@ export default function Home() {
                             {manga.author?.username?.charAt(0) || "?"}
                           </div>
                         )}
-                        <p className="text-zinc-400 text-xs truncate flex items-center gap-0.5">
+                        <p className="text-zinc-400 text-xs truncate flex items-center gap-0.5 group-hover:text-blue-400 transition-colors">
                           {manga.author?.username || "Inconnu"}
                           {manga.author?.isCertified && (
                             <BadgeCheck
@@ -894,7 +1056,7 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                </Link>
+                </div>
               );
             })}
 
