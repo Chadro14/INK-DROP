@@ -302,15 +302,16 @@ export default function Home() {
   }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage, loading, isRestored, saveStateDebounced]);
 
   // ============================================
-  // ✅ CORRECTION 1 : NAVIGATION VERS LE PROFIL D'UN CRÉATEUR
+  // ✅ NAVIGATION VERS LE PROFIL D'UN CRÉATEUR (CORRIGÉ)
   // ============================================
   const handleCreatorClick = (username: string) => {
     saveStateToBackend();
-    router.push(`/creator/${username}`);
+    const encodedUsername = encodeURIComponent(username);
+    router.push(`/creator/${encodedUsername}`);
   };
 
   // ============================================
-  // ✅ CORRECTION 2 : NAVIGATION VERS UN MANGA (avec source)
+  // NAVIGATION VERS UN MANGA (avec source)
   // ============================================
   const handleMangaClick = (manga: any) => {
     saveStateToBackend();
