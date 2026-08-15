@@ -28,7 +28,7 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 const SAVE_DEBOUNCE = 500;
-const CACHE_KEY = "inkdrop_state";
+const CACHE_KEY = "inkdrop_state"; // ✅ AJOUT
 
 const FALLBACK_ANIMES = [
   {
@@ -81,7 +81,6 @@ const FALLBACK_ANIMES = [
   },
 ];
 
-// ✅ CATÉGORIES AVEC LANGUES (60% FR, 40% EN)
 const MANGADEX_QUERIES = [
   { query: "popular", lang: "fr" },
   { query: "action", lang: "fr" },
@@ -168,7 +167,7 @@ export default function Home() {
   const [totalMangas, setTotalMangas] = useState(0);
   const [usedQueries, setUsedQueries] = useState<string[]>([]);
   const [isRestored, setIsRestored] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // ✅ AJOUT
   const observerRef = useRef<HTMLDivElement | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -181,13 +180,13 @@ export default function Home() {
   }, []);
 
   // ============================================
-  // SAUVEGARDER DANS LE BACKEND (protégé)
+  // SAUVEGARDER DANS LE BACKEND
   // ============================================
   const saveStateToBackend = useCallback(async (scrollY?: number) => {
-    const token = localStorage.getItem('token');
-    if (!token) return; // ✅ PROTECTION : pas de sauvegarde sans token
-
     try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
       const state = {
         scrollY: scrollY !== undefined ? scrollY : window.scrollY,
         mangas: infiniteMangas.slice(-100),
@@ -213,7 +212,7 @@ export default function Home() {
   }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage]);
 
   // ============================================
-  // SAUVEGARDER LOCALEMENT (fallback)
+  // ✅ AJOUT : SAUVEGARDER LOCALEMENT (fallback)
   // ============================================
   const saveStateLocal = useCallback(() => {
     try {
@@ -250,10 +249,10 @@ export default function Home() {
   // RESTAURER DEPUIS LE BACKEND
   // ============================================
   const restoreStateFromBackend = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return false; // ✅ PROTECTION : pas de restauration sans token
-
     try {
+      const token = localStorage.getItem('token');
+      if (!token) return false;
+
       const res = await fetch(`${API_URL}/users/state`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -275,7 +274,7 @@ export default function Home() {
       setHasMoreMangadex(state.hasMoreMangadex !== undefined ? state.hasMoreMangadex : true);
       setInfinitePage(state.infinitePage || 1);
 
-      // ✅ RESTAURATION DU SCROLL (500ms pour être sûr)
+      // ✅ CORRECTION : Restauration du scroll avec 500ms
       if (state.scrollY) {
         setTimeout(() => {
           window.scrollTo({ top: state.scrollY, behavior: 'instant' });
@@ -291,7 +290,7 @@ export default function Home() {
   }, []);
 
   // ============================================
-  // RESTAURER LOCALEMENT (fallback)
+  // ✅ AJOUT : RESTAURER LOCALEMENT (fallback)
   // ============================================
   const restoreStateLocal = useCallback(() => {
     try {
@@ -322,12 +321,12 @@ export default function Home() {
   }, []);
 
   // ============================================
-  // SAUVEGARDER AVANT DE QUITTER (beforeunload)
+  // SAUVEGARDER AVANT DE QUITTER
   // ============================================
   useEffect(() => {
     const handleBeforeUnload = () => {
       saveStateToBackend();
-      saveStateLocal();
+      saveStateLocal(); // ✅ Sauvegarde locale en parallèle
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -344,7 +343,7 @@ export default function Home() {
       if (scrollTimeout) clearTimeout(scrollTimeout);
       scrollTimeout = setTimeout(() => {
         saveStateToBackend(window.scrollY);
-        saveStateLocal();
+        saveStateLocal(); // ✅ Sauvegarde locale en parallèle
       }, SAVE_DEBOUNCE);
     };
 
@@ -368,7 +367,7 @@ export default function Home() {
   // NAVIGATION VERS LE PROFIL D'UN CRÉATEUR
   // ============================================
   const handleCreatorClick = (username: string) => {
-    if (isLoggedIn) {
+    if (isLoggedIn) { // ✅ Vérification de connexion
       saveStateToBackend();
       saveStateLocal();
     }
@@ -379,7 +378,7 @@ export default function Home() {
   // NAVIGATION VERS UN MANGA
   // ============================================
   const handleMangaClick = (mangaId: string) => {
-    if (isLoggedIn) {
+    if (isLoggedIn) { // ✅ Vérification de connexion
       saveStateToBackend();
       saveStateLocal();
     }
@@ -440,19 +439,19 @@ export default function Home() {
 
     // ✅ RESTAURATION : Backend d'abord, puis local
     const restore = async () => {
-      const backendRestored = await restoreStateFromBackend();
-      if (!backendRestored) {
-        const localRestored = restoreStateLocal();
-        if (!localRestored) {
-          fetchData();
-        } else {
-          setIsRestored(true);
-          setLoading(false);
-        }
-      } else {
+      const restored = await restoreStateFromBackend();
+      if (restored) {
         setIsRestored(true);
         setLoading(false);
+        return;
       }
+      const localRestored = restoreStateLocal();
+      if (localRestored) {
+        setIsRestored(true);
+        setLoading(false);
+        return;
+      }
+      fetchData();
     };
 
     restore();
@@ -667,7 +666,7 @@ export default function Home() {
         )}
       </header>
 
-      {/* ===== BANDEAU NON-CONNECTÉ ===== */}
+      {/* ===== BANDEAU NON-CONNECTÉ (AJOUTÉ) ===== */}
       {!isLoggedIn && (
         <div className="bg-blue-950/30 border-b border-blue-500/20 px-4 py-2 text-center">
           <p className="text-blue-300 text-xs">
