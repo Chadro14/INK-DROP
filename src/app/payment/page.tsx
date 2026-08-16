@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -15,23 +15,28 @@ import {
   CreditCard,
   AlertCircle,
   Loader2,
-  ChevronRight
+  Lock,
+  Heart,
+  Sparkle
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
+
+type PlanInfo = {
+  name: string;
+  price: number;
+  currency: string;
+  color: string;
+};
 
 type Operator = {
   id: string;
   name: string;
   icon: string;
   description: string;
-  color: string;
 };
 
-// ============================================
-// ✅ COMPOSANT CONTENU (avec useSearchParams)
-// ============================================
-function PaymentContent() {
+export default function PaymentPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const planId = searchParams.get("plan") || "standard";
@@ -39,45 +44,36 @@ function PaymentContent() {
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [operator, setOperator] = useState<string>("orange");
+  const [operator, setOperator] = useState<string>("mpesa");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-
-  const [plan, setPlan] = useState<{ name: string; price: number; currency: string }>({
-    name: "Standard",
-    price: 3,
-    currency: "$",
-  });
 
   // ============================================
   // DÉFINIR LE PLAN
   // ============================================
-  useEffect(() => {
-    const plans: Record<string, { name: string; price: number; currency: string }> = {
-      standard: { name: "Standard", price: 3, currency: "$" },
-      pro: { name: "Pro", price: 5, currency: "$" },
-      premium: { name: "Premium", price: 7, currency: "$" },
-    };
-    setPlan(plans[planId] || plans.standard);
-  }, [planId]);
+  const plans: Record<string, PlanInfo> = {
+    standard: { name: "Standard", price: 3, currency: "$", color: "from-blue-500 to-blue-600" },
+    pro: { name: "Pro", price: 5, currency: "$", color: "from-purple-500 to-purple-600" },
+    premium: { name: "Premium", price: 7, currency: "$", color: "from-amber-500 to-amber-600" },
+  };
+
+  const plan = plans[planId] || plans.standard;
 
   // ============================================
   // OPÉRATEURS
   // ============================================
   const operators: Operator[] = [
     {
-      id: "orange",
-      name: "Orange Money",
-      icon: "📱",
-      description: "Paiement via Orange Money",
-      color: "from-orange-500 to-orange-600",
-    },
-    {
       id: "mpesa",
       name: "M-Pesa",
-      icon: "💳",
+      icon: "https://files.catbox.moe/358zi7.jpg",
       description: "Paiement via M-Pesa",
-      color: "from-green-500 to-green-600",
+    },
+    {
+      id: "orange",
+      name: "Orange Money",
+      icon: "https://files.catbox.moe/z0vta3.jpg",
+      description: "Paiement via Orange Money",
     },
   ];
 
@@ -143,9 +139,9 @@ function PaymentContent() {
         <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
           <Check className="w-8 h-8 text-emerald-400" />
         </div>
-        <h1 className="text-2xl font-bold text-white mb-2">Paiement réussi ! 🎉</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">Paiement réussi !</h1>
         <p className="text-zinc-400 text-sm text-center max-w-sm">
-          Votre abonnement <strong>{plan.name}</strong> est maintenant actif.
+          Votre abonnement <strong className="text-amber-400">{plan.name}</strong> est maintenant actif.
           <br />
           Vous allez être redirigé vers votre profil...
         </p>
@@ -179,15 +175,15 @@ function PaymentContent() {
       <main className="max-w-md mx-auto w-full px-4 py-8 flex-1">
 
         {/* ===== RÉSUMÉ DE LA COMMANDE ===== */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 mb-6">
+        <div className={`bg-gradient-to-br ${plan.color} rounded-2xl p-6 mb-6 shadow-lg`}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-zinc-400">Abonnement</p>
+              <p className="text-sm text-white/70">Abonnement</p>
               <h2 className="text-xl font-bold text-white">{plan.name}</h2>
             </div>
             <div className="text-right">
-              <p className="text-sm text-zinc-400">Prix</p>
-              <p className="text-xl font-bold text-amber-400">{plan.price}{plan.currency}/mois</p>
+              <p className="text-sm text-white/70">Prix</p>
+              <p className="text-xl font-bold text-white">{plan.price}{plan.currency}/mois</p>
             </div>
           </div>
         </div>
@@ -209,10 +205,15 @@ function PaymentContent() {
                     : `border-zinc-800 hover:border-zinc-700`
                 }`}
               >
-                <span className="text-3xl block mb-1">{op.icon}</span>
-                <p className={`text-sm font-medium ${operator === op.id ? "text-white" : "text-zinc-400"}`}>
-                  {op.name}
-                </p>
+                <img
+                  src={op.icon}
+                  alt={op.name}
+                  className="h-8 w-auto mx-auto mb-1 object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <p className="text-xs font-medium text-zinc-300">{op.name}</p>
               </button>
             ))}
           </div>
@@ -268,14 +269,18 @@ function PaymentContent() {
 
         {/* ===== SÉCURITÉ ===== */}
         <div className="mt-6 text-center">
-          <div className="flex items-center justify-center gap-4 text-xs text-zinc-500">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-zinc-500">
             <span className="flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5" />
+              <Shield className="w-3.5 h-3.5 text-blue-400" />
               Paiement sécurisé
             </span>
             <span className="flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5" />
+              <Lock className="w-3.5 h-3.5 text-blue-400" />
               Chiffré
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Heart className="w-3.5 h-3.5 text-rose-400" />
+              Soutenez vos créateurs
             </span>
           </div>
           <p className="mt-2 text-xs text-zinc-600">
@@ -286,16 +291,5 @@ function PaymentContent() {
 
       <BottomNav />
     </div>
-  );
-}
-
-// ============================================
-// ✅ PAGE PRINCIPALE AVEC SUSPENSE
-// ============================================
-export default function PaymentPage() {
-  return (
-    <Suspense fallback={<Loader message="Chargement de la page de paiement..." />}>
-      <PaymentContent />
-    </Suspense>
   );
 }
