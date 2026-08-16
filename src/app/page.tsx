@@ -249,14 +249,11 @@ export default function Home() {
       setHasMoreMangadex(state.hasMoreMangadex !== undefined ? state.hasMoreMangadex : true);
       setInfinitePage(state.infinitePage || 1);
 
-      // ✅ RESTAURATION DU SCROLL (AMÉLIORÉE)
       if (state.scrollY) {
-        // 1er essai après 500ms
         setTimeout(() => {
           window.scrollTo({ top: state.scrollY, behavior: 'instant' });
         }, 500);
         
-        // 2e essai après 800ms (si le premier a échoué)
         setTimeout(() => {
           if (window.scrollY !== state.scrollY) {
             window.scrollTo({ top: state.scrollY, behavior: 'instant' });
@@ -270,6 +267,34 @@ export default function Home() {
       console.error('❌ Erreur restauration backend:', error);
       return false;
     }
+  }, []);
+
+  // ============================================
+  // ✅ DÉTECTER LE RETOUR ARRIÈRE POUR RESTAURER LE SCROLL
+  // ============================================
+  useEffect(() => {
+    const handlePopState = () => {
+      const saved = localStorage.getItem('inkdrop_state');
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          if (state.scrollY) {
+            setTimeout(() => {
+              window.scrollTo({ top: state.scrollY, behavior: 'instant' });
+            }, 300);
+            console.log('✅ Scroll restauré après retour arrière');
+          }
+        } catch (e) {
+          console.error('❌ Erreur restauration scroll:', e);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
   }, []);
 
   // ============================================
@@ -338,25 +363,21 @@ export default function Home() {
   // ✅ PWA : ÉCOUTE DU POPUP D'INSTALLATION (AMÉLIORÉ)
   // ============================================
   useEffect(() => {
-    // ✅ VÉRIFIER SI L'APP EST DÉJÀ INSTALLÉE
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsAppInstalled(true);
       setShowInstallBanner(false);
       return;
     }
 
-    // ✅ ÉCOUTER L'ÉVÉNEMENT D'INSTALLATION
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // ✅ TOUJOURS AFFICHER LE BANDEAU (même si déjà refusé)
       setShowInstallBanner(true);
       console.log('✅ Popup d\'installation disponible');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // ✅ QUAND L'APP EST INSTALLÉE
     const handleAppInstalled = () => {
       setIsAppInstalled(true);
       setShowInstallBanner(false);
@@ -366,7 +387,6 @@ export default function Home() {
 
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // ✅ NETTOYAGE
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
@@ -1224,47 +1244,104 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== ✅ BANDEAU D'INSTALLATION PWA (MOBILE) ===== */}
+      {/* ===== ✅ NOTIFICATION D'INSTALLATION PWA (CENTRÉE) ===== */}
       {showInstallBanner && !isAppInstalled && (
-        <div className="fixed bottom-20 left-0 right-0 z-50 mx-4 animate-slide-up">
-          <div className="max-w-md mx-auto bg-gradient-to-r from-blue-950/90 via-zinc-900/95 to-blue-950/90 border border-blue-500/40 backdrop-blur-xl rounded-2xl p-4 shadow-2xl shadow-blue-900/30">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-2xl shrink-0 shadow-lg shadow-blue-600/30">
-                📱
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="max-w-md w-full mx-4 bg-gradient-to-b from-zinc-900 to-zinc-950 border border-blue-500/30 rounded-3xl p-8 shadow-2xl shadow-blue-900/40 animate-scale-up">
+            
+            {/* Icône SVG */}
+            <div className="flex justify-center mb-4">
+              <svg
+                width="80"
+                height="80"
+                viewBox="0 0 80 80"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect x="8" y="12" width="64" height="56" rx="12" fill="#2563EB" />
+                <rect x="16" y="20" width="48" height="40" rx="8" fill="#1D4ED8" />
+                <path
+                  d="M40 28C36 28 32 30 32 34C32 38 36 40 40 40C44 40 48 38 48 34C48 30 44 28 40 28Z"
+                  fill="#60A5FA"
+                />
+                <path
+                  d="M48 48C48 44 44 42 40 42C36 42 32 44 32 48V52H48V48Z"
+                  fill="#93C5FD"
+                />
+                <rect x="8" y="12" width="64" height="56" rx="12" stroke="#3B82F6" strokeWidth="2" />
+                <path
+                  d="M28 12V20M52 12V20M20 28H60M20 36H60"
+                  stroke="#3B82F6"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <circle cx="40" cy="68" r="4" fill="#3B82F6" />
+                <path
+                  d="M70 68C70 61.5 64.5 56 58 56H22C15.5 56 10 61.5 10 68"
+                  stroke="#3B82F6"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+
+            {/* Titre */}
+            <h2 className="text-2xl font-extrabold text-white text-center">
+              Installer INKDROP
+            </h2>
+
+            {/* Description */}
+            <p className="text-zinc-400 text-center mt-2 text-sm leading-relaxed">
+              Profitez de l'application <br />
+              <span className="text-blue-400 font-medium">plus rapide et hors ligne</span>
+            </p>
+
+            {/* Avantages */}
+            <div className="flex justify-center gap-6 mt-4 text-xs text-zinc-500">
+              <div className="text-center">
+                <svg className="w-5 h-5 mx-auto text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" />
+                  <path d="M8 12L11 15L16 9" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <p className="mt-1">Rapide</p>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white">Installer INKDROP</p>
-                <p className="text-xs text-zinc-400">Application rapide et hors ligne</p>
+              <div className="text-center">
+                <svg className="w-5 h-5 mx-auto text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2L2 7L12 12L22 7L12 2Z" />
+                  <path d="M2 17L12 22L22 17" />
+                  <path d="M2 12L12 17L22 12" />
+                </svg>
+                <p className="mt-1">Hors ligne</p>
               </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  onClick={handleInstall}
-                  className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white text-xs font-bold transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
-                >
-                  Installer
-                </button>
-                <button
-                  onClick={handleDismissInstall}
-                  className="p-2 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-zinc-800"
-                  aria-label="Fermer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+              <div className="text-center">
+                <svg className="w-5 h-5 mx-auto text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                </svg>
+                <p className="mt-1">Premium</p>
               </div>
             </div>
+
+            {/* Bouton Installer */}
+            <button
+              onClick={handleInstall}
+              className="w-full mt-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-bold text-base transition-all shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5V19" strokeLinecap="round" />
+                <path d="M5 12H19" strokeLinecap="round" />
+              </svg>
+              Installer l'application
+            </button>
+
+            {/* Pas maintenant */}
+            <button
+              onClick={handleDismissInstall}
+              className="w-full mt-3 py-2 text-zinc-500 hover:text-zinc-300 text-sm font-medium transition-colors"
+            >
+              Pas maintenant
+            </button>
           </div>
         </div>
-      )}
-
-      {/* ===== ✅ BOUTON D'INSTALLATION FLOTTANT (DESKTOP) ===== */}
-      {!isAppInstalled && (
-        <button
-          onClick={handleInstall}
-          className="fixed bottom-24 right-4 z-50 px-3 py-2.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white text-xs font-bold shadow-lg shadow-blue-900/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
-        >
-          <span className="text-sm">📱</span>
-          <span>Installer</span>
-        </button>
       )}
 
       <BottomNav />
