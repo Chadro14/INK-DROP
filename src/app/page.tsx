@@ -169,9 +169,12 @@ export default function Home() {
   const observerRef = useRef<HTMLDivElement | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ✅ PWA : État pour le popup d'installation
+  // ============================================
+  // ✅ PWA : ÉTATS POUR LE POPUP D'INSTALLATION
+  // ============================================
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
 
   // ============================================
   // SAUVEGARDER DANS LE BACKEND
@@ -323,28 +326,47 @@ export default function Home() {
   };
 
   // ============================================
-  // ✅ PWA : ÉCOUTE DU POPUP D'INSTALLATION
+  // ✅ PWA : ÉCOUTE DU POPUP D'INSTALLATION (AMÉLIORÉ)
   // ============================================
   useEffect(() => {
-    window.addEventListener('beforeinstallprompt', (e) => {
+    // ✅ VÉRIFIER SI L'APP EST DÉJÀ INSTALLÉE
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsAppInstalled(true);
+      setShowInstallBanner(false);
+      return;
+    }
+
+    // ✅ ÉCOUTER L'ÉVÉNEMENT D'INSTALLATION
+    const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      // ✅ TOUJOURS AFFICHER LE BANDEAU (même si déjà refusé)
       setShowInstallBanner(true);
       console.log('✅ Popup d\'installation disponible');
-    });
+    };
 
-    window.addEventListener('appinstalled', () => {
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    // ✅ QUAND L'APP EST INSTALLÉE
+    const handleAppInstalled = () => {
+      setIsAppInstalled(true);
       setShowInstallBanner(false);
       setDeferredPrompt(null);
       console.log('✅ App installée avec succès');
-    });
+    };
 
-    const hasRefused = localStorage.getItem('pwa_install_refused');
-    if (hasRefused === 'true') {
-      setShowInstallBanner(false);
-    }
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    // ✅ NETTOYAGE
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
+  // ============================================
+  // ✅ PWA : FONCTIONS D'INSTALLATION
+  // ============================================
   const handleInstall = () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
@@ -352,20 +374,36 @@ export default function Home() {
         if (choiceResult.outcome === 'accepted') {
           console.log('✅ Utilisateur a accepté l\'installation');
           setShowInstallBanner(false);
-          localStorage.removeItem('pwa_install_refused');
         } else {
           console.log('❌ Utilisateur a refusé l\'installation');
-          localStorage.setItem('pwa_install_refused', 'true');
+          // ✅ NE PAS CACHER DÉFINITIVEMENT → réapparaîtra à la prochaine visite
           setShowInstallBanner(false);
+          // ✅ Réafficher après 30 secondes
+          setTimeout(() => {
+            if (!isAppInstalled) {
+              setShowInstallBanner(true);
+            }
+          }, 30000);
         }
         setDeferredPrompt(null);
       });
+    } else {
+      // ✅ FALLBACK : si le popup natif n'est pas disponible
+      alert('📱 Pour installer l\'application, utilisez le menu du navigateur : "Ajouter à l\'écran d\'accueil"');
     }
   };
 
+  // ============================================
+  // ✅ PWA : FERMER LE BANDEAU (temporairement)
+  // ============================================
   const handleDismissInstall = () => {
-    localStorage.setItem('pwa_install_refused', 'true');
     setShowInstallBanner(false);
+    // ✅ Réafficher après 1 minute
+    setTimeout(() => {
+      if (!isAppInstalled) {
+        setShowInstallBanner(true);
+      }
+    }, 60000);
   };
 
   // ============================================
@@ -1181,30 +1219,39 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== BANDEAU D'INSTALLATION PWA ===== */}
-      {showInstallBanner && (
-        <div className="fixed bottom-20 left-0 right-0 z-50 bg-zinc-900/95 border-t border-blue-500/30 backdrop-blur-xl p-3 animate-slide-up">
-          <div className="max-w-md mx-auto flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
-              <span className="text-lg">📱</span>
+      {/* ===== ✅ BANDEAU D'INSTALLATION PWA (AMÉLIORÉ) ===== */}
+      {showInstallBanner && !isAppInstalled && (
+        <div className="fixed bottom-20 left-0 right-0 z-50 mx-4 animate-slide-up">
+          <div className="max-w-md mx-auto bg-gradient-to-r from-blue-950/90 via-zinc-900/95 to-blue-950/90 border border-blue-500/40 backdrop-blur-xl rounded-2xl p-4 shadow-2xl shadow-blue-900/30">
+            <div className="flex items-center gap-3">
+              {/* Icône */}
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-2xl shrink-0 shadow-lg shadow-blue-600/30">
+                📱
+              </div>
+              
+              {/* Texte */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-white">Installer INKDROP</p>
+                <p className="text-xs text-zinc-400">Application rapide et hors ligne</p>
+              </div>
+              
+              {/* Boutons */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleInstall}
+                  className="px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white text-xs font-bold transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
+                >
+                  Installer
+                </button>
+                <button
+                  onClick={handleDismissInstall}
+                  className="p-2 text-zinc-400 hover:text-white transition-colors rounded-full hover:bg-zinc-800"
+                  aria-label="Fermer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white">Installer INKDROP</p>
-              <p className="text-xs text-zinc-400">Ajoutez l'app à votre écran d'accueil</p>
-            </div>
-            <button
-              onClick={handleInstall}
-              className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-900/30 whitespace-nowrap"
-            >
-              Installer
-            </button>
-            <button
-              onClick={handleDismissInstall}
-              className="p-2 text-zinc-500 hover:text-zinc-300 transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </div>
         </div>
       )}
