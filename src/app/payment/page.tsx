@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -28,7 +28,10 @@ type Operator = {
   color: string;
 };
 
-export default function PaymentPage() {
+// ============================================
+// ✅ COMPOSANT CONTENU (avec useSearchParams)
+// ============================================
+function PaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const planId = searchParams.get("plan") || "standard";
@@ -109,6 +112,7 @@ export default function PaymentPage() {
           phoneNumber: phoneNumber,
           amount: plan.price,
           currency: "USD",
+          type: "PREMIUM",
         }),
       });
 
@@ -282,5 +286,16 @@ export default function PaymentPage() {
 
       <BottomNav />
     </div>
+  );
+}
+
+// ============================================
+// ✅ PAGE PRINCIPALE AVEC SUSPENSE
+// ============================================
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={<Loader message="Chargement de la page de paiement..." />}>
+      <PaymentContent />
+    </Suspense>
   );
 }
