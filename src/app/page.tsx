@@ -221,7 +221,7 @@ export default function Home() {
   }, [saveStateToBackend]);
 
   // ============================================
-  // RESTAURER DEPUIS LE BACKEND
+  // ✅ RESTAURER DEPUIS LE BACKEND (AMÉLIORÉ)
   // ============================================
   const restoreStateFromBackend = useCallback(async () => {
     try {
@@ -249,10 +249,19 @@ export default function Home() {
       setHasMoreMangadex(state.hasMoreMangadex !== undefined ? state.hasMoreMangadex : true);
       setInfinitePage(state.infinitePage || 1);
 
+      // ✅ RESTAURATION DU SCROLL (AMÉLIORÉE)
       if (state.scrollY) {
+        // 1er essai après 500ms
         setTimeout(() => {
           window.scrollTo({ top: state.scrollY, behavior: 'instant' });
-        }, 200);
+        }, 500);
+        
+        // 2e essai après 800ms (si le premier a échoué)
+        setTimeout(() => {
+          if (window.scrollY !== state.scrollY) {
+            window.scrollTo({ top: state.scrollY, behavior: 'instant' });
+          }
+        }, 800);
       }
 
       console.log(`✅ État restauré depuis le backend (${state.mangas.length} mangas)`);
@@ -376,9 +385,7 @@ export default function Home() {
           setShowInstallBanner(false);
         } else {
           console.log('❌ Utilisateur a refusé l\'installation');
-          // ✅ NE PAS CACHER DÉFINITIVEMENT → réapparaîtra à la prochaine visite
           setShowInstallBanner(false);
-          // ✅ Réafficher après 30 secondes
           setTimeout(() => {
             if (!isAppInstalled) {
               setShowInstallBanner(true);
@@ -388,7 +395,6 @@ export default function Home() {
         setDeferredPrompt(null);
       });
     } else {
-      // ✅ FALLBACK : si le popup natif n'est pas disponible
       alert('📱 Pour installer l\'application, utilisez le menu du navigateur : "Ajouter à l\'écran d\'accueil"');
     }
   };
@@ -398,7 +404,6 @@ export default function Home() {
   // ============================================
   const handleDismissInstall = () => {
     setShowInstallBanner(false);
-    // ✅ Réafficher après 1 minute
     setTimeout(() => {
       if (!isAppInstalled) {
         setShowInstallBanner(true);
@@ -1219,23 +1224,18 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== ✅ BANDEAU D'INSTALLATION PWA (AMÉLIORÉ) ===== */}
+      {/* ===== ✅ BANDEAU D'INSTALLATION PWA (MOBILE) ===== */}
       {showInstallBanner && !isAppInstalled && (
         <div className="fixed bottom-20 left-0 right-0 z-50 mx-4 animate-slide-up">
           <div className="max-w-md mx-auto bg-gradient-to-r from-blue-950/90 via-zinc-900/95 to-blue-950/90 border border-blue-500/40 backdrop-blur-xl rounded-2xl p-4 shadow-2xl shadow-blue-900/30">
             <div className="flex items-center gap-3">
-              {/* Icône */}
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-2xl shrink-0 shadow-lg shadow-blue-600/30">
                 📱
               </div>
-              
-              {/* Texte */}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-white">Installer INKDROP</p>
                 <p className="text-xs text-zinc-400">Application rapide et hors ligne</p>
               </div>
-              
-              {/* Boutons */}
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={handleInstall}
@@ -1254,6 +1254,17 @@ export default function Home() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ===== ✅ BOUTON D'INSTALLATION FLOTTANT (DESKTOP) ===== */}
+      {!isAppInstalled && (
+        <button
+          onClick={handleInstall}
+          className="fixed bottom-24 right-4 z-50 px-3 py-2.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white text-xs font-bold shadow-lg shadow-blue-900/30 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+        >
+          <span className="text-sm">📱</span>
+          <span>Installer</span>
+        </button>
       )}
 
       <BottomNav />
