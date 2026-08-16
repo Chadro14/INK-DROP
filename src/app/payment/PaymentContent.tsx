@@ -8,16 +8,13 @@ import { Loader } from "@/components/ui/loader";
 import { 
   ArrowLeft, 
   Check, 
-  Crown, 
-  Zap, 
   Shield, 
   Smartphone, 
   CreditCard,
   AlertCircle,
   Loader2,
   Lock,
-  Heart,
-  Sparkle
+  Heart
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
