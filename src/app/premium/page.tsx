@@ -349,7 +349,7 @@ export default function PremiumPage() {
             </span>
           </div>
           <p className="mt-3 text-[10px] text-zinc-600 text-center">
-            ✦ Vos données sont sécurisées. Aucune information bancaire n'est stockée. ✦
+            ✦ Vos données sont sécurisées grace à la nouvelle fonctionnalité xelira exo 4.5. ✦
           </p>
         </div>
       </main>
