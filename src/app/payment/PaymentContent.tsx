@@ -41,9 +41,10 @@ export default function PaymentContent() {
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [operator, setOperator] = useState<string>("mpesa");
+  const [operator, setOperator] = useState<string>("orange");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState("");
 
   const plans: Record<string, PlanInfo> = {
     standard: { name: "Standard", price: 3, currency: "$", color: "from-blue-500 to-blue-600" },
@@ -68,6 +69,9 @@ export default function PaymentContent() {
     },
   ];
 
+  // ============================================
+  // ✅ INITIER LE PAIEMENT (VRAI)
+  // ============================================
   const handlePayment = async () => {
     if (!phoneNumber || phoneNumber.length < 8) {
       setError("Veuillez entrer un numéro de téléphone valide");
@@ -76,6 +80,7 @@ export default function PaymentContent() {
 
     setError("");
     setProcessing(true);
+    setPaymentMessage("");
 
     try {
       const token = localStorage.getItem("token");
@@ -84,6 +89,7 @@ export default function PaymentContent() {
         return;
       }
 
+      // ✅ APPEL AU BACKEND AVEC LE VRAI OPÉRATEUR
       const res = await fetch(`${API_URL}/payments/initiate`, {
         method: "POST",
         headers: {
@@ -92,7 +98,7 @@ export default function PaymentContent() {
         },
         body: JSON.stringify({
           plan: planId,
-          operator: operator,
+          operator: operator, // ← "orange" ou "mpesa"
           phoneNumber: phoneNumber,
           amount: plan.price,
           currency: "USD",
@@ -106,12 +112,31 @@ export default function PaymentContent() {
         throw new Error(data.message || "Erreur lors du paiement");
       }
 
-      setSuccess(true);
-      setTimeout(() => {
-        router.push("/profile");
-      }, 3000);
+      // ✅ GESTION DU PAIEMENT EN ATTENTE
+      if (data.status === 'PENDING' || data.status === 'PENDING_MANUAL') {
+        setPaymentMessage(data.message || "📱 Veuillez confirmer le paiement sur votre téléphone.");
+        setSuccess(true);
+        setTimeout(() => {
+          router.push("/profile");
+        }, 5000);
+        return;
+      }
+
+      // ✅ PAIEMENT RÉUSSI
+      if (data.status === 'SUCCESS' || data.success === true) {
+        setPaymentMessage("✅ Paiement réussi !");
+        setSuccess(true);
+        setTimeout(() => {
+          router.push("/profile");
+        }, 3000);
+        return;
+      }
+
+      // ✅ ERREUR
+      throw new Error(data.message || "Le paiement a échoué");
     } catch (err: any) {
       setError(err.message || "Une erreur est survenue");
+      setSuccess(false);
     } finally {
       setProcessing(false);
     }
@@ -127,7 +152,9 @@ export default function PaymentContent() {
         <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
           <Check className="w-8 h-8 text-emerald-400" />
         </div>
-        <h1 className="text-2xl font-bold text-white mb-2">Paiement réussi !</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">
+          {paymentMessage || "Paiement réussi !"}
+        </h1>
         <p className="text-zinc-400 text-sm text-center max-w-sm">
           Votre abonnement <strong className="text-amber-400">{plan.name}</strong> est maintenant actif.
           <br />
