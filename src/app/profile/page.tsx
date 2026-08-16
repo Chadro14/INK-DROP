@@ -27,7 +27,13 @@ import {
   Sparkles,
   User,
   Globe,
-  Users
+  Users,
+  Crown,
+  Star,
+  Gift,
+  Clock,
+  Smartphone,
+  CreditCard
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -219,12 +225,14 @@ export default function ProfilePage() {
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
           {profile.isCertified && (
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] md:text-xs font-bold border border-blue-500/30">
+            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] md:text-xs font-bold border border-blue-500/30 flex items-center gap-1">
+              <BadgeCheck className="w-3 h-3" />
               Certifié
             </span>
           )}
           {profile.premiumActive && (
-            <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm">
+            <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
+              <Star className="w-3 h-3 fill-current" />
               PRO
             </span>
           )}
@@ -232,7 +240,7 @@ export default function ProfilePage() {
 
         {/* ===== BIO ===== */}
         <p className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal">
-          {profile.bio || "Créateur sur INKDROP 🎨"}
+          {profile.bio || "Créateur sur INKDROP"}
         </p>
 
         {/* ===== INFOS ===== */}
@@ -241,12 +249,12 @@ export default function ProfilePage() {
             <Mail className="w-3.5 h-3.5 text-blue-400" /> 
             {profile.email}
           </span>
-          <span>•</span>
+          <span className="w-1 h-1 rounded-full bg-zinc-700" />
           <span className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-blue-400" /> 
             Membre depuis {new Date(profile.createdAt).toLocaleDateString()}
           </span>
-          <span>•</span>
+          <span className="w-1 h-1 rounded-full bg-zinc-700" />
           <span className="flex items-center gap-1.5">
             <Globe className="w-3.5 h-3.5 text-blue-400" />
             {profile.role === 'CREATOR' ? 'Créateur' : 'Membre'}
@@ -462,6 +470,36 @@ export default function ProfilePage() {
         {/* ===== TAB 3 : MENU ===== */}
         {activeTab === "menu" && (
           <div className="w-full max-w-xl mx-auto space-y-2.5">
+            
+            {/* ===== BOUTON PREMIUM ===== */}
+            <Link
+              href="/premium"
+              className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-950/40 to-amber-950/20 rounded-xl border border-amber-500/30 hover:border-amber-500/60 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                  <Crown className="w-5 h-5 text-amber-400" />
+                </div>
+                <div className="text-left">
+                  <span className="text-sm font-semibold text-white group-hover:text-amber-400 transition-colors">
+                    {profile.premiumActive ? "Abonnement Premium actif" : "Devenir Premium"}
+                  </span>
+                  {profile.premiumActive && profile.premiumExpires && (
+                    <p className="text-[10px] text-zinc-500">
+                      Valable jusqu'au {new Date(profile.premiumExpires).toLocaleDateString()}
+                    </p>
+                  )}
+                  {!profile.premiumActive && (
+                    <p className="text-[10px] text-zinc-500">
+                      Accès illimité, sans pub, contenu exclusif
+                    </p>
+                  )}
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
+            </Link>
+
+            {/* ===== CERTIFICATION ===== */}
             <Link
               href="/certification"
               className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
@@ -470,7 +508,8 @@ export default function ProfilePage() {
                 <Award className="w-5 h-5 text-blue-400" />
                 <span className="text-sm font-semibold text-white">Demande de Certification</span>
                 {profile.isCertified && (
-                  <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20">
+                  <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 flex items-center gap-1">
+                    <BadgeCheck className="w-3 h-3" />
                     Certifié
                   </span>
                 )}
@@ -478,6 +517,7 @@ export default function ProfilePage() {
               <ChevronRight className="w-4 h-4 text-zinc-500" />
             </Link>
 
+            {/* ===== BADGE COLOR ===== */}
             {profile.isCertified && (
               <Link
                 href="/profile/badge-color"
@@ -495,6 +535,7 @@ export default function ProfilePage() {
               </Link>
             )}
 
+            {/* ===== PARAMÈTRES ===== */}
             <Link
               href="/profile/settings"
               className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
@@ -506,6 +547,7 @@ export default function ProfilePage() {
               <ChevronRight className="w-4 h-4 text-zinc-500" />
             </Link>
 
+            {/* ===== ADMIN ===== */}
             {profile.role === 'ADMIN' && (
               <Link
                 href="/admin/certify"
@@ -519,6 +561,7 @@ export default function ProfilePage() {
               </Link>
             )}
 
+            {/* ===== DÉCONNEXION ===== */}
             <button
               onClick={handleLogout}
               className="w-full flex items-center justify-between p-4 bg-rose-950/30 rounded-xl border border-rose-500/30 hover:bg-rose-950/50 transition-all"
