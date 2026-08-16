@@ -12,23 +12,10 @@ import {
   Sparkles, 
   Zap, 
   Shield, 
-  Users, 
-  MessageCircle, 
-  Globe,
-  BadgeCheck,
-  Star,
-  Award,
-  Gift,
-  Clock,
-  Smartphone,
-  Lock,
+  Lock, 
   Heart,
-  Calendar,
-  TrendingUp,
-  Upload,
-  Palette,
-  Trophy,
-  Sparkle
+  Sparkle,
+  Star
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -41,7 +28,6 @@ type Plan = {
   features: string[];
   popular?: boolean;
   icon: React.ReactNode;
-  badge?: string;
   color: string;
   description: string;
 };
@@ -49,26 +35,15 @@ type Plan = {
 export default function PremiumPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
       setIsAuthenticated(true);
-      fetch(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => setUser(data))
-        .catch(() => {});
     }
   }, []);
 
-  // ============================================
-  // PLANS PREMIUM
-  // ============================================
   const plans: Plan[] = [
     {
       id: "standard",
@@ -142,52 +117,11 @@ export default function PremiumPage() {
     },
   ];
 
-  // ============================================
-  // OPÉRATEURS DE PAIEMENT (SVG)
-  // ============================================
-  const operators = [
-    {
-      id: "mpesa",
-      name: "M-Pesa",
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="1" width="30" height="30" rx="7" fill="#E6F7E6" stroke="#00A859" strokeWidth="2"/>
-          <path d="M16 8C11.5 8 8 11 8 15C8 19 11.5 22 16 22C20.5 22 24 19 24 15C24 11 20.5 8 16 8Z" fill="#00A859"/>
-          <path d="M16 14C15.5 14 15 14.5 15 15V17C15 17.5 15.5 18 16 18C16.5 18 17 17.5 17 17V15C17 14.5 16.5 14 16 14Z" fill="white"/>
-          <path d="M18 16H14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-          <circle cx="16" cy="15" r="1.5" fill="white"/>
-          <path d="M20 12L18 15L16 12L14 15L12 12" stroke="#00A859" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-      ),
-    },
-    {
-      id: "orange",
-      name: "Orange Money",
-      icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="1" width="30" height="30" rx="7" fill="#FFF0E6" stroke="#FF6600" strokeWidth="2"/>
-          <circle cx="16" cy="16" r="9" fill="#FF6600"/>
-          <circle cx="16" cy="16" r="5" fill="white"/>
-          <circle cx="16" cy="16" r="2.5" fill="#FF6600"/>
-          <path d="M10 10L14 14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-          <path d="M22 10L18 14" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-          <path d="M10 22L14 18" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-          <path d="M22 22L18 18" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-      ),
-    },
-  ];
-
-  // ============================================
-  // REDIRECTION VERS LE PAIEMENT
-  // ============================================
   const handleSubscribe = (planId: string) => {
     if (!isAuthenticated) {
       router.push("/login?redirect=/premium");
       return;
     }
-
-    setSelectedPlan(planId);
     router.push(`/payment?plan=${planId}`);
   };
 
@@ -245,7 +179,6 @@ export default function PremiumPage() {
                   : "border-zinc-800/80 hover:border-zinc-700"
               }`}
             >
-              {/* POPULAIRE */}
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold flex items-center gap-1">
                   <Sparkle className="w-3 h-3" />
@@ -253,7 +186,6 @@ export default function PremiumPage() {
                 </div>
               )}
 
-              {/* HEADER */}
               <div className="flex items-center gap-3 mb-2">
                 <div className={`p-2.5 rounded-xl bg-gradient-to-br ${plan.color} text-white`}>
                   {plan.icon}
@@ -264,7 +196,6 @@ export default function PremiumPage() {
                 </div>
               </div>
 
-              {/* PRIX */}
               <div className="mb-4">
                 <p className="text-3xl font-extrabold text-white">
                   {plan.price}{plan.currency}
@@ -272,7 +203,6 @@ export default function PremiumPage() {
                 </p>
               </div>
 
-              {/* FEATURES */}
               <ul className="space-y-2 flex-1">
                 {plan.features.map((feature, index) => {
                   const isNew = [
@@ -300,7 +230,6 @@ export default function PremiumPage() {
                 })}
               </ul>
 
-              {/* BOUTON */}
               <button
                 onClick={() => handleSubscribe(plan.id)}
                 className={`w-full mt-6 py-3 rounded-xl font-bold text-sm transition-all shadow-lg ${
@@ -315,16 +244,35 @@ export default function PremiumPage() {
           ))}
         </div>
 
-        {/* ===== OPÉRATEURS DE PAIEMENT ===== */}
+        {/* ===== OPÉRATEURS DE PAIEMENT (AVEC VOS LOGOS EN URL) ===== */}
         <div className="mt-10 text-center">
           <p className="text-sm text-zinc-400 mb-4">Paiement sécurisé via</p>
-          <div className="flex items-center justify-center gap-6">
-            {operators.map((op) => (
-              <div key={op.id} className="flex items-center gap-2 text-zinc-400">
-                {op.icon}
-                <span className="text-xs font-medium">{op.name}</span>
-              </div>
-            ))}
+          <div className="flex items-center justify-center gap-8">
+            {/* M-Pesa */}
+            <div className="flex flex-col items-center gap-1">
+              <img 
+                src="https://files.catbox.moe/358zi7.jpg" 
+                alt="M-Pesa" 
+                className="h-8 w-auto object-contain rounded-lg"
+                onError={(e) => {
+                  e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"%3E%3Crect width="40" height="40" rx="8" fill="%232E7D32"/%3E%3Ctext x="20" y="24" text-anchor="middle" fill="white" font-size="12" font-weight="bold"%3EMPESA%3C/text%3E%3C/svg%3E';
+                }}
+              />
+              <span className="text-xs font-medium text-zinc-400">M-Pesa</span>
+            </div>
+
+            {/* Orange Money */}
+            <div className="flex flex-col items-center gap-1">
+              <img 
+                src="https://files.catbox.moe/z0vta3.jpg" 
+                alt="Orange Money" 
+                className="h-8 w-auto object-contain rounded-lg"
+                onError={(e) => {
+                  e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"%3E%3Crect width="40" height="40" rx="8" fill="%23E65100"/%3E%3Ctext x="20" y="24" text-anchor="middle" fill="white" font-size="10" font-weight="bold"%3EORANGE%3C/text%3E%3C/svg%3E';
+                }}
+              />
+              <span className="text-xs font-medium text-zinc-400">Orange Money</span>
+            </div>
           </div>
         </div>
 
@@ -349,7 +297,7 @@ export default function PremiumPage() {
             </span>
           </div>
           <p className="mt-3 text-[10px] text-zinc-600 text-center">
-            ✦ Vos données sont sécurisées grace à la nouvelle fonctionnalité xelira exo 4.5. ✦
+            ✦ Vos données sont sécurisées  grace a la nouvelle fonctionnalité de xelira upclose  4.5 . ✦
           </p>
         </div>
       </main>
