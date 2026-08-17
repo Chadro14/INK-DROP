@@ -209,7 +209,16 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
-          {/* ✅ SUPPRESSION DU BADGE CERTIFIÉ SUR L'AVATAR */}
+          {profile.isCertified && (
+            <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
+              <BadgeCheck
+                className="w-6 h-6 md:w-7 md:h-7"
+                fill={activeBadgeColor}
+                color="black"
+                strokeWidth={1.5}
+              />
+            </div>
+          )}
         </div>
 
         {/* ===== NOM & BADGES ===== */}
