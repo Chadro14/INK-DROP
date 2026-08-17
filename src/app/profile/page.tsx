@@ -140,7 +140,7 @@ export default function ProfilePage() {
       }).catch(() => {});
     } else {
       navigator.clipboard.writeText(shareUrl);
-      alert("📋 Lien copié !");
+      alert("Lien copié !");
     }
   };
 
@@ -295,7 +295,7 @@ export default function ProfilePage() {
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">Publier</span>
-            <span className="sm:hidden">➕</span>
+            <span className="sm:hidden">+</span>
           </Link>
           <button
             onClick={handleShare}
