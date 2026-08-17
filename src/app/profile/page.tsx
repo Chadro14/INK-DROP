@@ -209,30 +209,18 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
-          {profile.isCertified && (
-            <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
-              <BadgeCheck
-                className="w-6 h-6 md:w-7 md:h-7"
-                fill={activeBadgeColor}
-                color="black"
-                strokeWidth={1.5}
-              />
-            </div>
-          )}
+          {/* ✅ SUPPRESSION DU BADGE CERTIFIÉ SUR L'AVATAR */}
         </div>
 
         {/* ===== NOM & BADGES ===== */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
-          {profile.isCertified && (
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] md:text-xs font-bold border border-blue-500/30 flex items-center gap-1">
-              <BadgeCheck className="w-3 h-3" />
-              Certifié
-            </span>
-          )}
+          {/* ✅ SUPPRESSION DU BADGE "Certifié" à côté du nom */}
           {profile.premiumActive && (
             <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
-              <Star className="w-3 h-3 fill-current" />
+              <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
               PRO
             </span>
           )}
