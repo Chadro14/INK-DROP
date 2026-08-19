@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Send, Minimize2, Maximize2, Trash2, MessageSquare, ChevronDown, Sparkles } from "lucide-react";
+import { X, Send, Minimize2, Maximize2, Trash2, MessageSquare, ChevronDown, Sparkles, RefreshCw } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
@@ -29,7 +29,8 @@ export default function AiChatbot() {
   const [loading, setLoading] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -51,11 +52,10 @@ export default function AiChatbot() {
     } catch (error) {
       console.error("Erreur lecture token:", error);
     }
-    
-    // Si pas de token, essayer de récupérer depuis localStorage
+
     const storedName = localStorage.getItem("user_name");
     if (storedName) return storedName;
-    
+
     return "Utilisateur";
   };
 
@@ -68,7 +68,7 @@ export default function AiChatbot() {
       try {
         const parsed = JSON.parse(saved);
         setConversations(parsed);
-        
+
         const lastActive = parsed.find((c: Conversation) => c.id === localStorage.getItem("xelira_active_conversation"));
         if (lastActive) {
           setCurrentConversationId(lastActive.id);
@@ -108,7 +108,7 @@ export default function AiChatbot() {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    
+
     const updated = [...conversations, newConv];
     saveConversations(updated);
     setCurrentConversationId(newConv.id);
@@ -122,7 +122,7 @@ export default function AiChatbot() {
   const deleteConversation = (id: string) => {
     const updated = conversations.filter(c => c.id !== id);
     saveConversations(updated);
-    
+
     if (updated.length > 0) {
       setCurrentConversationId(updated[0].id);
       localStorage.setItem("xelira_active_conversation", updated[0].id);
@@ -164,14 +164,55 @@ export default function AiChatbot() {
   const messages = currentConversation?.messages || [];
 
   // ============================================
+  // FORMATER LE CONTENU COMME CLAUDE
+  // ============================================
+  const formatContent = (content: string) => {
+    if (!content) return null;
+
+    // Convertir les retours à la ligne en <br/>
+    let formatted = content.split('\n').map((line, i) => {
+      // Détecter les listes avec "•" ou "-"
+      if (line.trim().startsWith('•') || line.trim().startsWith('-')) {
+        return <div key={i} className="flex items-start gap-1.5 text-zinc-200 text-sm">
+          <span className="text-blue-400">•</span>
+          <span>{line.trim().replace(/^[•-]\s*/, '')}</span>
+        </div>;
+      }
+      // Détecter les titres (lignes en **gras**)
+      if (line.includes('**')) {
+        const parts = line.split('**');
+        return <div key={i} className="text-sm font-semibold text-white mt-2">
+          {parts.map((part, index) => (
+            index % 2 === 1 ? <span key={index} className="text-blue-400">{part}</span> : <span key={index}>{part}</span>
+          ))}
+        </div>;
+      }
+      // Détecter les lignes avec des émojis (titres de section)
+      if (/^[📁📋🔍✅❌⚠️ℹ️🎯📖💰👑⭐🛠️]/.test(line.trim())) {
+        return <div key={i} className="text-sm font-semibold text-white mt-2">{line}</div>;
+      }
+      // Ligne vide
+      if (line.trim() === '') {
+        return <div key={i} className="h-1" />;
+      }
+      // Texte normal
+      return <div key={i} className="text-sm text-zinc-200">{line}</div>;
+    });
+
+    return <div className="space-y-0.5">{formatted}</div>;
+  };
+
+  // ============================================
   // ENVOYER UN MESSAGE
   // ============================================
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+  const sendMessage = async (customMessage?: string) => {
+    const messageToSend = customMessage || input.trim();
+    if (!messageToSend || loading) return;
 
-    const userMessage = input.trim();
-    const userName = getUserName(); // ✅ RÉCUPÉRER LE NOM
+    const userMessage = messageToSend;
+    const userName = getUserName();
     setInput("");
+    setRetryMessage(null);
 
     // Ajouter le message user
     const userMsgId = `msg-${Date.now()}`;
@@ -214,11 +255,16 @@ export default function AiChatbot() {
         body: JSON.stringify({
           message: userMessage,
           history: history,
-          firstName: userName, // ✅ ENVOYER LE NOM AU BACKEND
+          firstName: userName,
         }),
       });
 
       const data = await res.json();
+
+      // ✅ Si erreur 404 ou autre, afficher un message d'erreur
+      if (!res.ok) {
+        throw new Error(data.error || data.message || "Erreur serveur");
+      }
 
       const assistantMsgId = `msg-${Date.now() + 1}`;
       const finalWithAssistant = updatedWithUser.map(c => {
@@ -230,7 +276,7 @@ export default function AiChatbot() {
               { 
                 id: assistantMsgId,
                 role: "assistant" as const, 
-                content: data.reply || "Désolé, je n'ai pas pu répondre.", 
+                content: data.reply || "Je n'ai pas pu répondre. Réessaie plus tard.", 
                 timestamp: Date.now() 
               },
             ],
@@ -241,8 +287,10 @@ export default function AiChatbot() {
       });
       saveConversations(finalWithAssistant);
 
-    } catch (error) {
+    } catch (error: any) {
       const errorMsgId = `msg-${Date.now() + 2}`;
+      const errorContent = `❌ **Erreur technique**\n\n${error.message || "Une erreur est survenue."}\n\nVeuillez réessayer dans quelques instants.`;
+      
       const errorWithAssistant = updatedWithUser.map(c => {
         if (c.id === currentConversationId) {
           return {
@@ -252,7 +300,7 @@ export default function AiChatbot() {
               { 
                 id: errorMsgId,
                 role: "assistant" as const, 
-                content: "❌ Désolé, une erreur est survenue. Réessaie plus tard.",
+                content: errorContent,
                 timestamp: Date.now() 
               },
             ],
@@ -262,6 +310,7 @@ export default function AiChatbot() {
         return c;
       });
       saveConversations(errorWithAssistant);
+      setRetryMessage(userMessage);
     } finally {
       setLoading(false);
     }
@@ -274,7 +323,7 @@ export default function AiChatbot() {
     if (chatContainerRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
       const isAtBottom = scrollHeight - scrollTop <= clientHeight + 100;
-      
+
       if (isAtBottom) {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }
@@ -310,6 +359,18 @@ export default function AiChatbot() {
   };
 
   // ============================================
+  // SUGGESTIONS
+  // ============================================
+  const suggestions = [
+    { label: "📖 Comment publier ?", value: "Comment publier un manga sur INKDROP ?" },
+    { label: "🏷️ Tags pour mon manga", value: "Donne-moi des tags pour mon manga" },
+    { label: "📊 Analyse mon manga", value: "Analyse mon manga et donne-moi des conseils" },
+    { label: "💰 Comment gagner de l'argent ?", value: "Comment gagner de l'argent sur INKDROP ?" },
+    { label: "⭐ Certification", value: "Comment être certifié sur INKDROP ?" },
+    { label: "👑 Abonnement Premium", value: "Explique-moi les abonnements Premium" },
+  ];
+
+  // ============================================
   // BOUTON FLOTTANT
   // ============================================
   if (!isOpen) {
@@ -341,7 +402,7 @@ export default function AiChatbot() {
         ? "bottom-28 right-4 w-72 h-14" 
         : "bottom-4 right-4 w-[95vw] max-w-md h-[85vh] max-h-[700px] animate-fade-in-up"
     }`}>
-      
+
       {/* HEADER */}
       <div className="flex items-center justify-between p-3 border-b border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-950 rounded-t-2xl">
         <div className="flex items-center gap-3">
@@ -367,11 +428,7 @@ export default function AiChatbot() {
             <MessageSquare className="w-4 h-4" />
           </button>
           <button
-            onClick={() => {
-              if (conversations.length === 0 || confirm("Créer une nouvelle conversation ?")) {
-                createNewConversation();
-              }
-            }}
+            onClick={createNewConversation}
             className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all duration-200"
             title="Nouvelle conversation"
           >
@@ -443,33 +500,15 @@ export default function AiChatbot() {
                 <p className="text-zinc-300 text-sm font-medium">Bonjour {getUserName()} ! Je suis XELIRA 🤖</p>
                 <p className="text-zinc-500 text-xs mt-1">Ta modératrice INKDROP</p>
                 <div className="mt-6 flex flex-wrap justify-center gap-2">
-                  <button
-                    onClick={() => {
-                      setInput("Comment publier sur INKDROP ?");
-                      setTimeout(() => sendMessage(), 100);
-                    }}
-                    className="px-3 py-1.5 rounded-full bg-zinc-800/70 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all duration-200"
-                  >
-                    Comment publier ?
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInput("Donne-moi des tags pour mon manga");
-                      setTimeout(() => sendMessage(), 100);
-                    }}
-                    className="px-3 py-1.5 rounded-full bg-zinc-800/70 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all duration-200"
-                  >
-                    Tags pour mon manga
-                  </button>
-                  <button
-                    onClick={() => {
-                      setInput("Analyse mon manga et donne-moi des conseils");
-                      setTimeout(() => sendMessage(), 100);
-                    }}
-                    className="px-3 py-1.5 rounded-full bg-zinc-800/70 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all duration-200"
-                  >
-                    Analyse mon manga
-                  </button>
+                  {suggestions.map((sug, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => sendMessage(sug.value)}
+                      className="px-3 py-1.5 rounded-full bg-zinc-800/70 border border-zinc-700 text-zinc-300 text-[11px] hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all duration-200"
+                    >
+                      {sug.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             ) : (
@@ -485,11 +524,22 @@ export default function AiChatbot() {
                         : "bg-zinc-800 text-zinc-200 rounded-bl-none shadow-lg shadow-black/20"
                     }`}
                   >
-                    {msg.content}
-                    <div className={`text-[10px] mt-1 opacity-50 flex items-center gap-2 ${
+                               {/* ✅ CONTENU FORMATÉ COMME CLAUDE */}
+                    {msg.role === "assistant" ? formatContent(msg.content) : msg.content}
+                    
+                    <div className={`text-[10px] mt-2 opacity-50 flex items-center gap-2 ${
                       msg.role === "user" ? "text-right text-blue-200" : "text-zinc-400"
                     }`}>
                       <span>{formatTime(msg.timestamp)}</span>
+                      {msg.role === "assistant" && msg.content.includes("❌ Erreur technique") && retryMessage && (
+                        <button
+                          onClick={() => sendMessage(retryMessage)}
+                          className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-all"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>Réessayer</span>
+                        </button>
+                      )}
                       {msg.role === "user" && (
                         <button
                           onClick={() => {
@@ -521,7 +571,7 @@ export default function AiChatbot() {
             <div ref={messagesEndRef} />
           </div>
 
-               {/* BOUTON SCROLL */}
+          {/* BOUTON SCROLL */}
           {showScrollButton && (
             <button
               onClick={scrollToBottom}
@@ -531,23 +581,36 @@ export default function AiChatbot() {
             </button>
           )}
 
-          {/* INPUT */}
-          <div className="p-3 border-t border-zinc-800 flex gap-2 bg-zinc-900/95 rounded-b-2xl">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Écris ton message..."
-              className="flex-1 px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all duration-200 text-sm"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={loading || !input.trim()}
-              className="p-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+          {/* INPUT + SUGGESTIONS RAPIDES */}
+          <div className="p-3 border-t border-zinc-800 bg-zinc-900/95 rounded-b-2xl">
+            <div className="flex gap-2 mb-2 overflow-x-auto pb-1 scrollbar-hide">
+              {suggestions.slice(0, 3).map((sug, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => sendMessage(sug.value)}
+                  className="px-2.5 py-1 rounded-full bg-zinc-800/50 border border-zinc-700 text-zinc-400 text-[10px] hover:bg-blue-600 hover:text-white hover:border-blue-500 transition-all duration-200 whitespace-nowrap"
+                >
+                  {sug.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                placeholder="Écris ton message..."
+                className="flex-1 px-3 py-2 rounded-xl bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all duration-200 text-sm"
+              />
+              <button
+                onClick={() => sendMessage()}
+                disabled={loading || !input.trim()}
+                className="p-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </>
       )}
