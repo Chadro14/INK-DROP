@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { 
-  ArrowLeft, 
-  Lock, 
-  Shield, 
-  LogOut, 
+import {
+  ArrowLeft,
+  Lock,
+  Shield,
+  LogOut,
   Trash2,
   Eye,
   EyeOff,
@@ -26,13 +26,38 @@ import {
   Moon,
   Sun,
   Laptop,
+  User,
+  Key,
+  ShieldCheck,
+  Sparkles,
+  Crown,
+  CreditCard,
+  MessageCircle,
+  Heart,
+  Users,
+  DollarSign,
+  Info,
+  HelpCircle,
+  FileText,
+  Zap,
+  Award,
+  Gift,
+  Clock,
+  Smartphone as PhoneIcon,
   Check,
-  XCircle
+  XCircle,
+  ToggleLeft,
+  ToggleRight,
+  UserPlus,
+  Users as UsersIcon,
+  BookOpen,
+  Star,
+  Menu,
+  Settings as SettingsIcon,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-// Types
 type NotificationSettings = {
   newChapter: boolean;
   newComment: boolean;
@@ -42,11 +67,11 @@ type NotificationSettings = {
 };
 
 type Preferences = {
-  theme: 'light' | 'dark' | 'system';
-  language: 'fr' | 'en';
+  theme: "light" | "dark" | "system";
+  language: "fr" | "en";
 };
 
-type Tab = 'password' | 'email' | 'notifications' | 'preferences' | 'account';
+type Tab = "account" | "security" | "notifications" | "preferences" | "advanced";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -54,21 +79,21 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [activeTab, setActiveTab] = useState<Tab>('password');
+  const [activeTab, setActiveTab] = useState<Tab>("account");
+  const [user, setUser] = useState<any>(null);
 
-  // ===== ÉTATS : MOT DE PASSE =====
-  const [currentPassword, setCurrentPassword] = useState("");
+  // Password states
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // ===== ÉTATS : EMAIL =====
+  // Email states
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
   const [emailToken, setEmailToken] = useState("");
   const [showEmailConfirm, setShowEmailConfirm] = useState(false);
 
-  // ===== ÉTATS : NOTIFICATIONS =====
+  // Notification states
   const [notifSettings, setNotifSettings] = useState<NotificationSettings>({
     newChapter: true,
     newComment: true,
@@ -77,13 +102,13 @@ export default function SettingsPage() {
     system: true,
   });
 
-  // ===== ÉTATS : PRÉFÉRENCES =====
+  // Preferences states
   const [preferences, setPreferences] = useState<Preferences>({
-    theme: 'system',
-    language: 'fr',
+    theme: "system",
+    language: "fr",
   });
 
-  // ===== CHARGEMENT INITIAL =====
+  // ===== LOAD USER DATA =====
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -98,14 +123,13 @@ export default function SettingsPage() {
     if (!token) return;
 
     try {
-      const [notifRes, prefRes] = await Promise.all([
-        fetch(`${API_URL}/users/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
+      const res = await fetch(`${API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (notifRes.ok) {
-        const data = await notifRes.json();
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data);
         if (data.notificationSettings) {
           setNotifSettings(data.notificationSettings);
         }
@@ -120,9 +144,7 @@ export default function SettingsPage() {
     }
   };
 
-  // ============================================
-  // CHANGER LE MOT DE PASSE
-  // ============================================
+  // ===== CHANGE PASSWORD =====
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -154,17 +176,16 @@ export default function SettingsPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({ newPassword }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur lors du changement de mot de passe");
+        throw new Error(data.message || "Erreur");
       }
 
-      setSuccess("Mot de passe changé avec succès !");
-      setCurrentPassword("");
+      setSuccess("Mot de passe modifié");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
@@ -174,9 +195,7 @@ export default function SettingsPage() {
     }
   };
 
-  // ============================================
-  // CHANGER L'EMAIL (Étape 1 : Demande)
-  // ============================================
+  // ===== CHANGE EMAIL =====
   const handleRequestEmailChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -190,10 +209,7 @@ export default function SettingsPage() {
     }
 
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (!token) return;
 
     try {
       const res = await fetch(`${API_URL}/users/request-email-change`, {
@@ -208,10 +224,10 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur lors de la demande");
+        throw new Error(data.message || "Erreur");
       }
 
-      setSuccess("Un email de vérification a été envoyé à votre nouvelle adresse.");
+      setSuccess("Email de vérification envoyé");
       setShowEmailConfirm(true);
       setNewEmail("");
       setEmailPassword("");
@@ -222,9 +238,6 @@ export default function SettingsPage() {
     }
   };
 
-  // ============================================
-  // CHANGER L'EMAIL (Étape 2 : Confirmation)
-  // ============================================
   const handleConfirmEmailChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -232,7 +245,7 @@ export default function SettingsPage() {
     setSuccess("");
 
     if (!emailToken) {
-      setError("Veuillez entrer le token reçu par email");
+      setError("Token requis");
       setSaving(false);
       return;
     }
@@ -240,9 +253,7 @@ export default function SettingsPage() {
     try {
       const res = await fetch(`${API_URL}/users/confirm-email-change`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: emailToken }),
       });
 
@@ -252,7 +263,7 @@ export default function SettingsPage() {
         throw new Error(data.message || "Token invalide");
       }
 
-      setSuccess("Email changé avec succès !");
+      setSuccess("Email modifié");
       setEmailToken("");
       setShowEmailConfirm(false);
     } catch (err: any) {
@@ -262,19 +273,14 @@ export default function SettingsPage() {
     }
   };
 
-  // ============================================
-  // METTRE À JOUR LES NOTIFICATIONS
-  // ============================================
+  // ===== UPDATE NOTIFICATIONS =====
   const handleUpdateNotifications = async () => {
     setSaving(true);
     setError("");
     setSuccess("");
 
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (!token) return;
 
     try {
       const res = await fetch(`${API_URL}/users/notifications`, {
@@ -289,10 +295,10 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur lors de la mise à jour");
+        throw new Error(data.message || "Erreur");
       }
 
-      setSuccess("Préférences de notification mises à jour !");
+      setSuccess("Notifications mises à jour");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -300,19 +306,14 @@ export default function SettingsPage() {
     }
   };
 
-  // ============================================
-  // METTRE À JOUR LES PRÉFÉRENCES
-  // ============================================
+  // ===== UPDATE PREFERENCES =====
   const handleUpdatePreferences = async () => {
     setSaving(true);
     setError("");
     setSuccess("");
 
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (!token) return;
 
     try {
       const res = await fetch(`${API_URL}/users/preferences`, {
@@ -327,10 +328,10 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur lors de la mise à jour");
+        throw new Error(data.message || "Erreur");
       }
 
-      setSuccess("Préférences mises à jour !");
+      setSuccess("Préférences mises à jour");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -338,14 +339,16 @@ export default function SettingsPage() {
     }
   };
 
-  // ============================================
-  // SUPPRIMER LE COMPTE
-  // ============================================
+  // ===== DELETE ACCOUNT =====
   const handleDeleteAccount = async () => {
-    const password = prompt("⚠️ Pour confirmer la suppression, entrez votre mot de passe :");
+    const password = prompt("Entrez votre mot de passe pour confirmer :");
     if (!password) return;
 
-    if (!confirm("⚠️ Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible et toutes vos données seront perdues !")) {
+    if (
+      !confirm(
+        "Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible."
+      )
+    ) {
       return;
     }
 
@@ -354,10 +357,7 @@ export default function SettingsPage() {
     setSuccess("");
 
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (!token) return;
 
     try {
       const res = await fetch(`${API_URL}/users/account`, {
@@ -372,11 +372,11 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur lors de la suppression");
+        throw new Error(data.message || "Erreur");
       }
 
       localStorage.removeItem("token");
-      setSuccess("Compte supprimé avec succès");
+      setSuccess("Compte supprimé");
       setTimeout(() => router.push("/login"), 2000);
     } catch (err: any) {
       setError(err.message);
@@ -384,74 +384,79 @@ export default function SettingsPage() {
     }
   };
 
-  // ============================================
-  // DÉCONNEXION
-  // ============================================
+  // ===== LOGOUT =====
   const handleLogout = () => {
     localStorage.removeItem("token");
     router.push("/login");
   };
 
-  // ============================================
-  // EXPORTER LES DONNÉES
-  // ============================================
+  // ===== EXPORT DATA =====
   const handleExportData = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (!token) return;
 
     setSaving(true);
     try {
-      // Récupérer toutes les données
-      const [userRes, mangasRes, commentsRes] = await Promise.all([
-        fetch(`${API_URL}/users/me`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/mangas?limit=100`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_URL}/social/comments`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
+      const res = await fetch(`${API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
 
-      const user = await userRes.json();
-      const mangas = await mangasRes.json();
-      const comments = await commentsRes.json();
-
-      const data = {
-        user,
-        mangas: mangas.data || [],
-        comments: comments.data || [],
-        exportedAt: new Date().toISOString(),
-      };
-
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `inkdrop-data-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `inkdrop-data-${new Date().toISOString().split("T")[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
 
-      setSuccess("Données exportées avec succès !");
-    } catch (err: any) {
-      setError("Erreur lors de l'export des données");
+      setSuccess("Données exportées");
+    } catch {
+      setError("Erreur export");
     } finally {
       setSaving(false);
     }
   };
 
-  // ============================================
-  // RENDU DES ONGLETS
-  // ============================================
-  const tabs = [
-    { id: 'password', label: 'Mot de passe', icon: Lock },
-    { id: 'email', label: 'Email', icon: Mail },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'preferences', label: 'Préférences', icon: Palette },
-    { id: 'account', label: 'Compte', icon: Shield },
-  ] as const;
+  // ===== TOGGLE COMPONENT =====
+  const Toggle = ({
+    value,
+    onChange,
+    label,
+    description,
+  }: {
+    value: boolean;
+    onChange: () => void;
+    label: string;
+    description?: string;
+  }) => (
+    <div className="flex items-center justify-between py-3 border-b border-zinc-800/40 last:border-0">
+      <div>
+        <p className="text-sm font-medium text-white">{label}</p>
+        {description && (
+          <p className="text-xs text-zinc-500 mt-0.5">{description}</p>
+        )}
+      </div>
+      <button
+        onClick={onChange}
+        className={`relative w-11 h-6 rounded-full transition-all duration-300 flex-shrink-0 ${
+          value ? "bg-blue-600" : "bg-zinc-700"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all duration-300 shadow-md ${
+            value ? "translate-x-5" : "translate-x-0.5"
+          }`}
+        />
+      </button>
+    </div>
+  );
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-zinc-950 text-white">
+      <div className="flex items-center justify-center h-screen bg-zinc-950">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
       </div>
     );
@@ -460,286 +465,372 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
 
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
-        <div className="flex items-center justify-between max-w-xl mx-auto">
-          <Link href="/profile" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium">
+      {/* ===== HEADER ===== */}
+      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <Link
+            href="/profile"
+            className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium"
+          >
             <ArrowLeft className="w-4 h-4" />
             <span>Retour</span>
           </Link>
-          <span className="text-base font-bold text-white tracking-tight">Paramètres</span>
+          <span className="text-base font-bold text-white tracking-tight">
+            Paramètres
+          </span>
           <div className="w-12" />
         </div>
       </header>
 
-      <main className="flex-1 px-4 md:px-8 py-6 max-w-xl mx-auto w-full space-y-6">
+      <main className="flex-1 px-4 py-4 max-w-2xl mx-auto w-full">
 
-        {/* ONGLETS */}
-        <div className="flex overflow-x-auto gap-1 pb-2 scrollbar-hide bg-zinc-900/30 rounded-xl p-1 border border-zinc-800/60">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center justify-center gap-1.5 ${
-                  activeTab === tab.id
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ALERTES */}
+        {/* ===== ALERTS ===== */}
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-sm flex items-center gap-2">
+          <div className="mb-4 p-3 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
         {success && (
-          <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-sm flex items-center gap-2">
+          <div className="mb-4 p-3 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-sm flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{success}</span>
           </div>
         )}
 
-        {/* ========================================== */}
-        {/* TAB 1 : MOT DE PASSE */}
-        {/* ========================================== */}
-        {activeTab === 'password' && (
-          <section className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 md:p-6">
-            <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <Lock className="w-4 h-4 text-blue-400" />
-              Changer le mot de passe
-            </h2>
-
-            <form onSubmit={handlePasswordChange} className="space-y-4">
-              <div>
-                <label className="block text-zinc-300 text-xs font-semibold mb-1.5">
-                  Mot de passe actuel
-                </label>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-zinc-300 text-xs font-semibold mb-1.5">
-                  Nouveau mot de passe
-                </label>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
-                  required
-                  minLength={8}
-                />
-              </div>
-
-              <div>
-                <label className="block text-zinc-300 text-xs font-semibold mb-1.5">
-                  Confirmer le mot de passe
-                </label>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
-                  required
-                />
-              </div>
-
+        {/* ===== TAB MENU ===== */}
+        <div className="grid grid-cols-5 gap-1 mb-6 bg-zinc-900/40 rounded-xl p-1 border border-zinc-800/60">
+          {[
+            { id: "account", icon: User, label: "Compte" },
+            { id: "security", icon: Shield, label: "Sécurité" },
+            { id: "notifications", icon: Bell, label: "Notifications" },
+            { id: "preferences", icon: Palette, label: "Apparence" },
+            { id: "advanced", icon: SettingsIcon, label: "Avancé" },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            return (
               <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="text-xs text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5"
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as Tab)}
+                className={`py-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-0.5 ${
+                  activeTab === tab.id
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                }`}
               >
-                {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                {showPassword ? "Masquer" : "Afficher"} les mots de passe
+                <Icon className="w-4 h-4" />
+                <span>{tab.label}</span>
               </button>
+            );
+          })}
+        </div>
 
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full py-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Changer le mot de passe"}
-              </button>
-            </form>
-          </section>
+        {/* ========================================== */}
+        {/* TAB 1 : ACCOUNT */}
+        {/* ========================================== */}
+        {activeTab === "account" && (
+          <div className="space-y-3">
+            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                <User className="w-4 h-4 text-blue-400" />
+                Informations du compte
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between py-2 border-b border-zinc-800/40">
+                  <span className="text-zinc-400 text-sm">Email</span>
+                  <span className="text-white text-sm font-medium">
+                    {user?.email || "Non défini"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-zinc-800/40">
+                  <span className="text-zinc-400 text-sm">Nom d'utilisateur</span>
+                  <span className="text-white text-sm font-medium">
+                    {user?.username || "Non défini"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-zinc-800/40">
+                  <span className="text-zinc-400 text-sm">Rôle</span>
+                  <span className="text-white text-sm font-medium">
+                    {user?.role === "ADMIN" ? "Administrateur" : user?.role === "CREATOR" ? "Créateur" : "Lecteur"}
+                  </span>
+                </div>
+                {user?.isCertified && (
+                  <div className="flex justify-between py-2 border-b border-zinc-800/40">
+                    <span className="text-zinc-400 text-sm">Certifié</span>
+                    <span className="text-blue-400 text-sm font-medium flex items-center gap-1">
+                      <ShieldCheck className="w-4 h-4" />
+                      Oui
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
 
+           {/* ========================================== */}
+        {/* TAB 2 : SECURITY */}
         {/* ========================================== */}
-        {/* TAB 2 : EMAIL */}
-        {/* ========================================== */}
-        {activeTab === 'email' && (
-          <section className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 md:p-6">
-            <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <Mail className="w-4 h-4 text-blue-400" />
-              Changer l'email
-            </h2>
-
-            {!showEmailConfirm ? (
-              <form onSubmit={handleRequestEmailChange} className="space-y-4">
+        {activeTab === "security" && (
+          <div className="space-y-3">
+            {/* Change Password */}
+            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                <Key className="w-4 h-4 text-blue-400" />
+                Changer le mot de passe
+              </h3>
+              <form onSubmit={handlePasswordChange} className="space-y-3">
                 <div>
-                  <label className="block text-zinc-300 text-xs font-semibold mb-1.5">
-                    Nouvel email
+                  <label className="block text-zinc-300 text-xs font-medium mb-1">
+                    Nouveau mot de passe
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+                      required
+                      minLength={8}
+                      placeholder="Nouveau mot de passe"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-zinc-300 text-xs font-medium mb-1">
+                    Confirmer
                   </label>
                   <input
-                    type="email"
-                    value={newEmail}
-                    onChange={(e) => setNewEmail(e.target.value)}
-                    placeholder="nouveau@email.com"
-                    className="w-full px-4 py-3 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+                    type={showPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
                     required
+                    placeholder="Confirmer"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-zinc-300 text-xs font-semibold mb-1.5">
-                    Mot de passe (pour confirmer)
-                  </label>
-                  <input
-                    type="password"
-                    value={emailPassword}
-                    onChange={(e) => setEmailPassword(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
-                    required
-                  />
-                </div>
-
                 <button
                   type="submit"
                   disabled={saving}
-                  className="w-full py-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Envoyer la demande"}
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Mettre à jour"
+                  )}
                 </button>
               </form>
-            ) : (
-              <form onSubmit={handleConfirmEmailChange} className="space-y-4">
-                <div>
-                  <label className="block text-zinc-300 text-xs font-semibold mb-1.5">
-                    Token de vérification
-                  </label>
-                  <input
-                    type="text"
-                    value={emailToken}
-                    onChange={(e) => setEmailToken(e.target.value)}
-                    placeholder="Entrez le token reçu par email"
-                    className="w-full px-4 py-3 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
-                    required
-                  />
-                  <p className="text-xs text-zinc-500 mt-1.5">
-                    Un token a été envoyé à votre nouvelle adresse email. Vérifiez vos spams.
-                  </p>
-                </div>
+            </div>
 
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="w-full py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer le changement"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowEmailConfirm(false)}
-                  className="w-full py-2 text-sm text-zinc-400 hover:text-white transition-colors"
-                >
-                  ← Retour à la demande
-                </button>
-              </form>
-            )}
-          </section>
+            {/* Change Email */}
+            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                <Mail className="w-4 h-4 text-blue-400" />
+                Changer l'email
+              </h3>
+              {!showEmailConfirm ? (
+                <form onSubmit={handleRequestEmailChange} className="space-y-3">
+                  <div>
+                    <label className="block text-zinc-300 text-xs font-medium mb-1">
+                      Nouvel email
+                    </label>
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+                      placeholder="nouveau@email.com"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-zinc-300 text-xs font-medium mb-1">
+                      Mot de passe actuel
+                    </label>
+                    <input
+                      type="password"
+                      value={emailPassword}
+                      onChange={(e) => setEmailPassword(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Envoyer la demande"}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleConfirmEmailChange} className="space-y-3">
+                  <div>
+                    <label className="block text-zinc-300 text-xs font-medium mb-1">
+                      Token de vérification
+                    </label>
+                    <input
+                      type="text"
+                      value={emailToken}
+                      onChange={(e) => setEmailToken(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+                      placeholder="Entrez le token reçu par email"
+                      required
+                    />
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Un token a été envoyé à votre nouvelle adresse.
+                    </p>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailConfirm(false)}
+                    className="w-full py-2 text-sm text-zinc-500 hover:text-white transition-colors"
+                  >
+                    Annuler
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
         )}
 
         {/* ========================================== */}
         {/* TAB 3 : NOTIFICATIONS */}
         {/* ========================================== */}
-        {activeTab === 'notifications' && (
-          <section className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 md:p-6">
-            <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+        {activeTab === "notifications" && (
+          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
+            <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
               <Bell className="w-4 h-4 text-blue-400" />
               Notifications
-            </h2>
+            </h3>
+            <p className="text-xs text-zinc-500 mb-4">
+              Gérez les notifications que vous recevez
+            </p>
 
-            <div className="space-y-3">
-              {Object.entries(notifSettings).map(([key, value]) => (
-                <label key={key} className="flex items-center justify-between p-3 rounded-xl bg-zinc-950/50 border border-zinc-800/60 cursor-pointer hover:border-zinc-700 transition-all">
-                  <span className="text-sm font-medium text-zinc-300 capitalize">
-                    {key === 'newChapter' && '📖 Nouveau chapitre'}
-                    {key === 'newComment' && '💬 Nouveau commentaire'}
-                    {key === 'newSubscriber' && '👤 Nouvel abonné'}
-                    {key === 'earning' && '💰 Gains'}
-                    {key === 'system' && '⚙️ Système'}
-                  </span>
-                  <div className="relative w-11 h-6 flex-shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={value}
-                      onChange={() => setNotifSettings({ ...notifSettings, [key]: !value })}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-zinc-700 rounded-full peer peer-checked:bg-blue-600 transition-all duration-300" />
-                    <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-all duration-300 ${value ? 'translate-x-5' : ''}`} />
-                  </div>
-                </label>
-              ))}
-
-              <button
-                onClick={handleUpdateNotifications}
-                disabled={saving}
-                className="w-full py-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer les préférences"}
-              </button>
+            <div className="divide-y divide-zinc-800/40">
+              <Toggle
+                value={notifSettings.newChapter}
+                onChange={() =>
+                  setNotifSettings({
+                    ...notifSettings,
+                    newChapter: !notifSettings.newChapter,
+                  })
+                }
+                label="Nouveau chapitre"
+                description="Quand un manga suivi publie un chapitre"
+              />
+              <Toggle
+                value={notifSettings.newComment}
+                onChange={() =>
+                  setNotifSettings({
+                    ...notifSettings,
+                    newComment: !notifSettings.newComment,
+                  })
+                }
+                label="Nouveau commentaire"
+                description="Quand quelqu'un commente vos mangas"
+              />
+              <Toggle
+                value={notifSettings.newSubscriber}
+                onChange={() =>
+                  setNotifSettings({
+                    ...notifSettings,
+                    newSubscriber: !notifSettings.newSubscriber,
+                  })
+                }
+                label="Nouvel abonné"
+                description="Quand quelqu'un s'abonne à vous"
+              />
+              <Toggle
+                value={notifSettings.earning}
+                onChange={() =>
+                  setNotifSettings({
+                    ...notifSettings,
+                    earning: !notifSettings.earning,
+                  })
+                }
+                label="Revenus"
+                description="Quand vous gagnez de l'argent"
+              />
+              <Toggle
+                value={notifSettings.system}
+                onChange={() =>
+                  setNotifSettings({
+                    ...notifSettings,
+                    system: !notifSettings.system,
+                  })
+                }
+                label="Système"
+                description="Notifications importantes"
+              />
             </div>
-          </section>
+
+            <button
+              onClick={handleUpdateNotifications}
+              disabled={saving}
+              className="w-full mt-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer"}
+            </button>
+          </div>
         )}
 
         {/* ========================================== */}
-        {/* TAB 4 : PRÉFÉRENCES */}
+        {/* TAB 4 : PREFERENCES */}
         {/* ========================================== */}
-        {activeTab === 'preferences' && (
-          <section className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 md:p-6">
-            <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+        {activeTab === "preferences" && (
+          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
+            <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
               <Palette className="w-4 h-4 text-blue-400" />
-              Préférences
-            </h2>
+              Apparence & Langue
+            </h3>
+            <p className="text-xs text-zinc-500 mb-4">
+              Personnalisez l'affichage de l'application
+            </p>
 
             <div className="space-y-4">
-              {/* THÈME */}
               <div>
-                <label className="block text-zinc-300 text-xs font-semibold mb-2">
+                <label className="block text-zinc-300 text-xs font-medium mb-2">
                   Thème
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: 'light', label: 'Clair', icon: Sun },
-                    { value: 'dark', label: 'Sombre', icon: Moon },
-                    { value: 'system', label: 'Système', icon: Laptop },
+                    { value: "light", label: "Clair", icon: Sun },
+                    { value: "dark", label: "Sombre", icon: Moon },
+                    { value: "system", label: "Système", icon: Laptop },
                   ].map(({ value, label, icon: Icon }) => (
                     <button
                       key={value}
-                      type="button"
-                      onClick={() => setPreferences({ ...preferences, theme: value as Preferences['theme'] })}
-                      className={`py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
+                      onClick={() =>
+                        setPreferences({
+                          ...preferences,
+                          theme: value as Preferences["theme"],
+                        })
+                      }
+                      className={`py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 border ${
                         preferences.theme === value
-                          ? 'bg-blue-600 text-white border-blue-500'
-                          : 'bg-zinc-900/90 text-zinc-400 border-zinc-800 hover:border-zinc-700'
+                          ? "bg-blue-600 text-white border-blue-500"
+                          : "bg-zinc-900/90 text-zinc-400 border-zinc-800 hover:border-zinc-700"
                       }`}
                     >
                       <Icon className="w-3.5 h-3.5" />
@@ -749,24 +840,27 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* LANGUE */}
               <div>
-                <label className="block text-zinc-300 text-xs font-semibold mb-2">
+                <label className="block text-zinc-300 text-xs font-medium mb-2">
                   Langue
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { value: 'fr', label: '🇫🇷 Français' },
-                    { value: 'en', label: '🇬🇧 English' },
+                    { value: "fr", label: "Français" },
+                    { value: "en", label: "English" },
                   ].map(({ value, label }) => (
                     <button
                       key={value}
-                      type="button"
-                      onClick={() => setPreferences({ ...preferences, language: value as Preferences['language'] })}
-                      className={`py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                      onClick={() =>
+                        setPreferences({
+                          ...preferences,
+                          language: value as Preferences["language"],
+                        })
+                      }
+                      className={`py-2.5 rounded-xl text-xs font-medium transition-all border ${
                         preferences.language === value
-                          ? 'bg-blue-600 text-white border-blue-500'
-                          : 'bg-zinc-900/90 text-zinc-400 border-zinc-800 hover:border-zinc-700'
+                          ? "bg-blue-600 text-white border-blue-500"
+                          : "bg-zinc-900/90 text-zinc-400 border-zinc-800 hover:border-zinc-700"
                       }`}
                     >
                       {label}
@@ -778,59 +872,67 @@ export default function SettingsPage() {
               <button
                 onClick={handleUpdatePreferences}
                 disabled={saving}
-                className="w-full py-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
+                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer les préférences"}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer"}
               </button>
             </div>
-          </section>
+          </div>
         )}
 
         {/* ========================================== */}
-        {/* TAB 5 : COMPTE */}
+        {/* TAB 5 : ADVANCED */}
         {/* ========================================== */}
-        {activeTab === 'account' && (
-          <section className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 md:p-6">
-            <h2 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-              <Shield className="w-4 h-4 text-blue-400" />
-              Gestion du compte
-            </h2>
+        {activeTab === "advanced" && (
+          <div className="space-y-3">
+            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                <SettingsIcon className="w-4 h-4 text-blue-400" />
+                Actions avancées
+              </h3>
 
-            <div className="space-y-3">
-              {/* Exporter les données */}
-              <button
-                onClick={handleExportData}
-                disabled={saving}
-                className="w-full py-3 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-bold border border-zinc-800 transition-all flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4 text-zinc-400" />
-                Exporter mes données
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={handleExportData}
+                  disabled={saving}
+                  className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/60 transition-all border border-zinc-800/40"
+                >
+                  <span className="text-sm text-white flex items-center gap-2">
+                    <Download className="w-4 h-4 text-zinc-400" />
+                    Exporter mes données
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-zinc-500" />
+                </button>
 
-              {/* Déconnexion */}
-              <button
-                onClick={handleLogout}
-                className="w-full py-3 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white text-sm font-bold border border-zinc-800 transition-all flex items-center justify-center gap-2"
-              >
-                <LogOut className="w-4 h-4 text-zinc-400" />
-                Se déconnecter
-              </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/60 transition-all border border-zinc-800/40"
+                >
+                  <span className="text-sm text-white flex items-center gap-2">
+                    <LogOut className="w-4 h-4 text-zinc-400" />
+                    Se déconnecter
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-zinc-500" />
+                </button>
 
-              {/* Supprimer le compte */}
-              <button
-                onClick={handleDeleteAccount}
-                disabled={saving}
-                className="w-full py-3 rounded-full bg-rose-950/30 hover:bg-rose-900/40 text-rose-400 border border-rose-500/20 text-sm font-bold transition-all flex items-center justify-center gap-2"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                Supprimer mon compte
-              </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={saving}
+                  className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-rose-950/30 hover:bg-rose-900/30 transition-all border border-rose-500/20"
+                >
+                  <span className="text-sm text-rose-400 flex items-center gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    Supprimer mon compte
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-rose-400/50" />
+                </button>
+              </div>
 
-              <p className="text-xs text-zinc-500 text-center mt-2">
+              <p className="text-xs text-zinc-500 mt-4 text-center">
                 La suppression du compte est irréversible. Toutes vos données seront perdues.
               </p>
             </div>
-          </section>
+          </div>
         )}
 
       </main>
