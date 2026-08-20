@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -14,7 +15,8 @@ import {
   AlertCircle,
   Loader2,
   Lock,
-  Heart
+  Heart,
+  Crown
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -24,6 +26,7 @@ type PlanInfo = {
   price: number;
   currency: string;
   color: string;
+  icon: string;
 };
 
 type Operator = {
@@ -33,7 +36,7 @@ type Operator = {
   description: string;
 };
 
-export default function PaymentContent() {
+function PaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const planId = searchParams.get("plan") || "standard";
@@ -47,9 +50,27 @@ export default function PaymentContent() {
   const [paymentMessage, setPaymentMessage] = useState("");
 
   const plans: Record<string, PlanInfo> = {
-    standard: { name: "Standard", price: 3, currency: "$", color: "from-blue-500 to-blue-600" },
-    pro: { name: "Pro", price: 5, currency: "$", color: "from-purple-500 to-purple-600" },
-    premium: { name: "Premium", price: 7, currency: "$", color: "from-amber-500 to-amber-600" },
+    standard: { 
+      name: "Standard", 
+      price: 3, 
+      currency: "$", 
+      color: "from-blue-500 to-blue-600",
+      icon: "⚡"
+    },
+    pro: { 
+      name: "Pro", 
+      price: 5, 
+      currency: "$", 
+      color: "from-purple-500 to-purple-600",
+      icon: "👑"
+    },
+    premium: { 
+      name: "Premium", 
+      price: 7, 
+      currency: "$", 
+      color: "from-amber-500 to-amber-600",
+      icon: "⭐"
+    },
   };
 
   const plan = plans[planId] || plans.standard;
@@ -70,7 +91,7 @@ export default function PaymentContent() {
   ];
 
   // ============================================
-  // ✅ INITIER LE PAIEMENT (VRAI)
+  // ✅ INITIER LE PAIEMENT
   // ============================================
   const handlePayment = async () => {
     if (!phoneNumber || phoneNumber.length < 8) {
@@ -89,8 +110,8 @@ export default function PaymentContent() {
         return;
       }
 
-      // ✅ APPEL AU BACKEND AVEC LE VRAI OPÉRATEUR
-      const res = await fetch(`${API_URL}/payments/initiate`, {
+      // ✅ APPEL AU BACKEND
+      const res = await fetch(`${API_URL}/premium/subscribe`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -98,11 +119,7 @@ export default function PaymentContent() {
         },
         body: JSON.stringify({
           plan: planId,
-          operator: operator, // ← "orange" ou "mpesa"
-          phoneNumber: phoneNumber,
-          amount: plan.price,
-          currency: "USD",
-          type: "PREMIUM",
+          paymentMethod: "mobile_money",
         }),
       });
 
@@ -112,19 +129,9 @@ export default function PaymentContent() {
         throw new Error(data.message || "Erreur lors du paiement");
       }
 
-      // ✅ GESTION DU PAIEMENT EN ATTENTE
-      if (data.status === 'PENDING' || data.status === 'PENDING_MANUAL') {
-        setPaymentMessage(data.message || "📱 Veuillez confirmer le paiement sur votre téléphone.");
-        setSuccess(true);
-        setTimeout(() => {
-          router.push("/profile");
-        }, 5000);
-        return;
-      }
-
       // ✅ PAIEMENT RÉUSSI
-      if (data.status === 'SUCCESS' || data.success === true) {
-        setPaymentMessage("✅ Paiement réussi !");
+      if (data.success) {
+        setPaymentMessage(`✅ Abonnement ${plan.name} activé !`);
         setSuccess(true);
         setTimeout(() => {
           router.push("/profile");
@@ -132,7 +139,6 @@ export default function PaymentContent() {
         return;
       }
 
-      // ✅ ERREUR
       throw new Error(data.message || "Le paiement a échoué");
     } catch (err: any) {
       setError(err.message || "Une erreur est survenue");
@@ -148,7 +154,7 @@ export default function PaymentContent() {
 
   if (success) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-white px-4">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-white px-4">
         <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
           <Check className="w-8 h-8 text-emerald-400" />
         </div>
@@ -306,5 +312,20 @@ export default function PaymentContent() {
 
       <BottomNav />
     </div>
+  );
+}
+
+// ============================================
+// PAGE AVEC SUSPENSE
+// ============================================
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-zinc-950 text-white">
+        <Loader fullScreen={false} size={32} color="#F59E0B" />
+      </div>
+    }>
+      <PaymentContent />
+    </Suspense>
   );
 }
