@@ -48,6 +48,7 @@ type UserProfile = {
   isCertified: boolean;
   premiumActive: boolean;
   premiumExpires: string | null;
+  premiumPlan?: string | null;
   createdAt: string;
   manas: number;
   steamPoints: number;
@@ -164,6 +165,18 @@ export default function ProfilePage() {
 
   const activeBadgeColor = profile.badgeColor || profile.avatarColor || "#3B82F6";
 
+  // ✅ DÉTERMINER LE PLAN PREMIUM
+  const getPlanLabel = (plan?: string | null) => {
+    if (!plan) return "Premium";
+    const map: Record<string, string> = {
+      MONTHLY: "Premium",
+      YEARLY: "Premium Annuel",
+    };
+    return map[plan] || "Premium";
+  };
+
+  const planLabel = getPlanLabel(profile.premiumPlan);
+
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
@@ -224,13 +237,16 @@ export default function ProfilePage() {
         {/* ===== NOM & BADGES ===== */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
-          {/* ✅ SUPPRESSION DU BADGE "Certifié" à côté du nom */}
+          {profile.isCertified && (
+            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] md:text-xs font-bold border border-blue-500/30 flex items-center gap-1">
+              <BadgeCheck className="w-3 h-3" />
+              Certifié
+            </span>
+          )}
           {profile.premiumActive && (
-            <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
-              <svg className="w-3 h-3 fill-current" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-              </svg>
-              PRO
+            <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
+              <Crown className="w-3 h-3 fill-current" />
+              {planLabel}
             </span>
           )}
         </div>
