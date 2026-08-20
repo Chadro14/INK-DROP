@@ -222,6 +222,7 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+          {/* ✅ BADGE CERTIFIÉ SUR L'AVATAR (GARDÉ) */}
           {profile.isCertified && (
             <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
               <BadgeCheck
@@ -237,12 +238,7 @@ export default function ProfilePage() {
         {/* ===== NOM & BADGES ===== */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
-          {profile.isCertified && (
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] md:text-xs font-bold border border-blue-500/30 flex items-center gap-1">
-              <BadgeCheck className="w-3 h-3" />
-              Certifié
-            </span>
-          )}
+          {/* ✅ SUPPRESSION DU BADGE CERTIFIÉ À CÔTÉ DU NOM */}
           {profile.premiumActive && (
             <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
               <Crown className="w-3 h-3 fill-current" />
