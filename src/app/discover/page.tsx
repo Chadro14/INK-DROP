@@ -12,20 +12,12 @@ import {
   Calendar, 
   User, 
   ChevronRight, 
-  Globe, 
-  Sparkles,
-  Crown,
-  Star,
-  Zap,
-  Shield,
   Eye,
   Heart,
   MessageCircle,
   Share2,
   Bookmark,
-  Download,
-  FileText,
-  BadgeCheck
+  FileText
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -289,7 +281,7 @@ export default function ReadPage() {
           </div>
         </div>
 
-        {/* STATS RAPIDES */}
+        {/* STATS RAPIDES - SVG PURES */}
         <div className="grid grid-cols-4 gap-2 mb-6">
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-3 text-center">
             <Eye className="w-4 h-4 text-blue-400 mx-auto mb-1" />
