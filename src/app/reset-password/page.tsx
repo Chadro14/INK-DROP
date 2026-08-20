@@ -3,13 +3,11 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Loader } from "@/components/ui/loader";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-// ============================================
-// COMPOSANT PRINCIPAL (AVEC LES PARAMS)
-// ============================================
 function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -25,9 +23,6 @@ function ResetPasswordContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // ============================================
-  // VÉRIFIER LE TOKEN
-  // ============================================
   useEffect(() => {
     if (!token) {
       setError("Token manquant");
@@ -55,9 +50,6 @@ function ResetPasswordContent() {
     verifyToken();
   }, [token]);
 
-  // ============================================
-  // RÉINITIALISER LE MOT DE PASSE
-  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -99,15 +91,13 @@ function ResetPasswordContent() {
   };
 
   // ============================================
-  // AFFICHAGE : VÉRIFICATION
+  // AFFICHAGE : VÉRIFICATION (BLEU)
   // ============================================
   if (verifying) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
-          <p className="text-zinc-400 text-sm">Vérification du token...</p>
-        </div>
+        <Loader fullScreen={false} size={28} color="#3B82F6" />
+        <p className="text-zinc-400 text-sm ml-3">Vérification du token...</p>
       </div>
     );
   }
@@ -126,7 +116,7 @@ function ResetPasswordContent() {
           <p className="text-zinc-400 text-sm mb-6">{error}</p>
           <Link
             href="/forgot-password"
-            className="px-6 py-2.5 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-medium transition-all"
+            className="px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all"
           >
             Demander un nouveau lien
           </Link>
@@ -136,13 +126,12 @@ function ResetPasswordContent() {
   }
 
   // ============================================
-  // AFFICHAGE : FORMULAIRE
+  // AFFICHAGE : FORMULAIRE (BLEU)
   // ============================================
   return (
     <div className="flex items-center justify-center min-h-screen bg-zinc-950 px-4">
       <div className="max-w-md w-full bg-zinc-900/60 border border-zinc-800 rounded-2xl p-8">
         
-        {/* EN-TÊTE */}
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-white">Nouveau mot de passe</h1>
           <p className="text-zinc-400 text-sm mt-1">
@@ -150,7 +139,6 @@ function ResetPasswordContent() {
           </p>
         </div>
 
-        {/* ALERTES */}
         {error && (
           <div className="mb-4 p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -164,7 +152,6 @@ function ResetPasswordContent() {
           </div>
         )}
 
-        {/* FORMULAIRE */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-zinc-300 text-sm font-medium mb-1.5">
@@ -175,7 +162,7 @@ function ResetPasswordContent() {
                 type={showPassword ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all text-sm"
+                className="w-full px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all text-sm"
                 placeholder="••••••••"
                 required
                 minLength={8}
@@ -201,7 +188,7 @@ function ResetPasswordContent() {
               type={showPassword ? "text" : "password"}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 transition-all text-sm"
+              className="w-full px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all text-sm"
               placeholder="••••••••"
               required
             />
@@ -210,17 +197,16 @@ function ResetPasswordContent() {
           <button
             type="submit"
             disabled={loading || !validToken}
-            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40"
+            className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
           >
             {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin mx-auto" />
+              <Loader fullScreen={false} size={22} color="#FFFFFF" />
             ) : (
               "Réinitialiser le mot de passe"
             )}
           </button>
         </form>
 
-        {/* LIEN DE RETOUR */}
         <div className="mt-6 text-center">
           <Link
             href="/login"
@@ -234,14 +220,11 @@ function ResetPasswordContent() {
   );
 }
 
-// ============================================
-// PAGE PRINCIPALE AVEC SUSPENSE
-// ============================================
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
+        <Loader fullScreen={false} size={32} color="#3B82F6" />
       </div>
     }>
       <ResetPasswordContent />
