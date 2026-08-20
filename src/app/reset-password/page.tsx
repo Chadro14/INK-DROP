@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-export default function ResetPasswordPage() {
+// ============================================
+// COMPOSANT PRINCIPAL (AVEC LES PARAMS)
+// ============================================
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -228,5 +231,20 @@ export default function ResetPasswordPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================
+// PAGE PRINCIPALE AVEC SUSPENSE
+// ============================================
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
+        <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
