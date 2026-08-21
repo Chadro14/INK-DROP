@@ -24,7 +24,8 @@ import {
   Share2,
   Bookmark,
   Download,
-  FileText
+  FileText,
+  Check
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -59,6 +60,11 @@ export default function ReadPage() {
   const [loadingChapters, setLoadingChapters] = useState(false);
   const [error, setError] = useState("");
   const [mangaTitle, setMangaTitle] = useState("");
+  
+  // ✅ ÉTATS POUR LES BOUTONS
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isShared, setIsShared] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
 
   const mangaId = params?.id as string;
 
@@ -177,6 +183,66 @@ export default function ReadPage() {
     fetchChaptersByTitle();
   }, [mangaTitle]);
 
+  // ============================================
+  // ✅ ACTION : BOOKMARK (Ajouter/Retirer des favoris)
+  // ============================================
+  const handleBookmark = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setBookmarkLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/mangas/${mangaId}/bookmark`, {
+        method: isBookmarked ? "DELETE" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        setIsBookmarked(!isBookmarked);
+        // Notification visuelle
+        const message = isBookmarked ? "Retiré des favoris" : "Ajouté aux favoris";
+        console.log(`✅ ${message}`);
+      }
+    } catch (error) {
+      console.error("❌ Erreur bookmark:", error);
+    } finally {
+      setBookmarkLoading(false);
+    }
+  };
+
+  // ============================================
+  // ✅ ACTION : PARTAGER
+  // ============================================
+  const handleShare = () => {
+    const shareUrl = `https://ink-drop-one.vercel.app/read/${mangaId}`;
+    const shareText = `📚 Découvre "${manga?.title}" sur INKDROP !`;
+
+    if (navigator.share) {
+      navigator.share({
+        title: `${manga?.title} - INKDROP`,
+        text: shareText,
+        url: shareUrl,
+      }).then(() => {
+        setIsShared(true);
+        setTimeout(() => setIsShared(false), 2000);
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        setIsShared(true);
+        setTimeout(() => setIsShared(false), 2000);
+        alert("🔗 Lien copié !");
+      }).catch(() => {
+        alert("📋 Copie manuelle : " + shareUrl);
+      });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     if (!dateString) return "Date inconnue";
     try {
@@ -239,11 +305,32 @@ export default function ReadPage() {
           </button>
           <span className="font-bold text-white truncate flex-1">{safeTitle}</span>
           <div className="flex items-center gap-1">
-            <button className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors">
-              <Bookmark className="w-4 h-4" />
+            {/* ✅ BOUTON BOOKMARK AVEC ACTION */}
+            <button
+              onClick={handleBookmark}
+              disabled={bookmarkLoading}
+              className={`p-2 rounded-full hover:bg-zinc-900 transition-all duration-200 ${
+                isBookmarked ? "text-blue-400" : "text-zinc-400 hover:text-white"
+              }`}
+              title={isBookmarked ? "Retirer des favoris" : "Ajouter aux favoris"}
+            >
+              {bookmarkLoading ? (
+                <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+              ) : isBookmarked ? (
+                <Check className="w-5 h-5 text-blue-400" />
+              ) : (
+                <Bookmark className="w-5 h-5" />
+              )}
             </button>
-            <button className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors">
-              <Share2 className="w-4 h-4" />
+            {/* ✅ BOUTON SHARE AVEC ACTION */}
+            <button
+              onClick={handleShare}
+              className={`p-2 rounded-full hover:bg-zinc-900 transition-all duration-200 ${
+                isShared ? "text-emerald-400" : "text-zinc-400 hover:text-white"
+              }`}
+              title="Partager"
+            >
+              {isShared ? <Check className="w-5 h-5 text-emerald-400" /> : <Share2 className="w-5 h-5" />}
             </button>
           </div>
         </div>
