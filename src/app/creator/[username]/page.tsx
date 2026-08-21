@@ -77,7 +77,6 @@ export default function CreatorProfilePage() {
         const data = await res.json();
         setProfile(data);
 
-        // ✅ Vérifier le statut d'abonnement
         if (token) {
           try {
             const meRes = await fetch(`${API_URL}/users/me`, {
@@ -87,20 +86,11 @@ export default function CreatorProfilePage() {
               const meData = await meRes.json();
               setIsCurrentUser(meData.id === data.id);
 
-              // ✅ Si ce n'est pas l'utilisateur connecté, vérifier le follow
               if (meData.id !== data.id) {
-                // ✅ Essayer avec /follow/status
-                let followRes = await fetch(`${API_URL}/follow/status/${data.id}`, {
+                // ✅ Utiliser le bon endpoint
+                const followRes = await fetch(`${API_URL}/follow/is-following/${data.id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
-
-                // ✅ Fallback: /follow/:userId
-                if (followRes.status === 404) {
-                  followRes = await fetch(`${API_URL}/follow/${data.id}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                  });
-                }
-
                 if (followRes.ok) {
                   const followData = await followRes.json();
                   setIsFollowing(followData.following || false);
@@ -136,8 +126,8 @@ export default function CreatorProfilePage() {
     if (!profile) return;
 
     try {
-      // ✅ Essayer avec /follow/toggle
-      let res = await fetch(`${API_URL}/follow/toggle/${profile.id}`, {
+      // ✅ Utiliser le bon endpoint
+      const res = await fetch(`${API_URL}/follow/${profile.id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -145,25 +135,11 @@ export default function CreatorProfilePage() {
         },
       });
 
-      // ✅ Fallback: /follow/:userId (POST)
-      if (res.status === 404) {
-        res = await fetch(`${API_URL}/follow/${profile.id}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      }
-
       const data = await res.json();
 
       if (res.ok) {
-        // ✅ Mettre à jour l'état avec la réponse du backend
         const newStatus = data.following !== undefined ? data.following : true;
         setIsFollowing(newStatus);
-        
-        // ✅ Mettre à jour le compteur de followers
         setProfile((prev) => prev ? {
           ...prev,
           _count: {
@@ -172,27 +148,10 @@ export default function CreatorProfilePage() {
           },
         } : null);
       } else {
-        // ✅ Fallback: toggler localement
-        setIsFollowing(!isFollowing);
-        setProfile((prev) => prev ? {
-          ...prev,
-          _count: {
-            ...prev._count,
-            followers: !isFollowing ? prev._count.followers + 1 : prev._count.followers - 1,
-          },
-        } : null);
+        console.error("Erreur follow:", data);
       }
     } catch (error) {
       console.error("Erreur follow:", error);
-      // ✅ Fallback en cas d'erreur réseau
-      setIsFollowing(!isFollowing);
-      setProfile((prev) => prev ? {
-        ...prev,
-        _count: {
-          ...prev._count,
-          followers: !isFollowing ? prev._count.followers + 1 : prev._count.followers - 1,
-        },
-      } : null);
     }
   };
 
