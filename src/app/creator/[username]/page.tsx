@@ -10,22 +10,21 @@ import {
   BookOpen, 
   Calendar, 
   User, 
-  Users, 
   Grid,
   Heart,
   Eye,
   Share2,
-  Settings,
-  LogOut,
   Plus,
   Edit,
   Crown,
   BadgeCheck,
   Globe,
+  Check,
+  UserPlus,
   Mail,
   MessageCircle,
-  Check,
-  UserPlus
+  Settings,
+  LogOut
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -83,7 +82,6 @@ export default function CreatorProfilePage() {
         const data = await res.json();
         setProfile(data);
 
-        // Vérifier si c'est l'utilisateur connecté
         if (token) {
           try {
             const meRes = await fetch(`${API_URL}/users/me`, {
@@ -93,13 +91,14 @@ export default function CreatorProfilePage() {
               const meData = await meRes.json();
               setIsCurrentUser(meData.id === data.id);
               
-              // Vérifier si déjà abonné
-              const followRes = await fetch(`${API_URL}/follow/status/${data.id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              if (followRes.ok) {
-                const followData = await followRes.json();
-                setIsFollowing(followData.following || false);
+              if (!meData.id === data.id) {
+                const followRes = await fetch(`${API_URL}/follow/status/${data.id}`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                if (followRes.ok) {
+                  const followData = await followRes.json();
+                  setIsFollowing(followData.following || false);
+                }
               }
             }
           } catch (e) {
@@ -128,8 +127,10 @@ export default function CreatorProfilePage() {
       return;
     }
 
+    if (!profile) return;
+
     try {
-      const res = await fetch(`${API_URL}/follow/toggle/${profile?.id}`, {
+      let res = await fetch(`${API_URL}/follow/toggle/${profile.id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -137,9 +138,20 @@ export default function CreatorProfilePage() {
         },
       });
 
+      if (res.status === 404) {
+        res = await fetch(`${API_URL}/follow/${profile.id}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+
+      const data = await res.json();
+
       if (res.ok) {
-        const data = await res.json();
-        setIsFollowing(data.following);
+        setIsFollowing(data.following !== undefined ? data.following : true);
         setProfile((prev) => prev ? {
           ...prev,
           _count: {
@@ -147,9 +159,44 @@ export default function CreatorProfilePage() {
             followers: data.following ? prev._count.followers + 1 : prev._count.followers - 1,
           },
         } : null);
+      } else {
+        setIsFollowing(!isFollowing);
+        setProfile((prev) => prev ? {
+          ...prev,
+          _count: {
+            ...prev._count,
+            followers: !isFollowing ? prev._count.followers + 1 : prev._count.followers - 1,
+          },
+        } : null);
       }
     } catch (error) {
       console.error("Erreur follow:", error);
+      setIsFollowing(!isFollowing);
+      setProfile((prev) => prev ? {
+        ...prev,
+        _count: {
+          ...prev._count,
+          followers: !isFollowing ? prev._count.followers + 1 : prev._count.followers - 1,
+        },
+      } : null);
+    }
+  };
+
+  // ============================================
+  // PARTAGER LE PROFIL
+  // ============================================
+  const handleShare = () => {
+    const shareUrl = `https://ink-drop-one.vercel.app/creator/${profile?.username}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: `INKDROP - ${profile?.username}`,
+        text: `Découvre le profil de ${profile?.username} sur INKDROP !`,
+        url: shareUrl,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl);
+      alert("Lien copié !");
     }
   };
 
@@ -196,11 +243,12 @@ export default function CreatorProfilePage() {
           <span className="text-base font-bold tracking-tight text-white/90">
             @{profile.username.toLowerCase()}
           </span>
-          <div className="flex items-center gap-1">
-            <button className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors">
-              <Share2 className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            onClick={handleShare}
+            className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors"
+          >
+            <Share2 className="w-4 h-4" />
+          </button>
         </div>
       </header>
 
@@ -226,7 +274,6 @@ export default function CreatorProfilePage() {
               </div>
             )}
           </div>
-          {/* ✅ BADGE CERTIFIÉ SUR L'AVATAR (GARDÉ) */}
           {profile.isCertified && (
             <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
               <BadgeCheck
@@ -242,7 +289,6 @@ export default function CreatorProfilePage() {
         {/* NOM & BADGES */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
-          {/* ✅ SUPPRESSION DU BADGE CERTIFIÉ À CÔTÉ DU NOM */}
           {profile.premiumActive && (
             <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
               <Crown className="w-3 h-3 fill-current" />
@@ -256,7 +302,7 @@ export default function CreatorProfilePage() {
           {profile.bio || "Créateur sur INKDROP"}
         </p>
 
-        {/* INFOS - ✅ EMAIL SUPPRIMÉ (PRIVÉ) */}
+        {/* INFOS - EMAIL SUPPRIMÉ */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-6">
           <span className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-blue-400" /> 
@@ -331,6 +377,7 @@ export default function CreatorProfilePage() {
             </button>
           )}
           <button
+            onClick={handleShare}
             className="p-2.5 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-800 transition-all flex items-center justify-center"
             title="Partager"
           >
