@@ -21,6 +21,9 @@ import {
   Globe,
   Check,
   UserPlus,
+  MessageCircle,
+  Settings,
+  LogOut
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -44,6 +47,7 @@ type CreatorProfile = {
     following: number;
   };
   mangas?: any[];
+  isFollowing?: boolean;
 };
 
 export default function CreatorProfilePage() {
@@ -57,6 +61,7 @@ export default function CreatorProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isCurrentUser, setIsCurrentUser] = useState(false);
   const [activeTab, setActiveTab] = useState<"mangas" | "about">("mangas");
+  const [followLoading, setFollowLoading] = useState(false);
 
   // ============================================
   // RÉCUPÉRER LE PROFIL + STATUT FOLLOW
@@ -77,6 +82,7 @@ export default function CreatorProfilePage() {
         const data = await res.json();
         setProfile(data);
 
+        // ✅ Vérifier le statut d'abonnement
         if (token) {
           try {
             const meRes = await fetch(`${API_URL}/users/me`, {
@@ -87,7 +93,6 @@ export default function CreatorProfilePage() {
               setIsCurrentUser(meData.id === data.id);
 
               if (meData.id !== data.id) {
-                // ✅ Utiliser le bon endpoint
                 const followRes = await fetch(`${API_URL}/follow/is-following/${data.id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
@@ -125,8 +130,8 @@ export default function CreatorProfilePage() {
 
     if (!profile) return;
 
+    setFollowLoading(true);
     try {
-      // ✅ Utiliser le bon endpoint
       const res = await fetch(`${API_URL}/follow/${profile.id}`, {
         method: "POST",
         headers: {
@@ -152,6 +157,8 @@ export default function CreatorProfilePage() {
       }
     } catch (error) {
       console.error("Erreur follow:", error);
+    } finally {
+      setFollowLoading(false);
     }
   };
 
@@ -247,6 +254,7 @@ export default function CreatorProfilePage() {
               </div>
             )}
           </div>
+          {/* ✅ BADGE CERTIFIÉ SUR L'AVATAR (GARDÉ) */}
           {profile.isCertified && (
             <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
               <BadgeCheck
@@ -259,7 +267,7 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
-        {/* NOM & BADGES */}
+        {/* NOM & BADGES - ✅ BADGE CERTIFIÉ SUPPRIMÉ À CÔTÉ DU NOM */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
           {profile.premiumActive && (
@@ -330,13 +338,16 @@ export default function CreatorProfilePage() {
           ) : (
             <button
               onClick={handleFollow}
+              disabled={followLoading}
               className={`flex-1 py-2.5 rounded-full text-xs md:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 ${
                 isFollowing
                   ? "bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700"
                   : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20"
-              }`}
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {isFollowing ? (
+              {followLoading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : isFollowing ? (
                 <>
                   <Check className="w-4 h-4" />
                   Abonné
