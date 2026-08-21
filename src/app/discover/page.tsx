@@ -22,7 +22,8 @@ import {
   Flame,
   Star,
   Crown,
-  ArrowRight
+  ArrowRight,
+  Filter
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -50,6 +51,9 @@ type Manga = {
 
 export default function DiscoverPage() {
   const router = useRouter();
+  
+  // ===== ONGLET ACTIF =====
+  const [activeTab, setActiveTab] = useState<"inkdrop" | "mangadex">("inkdrop");
   
   // ===== ÉTATS INKDROP =====
   const [inkdropMangas, setInkdropMangas] = useState<Manga[]>([]);
@@ -185,7 +189,7 @@ export default function DiscoverPage() {
   // INFINITE SCROLL MANGADROP
   // ============================================
   useEffect(() => {
-    if (!mangadexQuery) return;
+    if (!mangadexQuery || activeTab !== "mangadex") return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMoreMangadex && !mangadexLoadingMore && !mangadexLoading) {
@@ -197,13 +201,13 @@ export default function DiscoverPage() {
     );
     if (observerRef.current) observer.observe(observerRef.current);
     return () => observer.disconnect();
-  }, [mangadexQuery, mangadexPage, hasMoreMangadex, mangadexLoadingMore, mangadexLoading]);
+  }, [mangadexQuery, mangadexPage, hasMoreMangadex, mangadexLoadingMore, mangadexLoading, activeTab]);
 
   // ============================================
   // VITRINE AUTO
   // ============================================
   useEffect(() => {
-    if (inkdropMangas.length > 0) {
+    if (inkdropMangas.length > 0 && activeTab === "inkdrop") {
       inkdropIntervalRef.current = setInterval(() => {
         setInkdropFeaturedIndex((prev) => (prev + 1) % inkdropMangas.length);
       }, 3000);
@@ -211,10 +215,10 @@ export default function DiscoverPage() {
     return () => {
       if (inkdropIntervalRef.current) clearInterval(inkdropIntervalRef.current);
     };
-  }, [inkdropMangas]);
+  }, [inkdropMangas, activeTab]);
 
   useEffect(() => {
-    if (mangadexMangas.length > 0) {
+    if (mangadexMangas.length > 0 && activeTab === "mangadex") {
       mangadexIntervalRef.current = setInterval(() => {
         setMangadexFeaturedIndex((prev) => (prev + 1) % mangadexMangas.length);
       }, 3000);
@@ -222,7 +226,7 @@ export default function DiscoverPage() {
     return () => {
       if (mangadexIntervalRef.current) clearInterval(mangadexIntervalRef.current);
     };
-  }, [mangadexMangas]);
+  }, [mangadexMangas, activeTab]);
 
   // ============================================
   // HANDLERS
@@ -269,7 +273,7 @@ export default function DiscoverPage() {
     return (
       <div 
         onClick={() => handleMangaClick(manga.id, source)}
-        className={`relative cursor-pointer rounded-2xl overflow-hidden border ${borderColor} bg-gradient-to-br ${bgGradient} transition-all hover:scale-[1.01] active:scale-[0.98]`}
+        className={`relative cursor-pointer rounded-2xl overflow-hidden border ${borderColor} bg-gradient-to-br ${bgGradient} transition-all hover:scale-[1.01] active:scale-[0.98] shadow-lg shadow-${isInkdrop ? 'blue' : 'purple'}-900/10`}
       >
         <div className="flex h-40 md:h-48">
           <div className="w-1/3 md:w-2/5 h-full">
@@ -343,24 +347,32 @@ export default function DiscoverPage() {
   // ============================================
   // COMPOSANT GRILLE
   // ============================================
-  const MangaGrid = ({ mangas, source, onLoadMore }: { mangas: Manga[]; source: "inkdrop" | "mangadex"; onLoadMore?: () => void }) => {
+  const MangaGrid = ({ mangas, source, loadingMore }: { mangas: Manga[]; source: "inkdrop" | "mangadex"; loadingMore?: boolean }) => {
     const isInkdrop = source === "inkdrop";
     const borderColor = isInkdrop ? "hover:border-blue-500/50" : "hover:border-purple-500/50";
     const badgeColor = isInkdrop ? "bg-blue-600/80" : "bg-purple-600/80";
 
     if (mangas.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center py-8">
+        <div className="flex flex-col items-center justify-center py-12">
           <BookOpen className="w-12 h-12 text-zinc-700" />
           <p className="text-zinc-400 mt-3 text-sm">
-            {isInkdrop ? "Aucun manga INKDROP" : "Aucun résultat MangaDrop"}
+            {isInkdrop ? "Aucun manga INKDROP disponible" : "Aucun résultat sur MangaDrop"}
           </p>
+          {!isInkdrop && !mangadexQuery && (
+            <button
+              onClick={() => setMangadexShowSearch(true)}
+              className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-all"
+            >
+              Rechercher sur MangaDrop
+            </button>
+          )}
         </div>
       );
     }
 
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
         {mangas.map((manga) => (
           <div
             key={manga.id}
@@ -428,8 +440,8 @@ export default function DiscoverPage() {
   // ============================================
   // RENDU PRINCIPAL
   // ============================================
-  if (inkdropLoading) {
-    return <Loader message="Chargement..." />;
+  if (inkdropLoading && activeTab === "inkdrop") {
+    return <Loader message="Chargement des mangas INKDROP" />;
   }
 
   const featuredInkdrop = getFeaturedManga(inkdropMangas, inkdropFeaturedIndex);
@@ -440,31 +452,34 @@ export default function DiscoverPage() {
 
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
+        <div className="flex items-center justify-between max-w-6xl mx-auto">
           <span className="text-base font-bold tracking-tight text-white/90 flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-blue-400" />
             Découvrir
           </span>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setMangadexShowSearch(!mangadexShowSearch)}
-              className="text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-zinc-900 flex items-center gap-1.5"
-            >
-              <Globe className="w-4 h-4 text-purple-400" />
-              <span className="text-xs font-medium hidden sm:inline">MangaDrop</span>
-            </button>
-            <button
-              onClick={() => setInkdropShowSearch(!inkdropShowSearch)}
-              className="text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-zinc-900"
-            >
-              <Search className="w-5 h-5" />
-            </button>
+            {activeTab === "mangadex" && (
+              <button
+                onClick={() => setMangadexShowSearch(!mangadexShowSearch)}
+                className="text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-zinc-900"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            )}
+            {activeTab === "inkdrop" && (
+              <button
+                onClick={() => setInkdropShowSearch(!inkdropShowSearch)}
+                className="text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-zinc-900"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
 
         {/* RECHERCHE INKDROP */}
-        {inkdropShowSearch && (
-          <div className="max-w-7xl mx-auto mt-3 flex flex-col gap-2 animate-fade-in">
+        {activeTab === "inkdrop" && inkdropShowSearch && (
+          <div className="max-w-6xl mx-auto mt-3 flex flex-col gap-2 animate-fade-in">
             <div className="flex items-center gap-2">
               <input
                 type="text"
@@ -513,8 +528,8 @@ export default function DiscoverPage() {
         )}
 
         {/* RECHERCHE MANGADROP */}
-        {mangadexShowSearch && (
-          <div className="max-w-7xl mx-auto mt-3 flex flex-col gap-2 animate-fade-in">
+        {activeTab === "mangadex" && mangadexShowSearch && (
+          <div className="max-w-6xl mx-auto mt-3 flex flex-col gap-2 animate-fade-in">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
@@ -553,20 +568,40 @@ export default function DiscoverPage() {
         )}
       </header>
 
-      {/* ===== CONTENU PRINCIPAL : 2 COLONNES ===== */}
-      <main className="max-w-7xl mx-auto w-full px-4 py-6 flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* ===== ONGLETS ===== */}
+      <div className="max-w-6xl mx-auto w-full px-4 pt-4">
+        <div className="flex gap-2 bg-zinc-900/40 p-1 rounded-xl border border-zinc-800/60">
+          <button
+            onClick={() => setActiveTab("inkdrop")}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+              activeTab === "inkdrop"
+                ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+            }`}
+          >
+            <Library className="w-4 h-4" />
+            INKDROP
+          </button>
+          <button
+            onClick={() => setActiveTab("mangadex")}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+              activeTab === "mangadex"
+                ? "bg-purple-600 text-white shadow-lg shadow-purple-600/20"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+            }`}
+          >
+            <Globe className="w-4 h-4" />
+            MangaDrop
+          </button>
+        </div>
+      </div>
 
-          {/* ===== COLONNE GAUCHE : INKDROP ===== */}
+      {/* ===== CONTENU ===== */}
+      <main className="max-w-6xl mx-auto w-full px-4 py-6 flex-1">
+
+        {/* ===== ONGLET INKDROP ===== */}
+        {activeTab === "inkdrop" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                <Library className="w-4 h-4 text-blue-400" />
-                INKDROP
-              </h2>
-              <span className="text-xs text-zinc-500">{inkdropMangas.length} mangas</span>
-            </div>
-
             {/* Vitrine INKDROP */}
             {featuredInkdrop && (
               <div className="animate-fade-in">
@@ -618,19 +653,11 @@ export default function DiscoverPage() {
               </>
             )}
           </div>
+        )}
 
-          {/* ===== COLONNE DROITE : MANGADROP ===== */}
+        {/* ===== ONGLET MANGADROP ===== */}
+        {activeTab === "mangadex" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
-                <Globe className="w-4 h-4 text-purple-400" />
-                MangaDrop
-              </h2>
-              {mangadexQuery && (
-                <span className="text-xs text-purple-400">{mangadexMangas.length} résultats</span>
-              )}
-            </div>
-
             {/* Vitrine MangaDrop */}
             {mangadexQuery && featuredMangadex && (
               <div className="animate-fade-in">
@@ -680,7 +707,7 @@ export default function DiscoverPage() {
               </div>
             ) : (
               <>
-                <MangaGrid mangas={mangadexMangas} source="mangadex" />
+                <MangaGrid mangas={mangadexMangas} source="mangadex" loadingMore={mangadexLoadingMore} />
                 {hasMoreMangadex && (
                   <div ref={observerRef} className="flex justify-center py-4">
                     {mangadexLoadingMore ? (
@@ -693,8 +720,8 @@ export default function DiscoverPage() {
               </>
             )}
           </div>
+        )}
 
-        </div>
       </main>
 
       <BottomNav />
