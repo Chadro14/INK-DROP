@@ -21,10 +21,6 @@ import {
   Globe,
   Check,
   UserPlus,
-  Mail,
-  MessageCircle,
-  Settings,
-  LogOut
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -48,7 +44,6 @@ type CreatorProfile = {
     following: number;
   };
   mangas?: any[];
-  isFollowing?: boolean;
 };
 
 export default function CreatorProfilePage() {
@@ -64,7 +59,7 @@ export default function CreatorProfilePage() {
   const [activeTab, setActiveTab] = useState<"mangas" | "about">("mangas");
 
   // ============================================
-  // RÉCUPÉRER LE PROFIL
+  // RÉCUPÉRER LE PROFIL + STATUT FOLLOW
   // ============================================
   useEffect(() => {
     const fetchProfile = async () => {
@@ -82,6 +77,7 @@ export default function CreatorProfilePage() {
         const data = await res.json();
         setProfile(data);
 
+        // ✅ Vérifier le statut d'abonnement
         if (token) {
           try {
             const meRes = await fetch(`${API_URL}/users/me`, {
@@ -90,11 +86,21 @@ export default function CreatorProfilePage() {
             if (meRes.ok) {
               const meData = await meRes.json();
               setIsCurrentUser(meData.id === data.id);
-              
-              if (!meData.id === data.id) {
-                const followRes = await fetch(`${API_URL}/follow/status/${data.id}`, {
+
+              // ✅ Si ce n'est pas l'utilisateur connecté, vérifier le follow
+              if (meData.id !== data.id) {
+                // ✅ Essayer avec /follow/status
+                let followRes = await fetch(`${API_URL}/follow/status/${data.id}`, {
                   headers: { Authorization: `Bearer ${token}` },
                 });
+
+                // ✅ Fallback: /follow/:userId
+                if (followRes.status === 404) {
+                  followRes = await fetch(`${API_URL}/follow/${data.id}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                }
+
                 if (followRes.ok) {
                   const followData = await followRes.json();
                   setIsFollowing(followData.following || false);
@@ -130,6 +136,7 @@ export default function CreatorProfilePage() {
     if (!profile) return;
 
     try {
+      // ✅ Essayer avec /follow/toggle
       let res = await fetch(`${API_URL}/follow/toggle/${profile.id}`, {
         method: "POST",
         headers: {
@@ -138,6 +145,7 @@ export default function CreatorProfilePage() {
         },
       });
 
+      // ✅ Fallback: /follow/:userId (POST)
       if (res.status === 404) {
         res = await fetch(`${API_URL}/follow/${profile.id}`, {
           method: "POST",
@@ -151,15 +159,20 @@ export default function CreatorProfilePage() {
       const data = await res.json();
 
       if (res.ok) {
-        setIsFollowing(data.following !== undefined ? data.following : true);
+        // ✅ Mettre à jour l'état avec la réponse du backend
+        const newStatus = data.following !== undefined ? data.following : true;
+        setIsFollowing(newStatus);
+        
+        // ✅ Mettre à jour le compteur de followers
         setProfile((prev) => prev ? {
           ...prev,
           _count: {
             ...prev._count,
-            followers: data.following ? prev._count.followers + 1 : prev._count.followers - 1,
+            followers: newStatus ? prev._count.followers + 1 : prev._count.followers - 1,
           },
         } : null);
       } else {
+        // ✅ Fallback: toggler localement
         setIsFollowing(!isFollowing);
         setProfile((prev) => prev ? {
           ...prev,
@@ -171,6 +184,7 @@ export default function CreatorProfilePage() {
       }
     } catch (error) {
       console.error("Erreur follow:", error);
+      // ✅ Fallback en cas d'erreur réseau
       setIsFollowing(!isFollowing);
       setProfile((prev) => prev ? {
         ...prev,
