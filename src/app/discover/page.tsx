@@ -49,6 +49,14 @@ type Manga = {
   description?: string;
 };
 
+// Liste des recherches aléatoires pour MangaDrop
+const MANGADEX_SEARCH_QUERIES = [
+  "popular", "action", "romance", "fantasy", "adventure",
+  "comedy", "drama", "mystery", "sci-fi", "supernatural",
+  "shounen", "shoujo", "seinen", "slice of life", "sports",
+  "horror", "thriller", "magic", "school", "historical"
+];
+
 export default function DiscoverPage() {
   const router = useRouter();
   
@@ -75,6 +83,7 @@ export default function DiscoverPage() {
   const [hasMoreMangadex, setHasMoreMangadex] = useState(true);
   const [mangadexQuery, setMangadexQuery] = useState("");
   const [mangadexLoadingMore, setMangadexLoadingMore] = useState(false);
+  const [mangadexInitialized, setMangadexInitialized] = useState(false);
   
   // ===== VITRINE AUTO =====
   const [inkdropFeaturedIndex, setInkdropFeaturedIndex] = useState(0);
@@ -125,9 +134,59 @@ export default function DiscoverPage() {
   }, [inkdropPage, inkdropSearch, inkdropGenre]);
 
   // ============================================
-  // RÉCUPÉRER LES MANGAS MANGADROP
+  // RÉCUPÉRER LES MANGAS MANGADROP (TOP 20 AUTO)
   // ============================================
-  const fetchMangadex = async (query: string, page: number = 1) => {
+  const fetchMangadexDefault = async () => {
+    setMangadexLoading(true);
+    setMangadexError("");
+    try {
+      // Choisir une requête aléatoire parmi la liste
+      const randomQuery = MANGADEX_SEARCH_QUERIES[
+        Math.floor(Math.random() * MANGADEX_SEARCH_QUERIES.length)
+      ];
+      
+      const langParam = "&availableTranslatedLanguage[]=fr&availableTranslatedLanguage[]=en";
+      const res = await fetch(
+        `${API_URL}/manga-api/search?q=${randomQuery}&limit=20${langParam}`
+      );
+      
+      if (!res.ok) throw new Error("Erreur chargement MangaDrop");
+      const data = await res.json();
+      const mangas = (data.data || []).map((m: any) => ({
+        id: m.id,
+        title: m.title || "Sans titre",
+        coverUrl: m.coverImage || "",
+        author: { 
+          username: m.author?.name || "Inconnu", 
+          isCertified: false,
+          badgeColor: "#7C3AED"
+        },
+        likesCount: 0,
+        viewsCount: 0,
+        genre: m.genres || [],
+        status: m.status || "ongoing",
+        source: "mangadex" as const,
+        language: m.language || "🌐",
+        rating: m.rating || 0,
+        chapters: m.chapters || 0,
+        description: m.description || ""
+      }));
+      
+      setMangadexMangas(mangas);
+      setHasMoreMangadex(false); // Pas de plus pour le moment
+      setMangadexQuery("top");
+      setMangadexInitialized(true);
+    } catch (err: any) {
+      setMangadexError(err.message);
+    } finally {
+      setMangadexLoading(false);
+    }
+  };
+
+  // ============================================
+  // RÉCUPÉRER LES MANGAS MANGADROP (RECHERCHE)
+  // ============================================
+  const fetchMangadexSearch = async (query: string, page: number = 1) => {
     if (!query) return;
     setMangadexLoading(true);
     setMangadexError("");
@@ -164,6 +223,7 @@ export default function DiscoverPage() {
       }
       setHasMoreMangadex(mangas.length > 0 && page < (data.lastPage || 1));
       setMangadexPage(page);
+      setMangadexQuery(query);
     } catch (err: any) {
       setMangadexError(err.message);
     } finally {
@@ -173,14 +233,22 @@ export default function DiscoverPage() {
   };
 
   // ============================================
+  // CHARGEMENT AUTO DE MANGADROP QUAND ON CLIQUE SUR L'ONGLET
+  // ============================================
+  useEffect(() => {
+    if (activeTab === "mangadex" && !mangadexInitialized && !mangadexQuery) {
+      fetchMangadexDefault();
+    }
+  }, [activeTab, mangadexInitialized, mangadexQuery]);
+
+  // ============================================
   // RECHERCHE MANGADROP
   // ============================================
   const handleMangadexSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (mangadexSearch.trim()) {
-      setMangadexQuery(mangadexSearch);
-      setMangadexPage(1);
-      fetchMangadex(mangadexSearch, 1);
+      setMangadexInitialized(true);
+      fetchMangadexSearch(mangadexSearch, 1);
       setMangadexShowSearch(false);
     }
   };
@@ -189,12 +257,12 @@ export default function DiscoverPage() {
   // INFINITE SCROLL MANGADROP
   // ============================================
   useEffect(() => {
-    if (!mangadexQuery || activeTab !== "mangadex") return;
+    if (!mangadexQuery || activeTab !== "mangadex" || mangadexQuery === "top") return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMoreMangadex && !mangadexLoadingMore && !mangadexLoading) {
           setMangadexLoadingMore(true);
-          fetchMangadex(mangadexQuery, mangadexPage + 1);
+          fetchMangadexSearch(mangadexQuery, mangadexPage + 1);
         }
       },
       { threshold: 0.5 }
@@ -252,6 +320,15 @@ export default function DiscoverPage() {
     setMangadexMangas([]);
     setHasMoreMangadex(true);
     setMangadexShowSearch(false);
+    setMangadexInitialized(false);
+  };
+
+  const refreshMangadex = () => {
+    setMangadexMangas([]);
+    setMangadexInitialized(false);
+    setMangadexQuery("");
+    setMangadexError("");
+    fetchMangadexDefault();
   };
 
   const getFeaturedManga = (mangas: Manga[], index: number) => {
@@ -361,10 +438,11 @@ export default function DiscoverPage() {
           </p>
           {!isInkdrop && !mangadexQuery && (
             <button
-              onClick={() => setMangadexShowSearch(true)}
-              className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-all"
+              onClick={refreshMangadex}
+              className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-all flex items-center gap-2"
             >
-              Rechercher sur MangaDrop
+              <RefreshCw className="w-4 h-4" />
+              Charger d'autres mangas
             </button>
           )}
         </div>
@@ -459,12 +537,21 @@ export default function DiscoverPage() {
           </span>
           <div className="flex items-center gap-2">
             {activeTab === "mangadex" && (
-              <button
-                onClick={() => setMangadexShowSearch(!mangadexShowSearch)}
-                className="text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-zinc-900"
-              >
-                <Search className="w-5 h-5" />
-              </button>
+              <>
+                <button
+                  onClick={refreshMangadex}
+                  className="text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-zinc-900"
+                  title="Charger d'autres mangas"
+                >
+                  <RefreshCw className="w-4 h-4 text-purple-400" />
+                </button>
+                <button
+                  onClick={() => setMangadexShowSearch(!mangadexShowSearch)}
+                  className="text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-zinc-900"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
+              </>
             )}
             {activeTab === "inkdrop" && (
               <button
@@ -556,11 +643,23 @@ export default function DiscoverPage() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            {mangadexQuery && (
+            {mangadexQuery && mangadexQuery !== "top" && (
               <div className="flex items-center justify-between">
                 <span className="text-xs text-purple-400">Résultats pour "{mangadexQuery}"</span>
                 <button onClick={clearMangadexSearch} className="text-xs text-zinc-500 hover:text-white">
                   Effacer
+                </button>
+              </div>
+            )}
+            {mangadexQuery === "top" && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-purple-400">Top mangas MangaDrop</span>
+                <button 
+                  onClick={refreshMangadex} 
+                  className="text-xs text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Nouveaux
                 </button>
               </div>
             )}
@@ -659,7 +758,7 @@ export default function DiscoverPage() {
         {activeTab === "mangadex" && (
           <div className="space-y-4">
             {/* Vitrine MangaDrop */}
-            {mangadexQuery && featuredMangadex && (
+            {mangadexMangas.length > 0 && featuredMangadex && (
               <div className="animate-fade-in">
                 <FeaturedCard manga={featuredMangadex} source="mangadex" />
                 <div className="flex justify-center gap-1 mt-2">
@@ -677,44 +776,51 @@ export default function DiscoverPage() {
             )}
 
             {/* Grille MangaDrop */}
-            {!mangadexQuery ? (
-              <div className="flex flex-col items-center justify-center py-12 bg-zinc-900/30 rounded-2xl border border-zinc-800/40">
-                <Globe className="w-12 h-12 text-zinc-700" />
-                <p className="text-zinc-400 mt-3 text-sm">Recherchez des mangas sur MangaDrop</p>
-                <button
-                  onClick={() => setMangadexShowSearch(true)}
-                  className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-all"
-                >
-                  <Globe className="w-4 h-4 inline mr-2" />
-                  Rechercher
-                </button>
-              </div>
-            ) : mangadexLoading ? (
+            {mangadexLoading && !mangadexLoadingMore ? (
               <div className="flex justify-center py-8">
                 <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : mangadexError ? (
               <div className="text-center py-8">
                 <p className="text-zinc-400 text-sm">{mangadexError}</p>
-                <button onClick={() => fetchMangadex(mangadexQuery, 1)} className="mt-2 text-purple-400 text-sm">
+                <button onClick={refreshMangadex} className="mt-2 text-purple-400 text-sm flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" />
                   Réessayer
                 </button>
               </div>
             ) : mangadexMangas.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8">
+              <div className="flex flex-col items-center justify-center py-12">
                 <Globe className="w-12 h-12 text-zinc-700" />
-                <p className="text-zinc-400 mt-3 text-sm">Aucun résultat pour "{mangadexQuery}"</p>
+                <p className="text-zinc-400 mt-3 text-sm">Aucun manga disponible</p>
+                <button
+                  onClick={refreshMangadex}
+                  className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white font-semibold text-sm transition-all flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Charger des mangas
+                </button>
               </div>
             ) : (
               <>
                 <MangaGrid mangas={mangadexMangas} source="mangadex" loadingMore={mangadexLoadingMore} />
-                {hasMoreMangadex && (
+                {hasMoreMangadex && mangadexQuery !== "top" && (
                   <div ref={observerRef} className="flex justify-center py-4">
                     {mangadexLoadingMore ? (
                       <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <span className="text-xs text-zinc-500">Charger plus...</span>
                     )}
+                  </div>
+                )}
+                {mangadexQuery === "top" && (
+                  <div className="flex justify-center py-4">
+                    <button
+                      onClick={refreshMangadex}
+                      className="px-6 py-2 rounded-full bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium transition-all flex items-center gap-2"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Charger d'autres mangas
+                    </button>
                   </div>
                 )}
               </>
