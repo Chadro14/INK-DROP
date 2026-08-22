@@ -85,11 +85,14 @@ export default function MangaPage() {
   const mangaId = params.id as string;
 
   // ============================================
-  // RÉCUPÉRER LE MANGA
+  // RÉCUPÉRER LE MANGA + STATUTS
   // ============================================
   useEffect(() => {
     const fetchManga = async () => {
       try {
+        const token = localStorage.getItem("token");
+        
+        // Récupérer le manga
         const res = await fetch(`${API_URL}/mangas/${mangaId}`);
         if (!res.ok) {
           throw new Error("Manga non trouvé");
@@ -97,7 +100,7 @@ export default function MangaPage() {
         const data = await res.json();
         setManga(data);
 
-        const token = localStorage.getItem("token");
+        // Récupérer les statuts si connecté
         if (token) {
           const [likedRes, subRes, meRes] = await Promise.all([
             fetch(`${API_URL}/social/has-liked/${mangaId}`, {
@@ -110,6 +113,7 @@ export default function MangaPage() {
               headers: { Authorization: `Bearer ${token}` },
             }),
           ]);
+          
           const likedData = await likedRes.json();
           const subData = await subRes.json();
           setIsLiked(likedData.liked || false);
@@ -335,22 +339,19 @@ export default function MangaPage() {
                   {manga.author.username?.charAt(0).toUpperCase() || "?"}
                 </div>
               )}
-              {/* ✅ BADGE CERTIFIÉ SUR L'AVATAR (GARDÉ) */}
-              {manga.author.isCertified && (
-                <div className="absolute -top-0.5 -right-0.5 bg-zinc-950 p-0.5 rounded-full">
-                  <BadgeCheck
-                    className="w-3 h-3"
-                    fill={authorBadgeColor}
-                    color="black"
-                    strokeWidth={1.5}
-                  />
-                </div>
-              )}
+              {/* ❌ BADGE CERTIFIÉ SUPPRIMÉ DE L'AVATAR */}
             </div>
             <span className="group-hover:text-blue-400 transition-colors">
               {manga.author.username}
             </span>
-            {/* ✅ SUPPRESSION DU BADGE "Certifié" À CÔTÉ DU NOM */}
+            {/* ✅ BADGE CERTIFIÉ DÉPLACÉ À LA FIN DU NOM */}
+            {manga.author.isCertified && (
+              <BadgeCheck
+                className="w-4 h-4 text-blue-400"
+                fill={authorBadgeColor}
+                strokeWidth={1.5}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -370,30 +371,39 @@ export default function MangaPage() {
             <BookOpen className="w-4 h-4 text-purple-400" />
             <span>{manga.chapters?.length || 0}</span>
           </div>
-          {/* ✅ BOUTON S'ABONNER AVEC SVG PUR */}
-          <button
-            onClick={handleSubscribe}
-            disabled={subscribeLoading}
-            className={`ml-auto px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
-              isSubscribed
-                ? "bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700"
-                : "bg-blue-600 text-white hover:bg-blue-500"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-          >
-            {subscribeLoading ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : isSubscribed ? (
-              <>
-                <Check className="w-4 h-4" />
-                Abonné
-              </>
-            ) : (
-              <>
-                <UserPlus className="w-4 h-4" />
-                S'abonner
-              </>
-            )}
-          </button>
+          {/* ✅ BOUTON S'ABONNER (CACHÉ SI C'EST L'AUTEUR) */}
+          {!isAuthor && (
+            <button
+              onClick={handleSubscribe}
+              disabled={subscribeLoading}
+              className={`ml-auto px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                isSubscribed
+                  ? "bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700"
+                  : "bg-blue-600 text-white hover:bg-blue-500"
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {subscribeLoading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : isSubscribed ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  Abonné
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4" />
+                  S'abonner
+                </>
+              )}
+            </button>
+          )}
+          {/* ✅ SI C'EST L'AUTEUR, AFFICHER UN BADGE "VOTRE MANGA" */}
+          {isAuthor && (
+            <span className="ml-auto px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium border border-emerald-500/30 flex items-center gap-1.5">
+              <Check className="w-3 h-3" />
+              Votre manga
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2 mt-3">
