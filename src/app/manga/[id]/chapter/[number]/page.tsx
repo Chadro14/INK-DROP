@@ -20,7 +20,9 @@ import {
   Bookmark,
   Check,
   UserPlus,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Image as ImageIcon
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -34,6 +36,9 @@ type Chapter = {
   pageCount: number;
   pdfUrl: string;
   summary: string | null;
+  contentType: "PDF" | "IMAGES";
+  pages: Array<{ url: string; order: number; isFree: boolean }>;
+  pdfKey: string | null;
   publishedAt: string;
   manga: {
     id: string;
@@ -90,11 +95,14 @@ export default function ChapterReader() {
 
         setChapter(data);
         
-        if (data.pdfUrl) {
+        // ✅ Gestion du PDF
+        if (data.contentType === "PDF" && data.pdfUrl) {
           setPdfUrl(data.pdfUrl);
           console.log("✅ PDF URL trouvé:", data.pdfUrl);
-        } else {
-          console.warn("⚠️ Aucun pdfUrl dans la réponse");
+        } else if (data.contentType === "PDF") {
+          console.warn("⚠️ Chapitre PDF mais pdfUrl est null");
+        } else if (data.contentType === "IMAGES") {
+          console.log("✅ Chapitre en images, pages:", data.pages?.length || 0);
         }
 
         const token = localStorage.getItem("token");
@@ -170,12 +178,15 @@ export default function ChapterReader() {
   };
 
   // ============================================
-  // AFFICHAGE
+  // AFFICHAGE - CHARGEMENT
   // ============================================
   if (loading) {
     return <Loader message="Chargement du chapitre" />;
   }
 
+  // ============================================
+  // AFFICHAGE - ERREUR
+  // ============================================
   if (error || !chapter) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4">
@@ -185,7 +196,6 @@ export default function ChapterReader() {
         <h2 className="text-xl font-bold text-white mb-2">Erreur de chargement</h2>
         <p className="text-zinc-400 text-center max-w-md">{error || "Chapitre non trouvé"}</p>
         
-        {/* ✅ AFFICHER LES INFOS DE DEBUG */}
         {debugInfo && (
           <div className="mt-4 p-4 bg-zinc-900/60 rounded-xl border border-zinc-800 text-xs text-zinc-500 max-w-md overflow-auto">
             <p className="font-mono">{debugInfo}</p>
@@ -211,7 +221,7 @@ export default function ChapterReader() {
   }
 
   // ============================================
-  // PAS D'ACCÈS → ACHAT
+  // AFFICHAGE - PAS D'ACCÈS → ACHAT
   // ============================================
   if (!hasAccess) {
     return (
@@ -261,7 +271,7 @@ export default function ChapterReader() {
   }
 
   // ============================================
-  // LECTURE DU CHAPITRE
+  // AFFICHAGE - LECTURE DU CHAPITRE
   // ============================================
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
@@ -315,9 +325,12 @@ export default function ChapterReader() {
             </span>
             <span className="w-1 h-1 rounded-full bg-zinc-700" />
             <span className="flex items-center gap-1">
-              <span className={chapter.isFree ? "text-emerald-400" : "text-amber-400"}>
-                {chapter.isFree ? "Gratuit" : `${chapter.price || 0.50}$`}
-              </span>
+              {chapter.contentType === "PDF" ? <FileText className="w-3.5 h-3.5" /> : <ImageIcon className="w-3.5 h-3.5" />}
+              {chapter.contentType === "PDF" ? "PDF" : "Images"}
+            </span>
+            <span className="w-1 h-1 rounded-full bg-zinc-700" />
+            <span className={chapter.isFree ? "text-emerald-400" : "text-amber-400"}>
+              {chapter.isFree ? "Gratuit" : `${chapter.price || 0.50}$`}
             </span>
           </div>
         </div>
@@ -333,24 +346,62 @@ export default function ChapterReader() {
           </div>
         )}
 
-        {/* LECTEUR PDF */}
-        {pdfUrl ? (
-          <div className="bg-zinc-900/60 rounded-xl border border-zinc-800/80 overflow-hidden shadow-xl">
-            <iframe
-              src={pdfUrl}
-              className="w-full h-[70vh] border-0"
-              title={`Chapitre ${chapterNumber}`}
-              sandbox="allow-scripts allow-same-origin"
-              onError={() => setError("Erreur de chargement du PDF")}
-            />
-          </div>
-        ) : (
-          <div className="bg-zinc-900/40 rounded-xl border border-zinc-800/80 p-12 text-center">
-            <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-4">
-              <FileText className="w-8 h-8 text-zinc-600" />
+        {/* ========================================== */}
+        {/* ✅ LECTEUR - GESTION DES DEUX MODES */}
+        {/* ========================================== */}
+
+        {/* ✅ MODE PDF */}
+        {chapter.contentType === "PDF" && (
+          pdfUrl ? (
+            <div className="bg-zinc-900/60 rounded-xl border border-zinc-800/80 overflow-hidden shadow-xl">
+              <iframe
+                src={pdfUrl}
+                className="w-full h-[70vh] border-0"
+                title={`Chapitre ${chapterNumber}`}
+                sandbox="allow-scripts allow-same-origin"
+                onError={() => setError("Erreur de chargement du PDF")}
+              />
             </div>
-            <p className="text-zinc-400">Contenu non disponible</p>
-            <p className="text-zinc-500 text-xs mt-1">Le PDF n'a pas pu être chargé</p>
+          ) : (
+            <div className="bg-zinc-900/40 rounded-xl border border-zinc-800/80 p-12 text-center">
+              <FileText className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
+              <p className="text-zinc-400">PDF non disponible</p>
+              <p className="text-zinc-500 text-xs mt-1">Le fichier PDF n'a pas pu être chargé</p>
+              <p className="text-zinc-600 text-[10px] mt-2 font-mono">
+                pdfKey: {chapter.pdfKey || "null"}
+              </p>
+            </div>
+          )
+        )}
+
+        {/* ✅ MODE IMAGES */}
+        {chapter.contentType === "IMAGES" && chapter.pages && chapter.pages.length > 0 && (
+          <div className="space-y-4">
+            {chapter.pages.map((page: any, index: number) => (
+              <div key={index} className="bg-zinc-900/40 rounded-xl border border-zinc-800/60 overflow-hidden">
+                <img
+                  src={page.url}
+                  alt={`Page ${index + 1}`}
+                  className="w-full h-auto"
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/placeholder-page.png";
+                  }}
+                />
+                <div className="text-center text-xs text-zinc-500 py-2">
+                  Page {index + 1} / {chapter.pages.length}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ✅ AUCUN CONTENU */}
+        {!chapter.contentType && (
+          <div className="bg-zinc-900/40 rounded-xl border border-zinc-800/80 p-12 text-center">
+            <AlertCircle className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
+            <p className="text-zinc-400">Aucun contenu disponible</p>
+            <p className="text-zinc-500 text-xs mt-1">Ce chapitre n'a pas de contenu associé</p>
           </div>
         )}
 
