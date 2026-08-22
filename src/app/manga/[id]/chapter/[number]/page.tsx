@@ -19,7 +19,8 @@ import {
   Share2,
   Bookmark,
   Check,
-  UserPlus
+  UserPlus,
+  AlertCircle
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -59,6 +60,7 @@ export default function ChapterReader() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>("");
 
   const mangaId = params.id as string;
   const chapterNumber = parseInt(params.number as string);
@@ -69,24 +71,35 @@ export default function ChapterReader() {
   useEffect(() => {
     const fetchChapter = async () => {
       try {
-        // ✅ Utiliser la bonne route
-        const res = await fetch(`${API_URL}/mangas/${mangaId}/chapters/number/${chapterNumber}`);
-        
+        console.log("🔍 1. Début du chargement");
+        console.log("📌 mangaId:", mangaId);
+        console.log("📌 chapterNumber:", chapterNumber);
+
+        const url = `${API_URL}/mangas/${mangaId}/chapters/number/${chapterNumber}`;
+        console.log("📡 2. Appel API:", url);
+
+        const res = await fetch(url);
+        console.log("📡 3. Statut HTTP:", res.status);
+
         if (!res.ok) {
           throw new Error(`Chapitre non trouvé (${res.status})`);
         }
-        
+
         const data = await res.json();
+        console.log("📦 4. Données reçues:", data);
+
         setChapter(data);
         
-        // ✅ Vérifier que pdfUrl existe
         if (data.pdfUrl) {
           setPdfUrl(data.pdfUrl);
+          console.log("✅ PDF URL trouvé:", data.pdfUrl);
         } else {
           console.warn("⚠️ Aucun pdfUrl dans la réponse");
         }
 
         const token = localStorage.getItem("token");
+        console.log("🔑 Token présent:", !!token);
+
         if (token) {
           const userRes = await fetch(`${API_URL}/auth/me`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -94,16 +107,26 @@ export default function ChapterReader() {
           if (userRes.ok) {
             const userData = await userRes.json();
             setUser(userData);
+            console.log("👤 Utilisateur:", userData.username);
             if (data.isFree || userData.premiumActive) {
               setHasAccess(true);
+              console.log("✅ Accès accordé (Premium ou gratuit)");
+            } else {
+              console.log("⛔ Accès refusé (pas premium et chapitre payant)");
             }
           }
         } else if (data.isFree) {
           setHasAccess(true);
+          console.log("✅ Accès accordé (Chapitre gratuit)");
         }
+
+        console.log("✅ 5. Fin du chargement");
       } catch (err: any) {
-        console.error("❌ Erreur:", err);
+        console.error("❌ ERREUR:", err);
+        console.error("📋 Message:", err.message);
+        console.error("📋 Stack:", err.stack);
         setError(err.message);
+        setDebugInfo(JSON.stringify({ mangaId, chapterNumber, error: err.message }, null, 2));
       } finally {
         setLoading(false);
       }
@@ -157,16 +180,32 @@ export default function ChapterReader() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4">
         <div className="w-16 h-16 rounded-full bg-rose-950/30 flex items-center justify-center mb-4">
-          <svg className="w-8 h-8 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
+          <AlertCircle className="w-8 h-8 text-rose-400" />
         </div>
-        <p className="text-zinc-400 text-center">{error || "Chapitre non trouvé"}</p>
-        <Link href={`/manga/${mangaId}`} className="mt-4 px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all">
-          Retourner au manga
-        </Link>
+        <h2 className="text-xl font-bold text-white mb-2">Erreur de chargement</h2>
+        <p className="text-zinc-400 text-center max-w-md">{error || "Chapitre non trouvé"}</p>
+        
+        {/* ✅ AFFICHER LES INFOS DE DEBUG */}
+        {debugInfo && (
+          <div className="mt-4 p-4 bg-zinc-900/60 rounded-xl border border-zinc-800 text-xs text-zinc-500 max-w-md overflow-auto">
+            <p className="font-mono">{debugInfo}</p>
+          </div>
+        )}
+        
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all"
+          >
+            Réessayer
+          </button>
+          <Link
+            href={`/manga/${mangaId}`}
+            className="px-6 py-2.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-white font-semibold transition-all"
+          >
+            Retourner au manga
+          </Link>
+        </div>
       </div>
     );
   }
@@ -302,6 +341,7 @@ export default function ChapterReader() {
               className="w-full h-[70vh] border-0"
               title={`Chapitre ${chapterNumber}`}
               sandbox="allow-scripts allow-same-origin"
+              onError={() => setError("Erreur de chargement du PDF")}
             />
           </div>
         ) : (
