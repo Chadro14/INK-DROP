@@ -22,7 +22,9 @@ import {
   Copy,
   BadgeCheck,
   Globe,
-  Sparkles
+  Sparkles,
+  UserPlus,
+  Crown
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -78,6 +80,7 @@ export default function MangaPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [subscribeLoading, setSubscribeLoading] = useState(false);
 
   const mangaId = params.id as string;
 
@@ -154,7 +157,7 @@ export default function MangaPage() {
   };
 
   // ============================================
-  // ABONNEMENT
+  // ABONNEMENT (AVEC SVG PUR)
   // ============================================
   const handleSubscribe = async () => {
     const token = localStorage.getItem("token");
@@ -163,6 +166,7 @@ export default function MangaPage() {
       return;
     }
 
+    setSubscribeLoading(true);
     try {
       const res = await fetch(`${API_URL}/social/subscribe/${mangaId}`, {
         method: "POST",
@@ -176,6 +180,8 @@ export default function MangaPage() {
       } : null);
     } catch (error) {
       console.error("Erreur abonnement:", error);
+    } finally {
+      setSubscribeLoading(false);
     }
   };
 
@@ -184,7 +190,7 @@ export default function MangaPage() {
   // ============================================
   const handleShare = () => {
     const shareUrl = `https://ink-drop-one.vercel.app/manga/${mangaId}`;
-    const shareText = `📚 Découvre "${manga?.title}" sur INKDROP !`;
+    const shareText = `Découvre "${manga?.title}" sur INKDROP !`;
 
     if (navigator.share) {
       navigator.share({
@@ -291,7 +297,7 @@ export default function MangaPage() {
               </button>
             </div>
             {copied && (
-              <p className="text-green-400 text-xs mt-2 text-center">✅ Lien copié !</p>
+              <p className="text-green-400 text-xs mt-2 text-center">Lien copié</p>
             )}
           </div>
         )}
@@ -329,6 +335,7 @@ export default function MangaPage() {
                   {manga.author.username?.charAt(0).toUpperCase() || "?"}
                 </div>
               )}
+              {/* ✅ BADGE CERTIFIÉ SUR L'AVATAR (GARDÉ) */}
               {manga.author.isCertified && (
                 <div className="absolute -top-0.5 -right-0.5 bg-zinc-950 p-0.5 rounded-full">
                   <BadgeCheck
@@ -343,11 +350,7 @@ export default function MangaPage() {
             <span className="group-hover:text-blue-400 transition-colors">
               {manga.author.username}
             </span>
-            {manga.author.isCertified && (
-              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                Certifié
-              </span>
-            )}
+            {/* ✅ SUPPRESSION DU BADGE "Certifié" À CÔTÉ DU NOM */}
           </div>
         </div>
       </div>
@@ -367,15 +370,29 @@ export default function MangaPage() {
             <BookOpen className="w-4 h-4 text-purple-400" />
             <span>{manga.chapters?.length || 0}</span>
           </div>
+          {/* ✅ BOUTON S'ABONNER AVEC SVG PUR */}
           <button
             onClick={handleSubscribe}
-            className={`ml-auto px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+            disabled={subscribeLoading}
+            className={`ml-auto px-4 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1.5 ${
               isSubscribed
                 ? "bg-zinc-800 text-white hover:bg-zinc-700 border border-zinc-700"
                 : "bg-blue-600 text-white hover:bg-blue-500"
-            }`}
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
-            {isSubscribed ? "Abonné ✅" : "S'abonner"}
+            {subscribeLoading ? (
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : isSubscribed ? (
+              <>
+                <Check className="w-4 h-4" />
+                Abonné
+              </>
+            ) : (
+              <>
+                <UserPlus className="w-4 h-4" />
+                S'abonner
+              </>
+            )}
           </button>
         </div>
 
@@ -389,8 +406,9 @@ export default function MangaPage() {
             {statusLabels[manga.status as keyof typeof statusLabels]}
           </span>
           {manga.isPremium && (
-            <span className="px-3 py-0.5 rounded-full bg-yellow-950/40 text-yellow-400 text-xs border border-yellow-500/30">
-              ⭐ Premium
+            <span className="px-3 py-0.5 rounded-full bg-yellow-950/40 text-yellow-400 text-xs border border-yellow-500/30 flex items-center gap-1">
+              <Crown className="w-3 h-3" />
+              Premium
             </span>
           )}
         </div>
