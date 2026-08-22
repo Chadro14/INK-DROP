@@ -62,6 +62,9 @@ export default function ChapterUploadPage() {
     return mimeTypes[ext || ''] || 'application/octet-stream';
   };
 
+  // ============================================
+  // ✅ handleSubmit CORRIGÉ
+  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -91,11 +94,13 @@ export default function ChapterUploadPage() {
 
     try {
       setLoading(true);
-
       setProgress("Obtention des liens de stockage...");
 
       const filenames = filesToUpload.map((file) => file.name);
 
+      // ==========================================
+      // ÉTAPE 1 : Obtenir les URLs signées
+      // ==========================================
       const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/upload-urls`, {
         method: "POST",
         headers: {
@@ -111,13 +116,34 @@ export default function ChapterUploadPage() {
       }
 
       const responseData = await urlRes.json();
+      console.log('📦 Réponse de upload-urls:', responseData);
 
-      const uploadUrls: string[] = Array.isArray(responseData)
-        ? responseData
-        : responseData.uploadUrls || responseData.urls || [responseData.uploadUrl];
+      // ==========================================
+      // ✅ ÉTAPE 2 : Extraire les URLs et les clés
+      // ==========================================
+      let uploadUrls: string[] = [];
+      let keys: string[] = [];
 
-      const keys: string[] = responseData.keys || responseData.fileKeys || [];
+      if (Array.isArray(responseData)) {
+        // Cas 1: Réponse est un tableau direct
+        uploadUrls = responseData.map((item: any) => item.uploadUrl || item);
+        keys = responseData.map((item: any) => item.key || item);
+      } else if (responseData.files && Array.isArray(responseData.files)) {
+        // ✅ Cas 2: Réponse a un champ "files" (STRUCTURE ACTUELLE)
+        uploadUrls = responseData.files.map((file: any) => file.uploadUrl || file.signedUrl);
+        keys = responseData.files.map((file: any) => file.key || file.path);
+      } else {
+        // Cas 3: Fallback
+        uploadUrls = responseData.uploadUrls || responseData.urls || [responseData.uploadUrl];
+        keys = responseData.keys || responseData.fileKeys || [];
+      }
 
+      console.log('🔑 Clés extraites:', keys);
+      console.log('📤 URLs d\'upload:', uploadUrls);
+
+      // ==========================================
+      // ÉTAPE 3 : Upload des fichiers vers Supabase
+      // ==========================================
       for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i];
         const targetUrl = uploadUrls[i] || uploadUrls[0];
@@ -149,8 +175,18 @@ export default function ChapterUploadPage() {
         }
       }
 
+      // ==========================================
+      // ✅ ÉTAPE 4 : Vérifier que les clés existent
+      // ==========================================
+      if (keys.length === 0) {
+        throw new Error("Aucune clé de fichier reçue du backend. Vérifie la réponse de upload-urls.");
+      }
+
       setProgress("Enregistrement du chapitre en base de données...");
 
+      // ==========================================
+      // ÉTAPE 5 : Finaliser le chapitre
+      // ==========================================
       const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/finalize`, {
         method: "POST",
         headers: {
@@ -160,7 +196,7 @@ export default function ChapterUploadPage() {
         body: JSON.stringify({
           number: chapterNum,
           title: title.trim() || undefined,
-          keys: keys.length > 0 ? keys : [],
+          keys: keys, // ✅ Maintenant keys contient les bonnes valeurs
           mode: mode === "images" ? "PHOTOS" : "PDF",
           isDraft: false,
         }),
@@ -171,6 +207,12 @@ export default function ChapterUploadPage() {
         throw new Error(finalizeErr.message || "Erreur lors de la création du chapitre en base de données.");
       }
 
+      const finalizeData = await finalizeRes.json();
+      console.log('📦 Réponse de finalize:', finalizeData);
+
+      // ==========================================
+      // ÉTAPE 6 : Succès et redirection
+      // ==========================================
       setProgress("Finalisation...");
       setSuccess(true);
 
@@ -181,6 +223,7 @@ export default function ChapterUploadPage() {
       }, 1200);
 
     } catch (err: any) {
+      console.error('❌ Erreur:', err);
       setError(err.message || "Une erreur est survenue lors de l'upload.");
     } finally {
       setLoading(false);
