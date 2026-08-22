@@ -44,7 +44,7 @@ function Loader({
           </defs>
         </svg>
         <span className="c-ripple" style={{ borderColor: color }} />
-        <style jsx>{`
+        <style>{`
           .ink-compact { position: relative; margin: 0 auto; }
           .c-drop {
             position: absolute; left: 50%; bottom: 8%; width: 62%; height: 62%;
@@ -175,7 +175,7 @@ function Loader({
           </g>
         </svg>
 
-        <style jsx>{`
+        <style>{`
           .page-wrap { width: 140px; }
           .page-svg { width: 100%; height: auto; overflow: visible; }
 
@@ -343,7 +343,7 @@ function Loader({
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .brush-underline {
           stroke-dasharray: 140;
           stroke-dashoffset: 140;
