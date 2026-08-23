@@ -21,7 +21,9 @@ import {
   ChevronRight,
   FileText,
   AlertCircle,
-  Verified
+  Verified,
+  Plus,
+  Edit
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -236,7 +238,7 @@ export default function MangaPage() {
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
 
-      {/* HEADER - ✅ Navigation corrigée */}
+      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <Link
@@ -293,9 +295,8 @@ export default function MangaPage() {
               {manga.title}
             </h1>
             
-            {/* ✅ AUTEUR AVEC AVATAR ET BADGE - RESTAURÉ */}
+            {/* AUTEUR AVEC AVATAR ET BADGE */}
             <div className="flex items-center gap-3 mt-2">
-              {/* Avatar */}
               {manga.author.avatarUrl ? (
                 <img
                   src={manga.author.avatarUrl}
@@ -316,7 +317,6 @@ export default function MangaPage() {
               >
                 {manga.author.username}
               </Link>
-              {/* ✅ Badge certifié - STYLISÉ */}
               {manga.author.isCertified && (
                 <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30">
                   <Verified className="w-3.5 h-3.5 text-blue-400" />
@@ -332,7 +332,6 @@ export default function MangaPage() {
       <div className="max-w-4xl mx-auto w-full px-4 -mt-4 relative z-10">
         <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 md:p-6 backdrop-blur-md flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-wrap">
-            {/* ✅ LIKE */}
             <button
               onClick={handleLike}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
@@ -345,13 +344,11 @@ export default function MangaPage() {
               <span className="font-bold">{likesCount}</span>
             </button>
 
-            {/* ✅ VUES */}
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800/60 text-zinc-400 border border-zinc-700/30">
               <Eye className="w-5 h-5" />
               <span className="font-bold">{viewsCount}</span>
             </div>
 
-            {/* ✅ COMMENTAIRES - BOUTON RESTAURÉ */}
             <button
               onClick={scrollToComments}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all border border-zinc-700/30"
@@ -393,6 +390,25 @@ export default function MangaPage() {
                 {g}
               </span>
             ))}
+          </div>
+        )}
+
+        {/* ✅ BOUTONS D'ACTION POUR LE CRÉATEUR */}
+        {user && user.id === manga.author.id && (
+          <div className="flex gap-3">
+            <Link
+              href={`/manga/${mangaId}/chapter/new`}
+              className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              Ajouter un chapitre
+            </Link>
+            <Link
+              href={`/manga/${mangaId}/edit`}
+              className="px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+            >
+              <Edit className="w-5 h-5" />
+            </Link>
           </div>
         )}
 
@@ -443,7 +459,7 @@ export default function MangaPage() {
           )}
         </div>
 
-        {/* ✅ STATS SUPPLEMENTAIRES - AVEC SUBSCRIBERS CORRIGÉ */}
+        {/* STATS SUPPLEMENTAIRES */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4 text-center">
             <Users className="w-5 h-5 text-zinc-400 mx-auto mb-1" />
@@ -462,7 +478,7 @@ export default function MangaPage() {
           </div>
         </div>
 
-        {/* ✅ SECTION COMMENTAIRES */}
+        {/* SECTION COMMENTAIRES */}
         <div ref={commentRef}>
           <CommentSection mangaId={mangaId} />
         </div>
