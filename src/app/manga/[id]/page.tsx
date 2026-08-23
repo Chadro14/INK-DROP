@@ -12,7 +12,6 @@ import {
   Eye, 
   Share2, 
   Bookmark, 
-  Check,
   Users,
   MessageCircle,
   Sparkles,
@@ -23,7 +22,8 @@ import {
   AlertCircle,
   Verified,
   Plus,
-  Edit
+  Edit,
+  Star
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -80,6 +80,7 @@ export default function MangaPage() {
   const [viewsCount, setViewsCount] = useState(0);
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [isViewCounted, setIsViewCounted] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
   // ============================================
   // SCROLL VERS LES COMMENTAIRES
@@ -126,6 +127,16 @@ export default function MangaPage() {
               const likeData = await likeRes.json();
               setIsLiked(likeData.liked);
             }
+
+            // ✅ Vérifier si le manga est en favori
+            const favRes = await fetch(
+              `${API_URL}/favorites/check/${mangaId}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (favRes.ok) {
+              const favData = await favRes.json();
+              setIsBookmarked(favData.isFavorite);
+            }
           }
         }
 
@@ -171,7 +182,7 @@ export default function MangaPage() {
   };
 
   // ============================================
-  // GESTION DU LIKE
+  // ✅ GESTION DU LIKE - CORRIGÉ
   // ============================================
   const handleLike = async () => {
     const token = localStorage.getItem("token");
@@ -195,14 +206,44 @@ export default function MangaPage() {
 
       const data = await res.json();
       
+      // ✅ UTILISER LE COMPTEUR RENVOYÉ PAR LE BACKEND
       setIsLiked(data.liked);
-      setLikesCount((prev) => data.liked ? prev + 1 : prev - 1);
+      setLikesCount(data.likesCount);
       
-      console.log(`✅ Like ${data.liked ? "ajouté" : "retiré"}`);
+      console.log(`✅ Like ${data.liked ? "ajouté" : "retiré"} - Total: ${data.likesCount}`);
     } catch (err: any) {
       console.error("❌ Erreur like:", err);
-      setIsLiked(!isLiked);
-      setLikesCount((prev) => isLiked ? prev - 1 : prev + 1);
+    }
+  };
+
+  // ============================================
+  // ✅ GESTION DU FAVORI (BOOKMARK)
+  // ============================================
+  const handleBookmark = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/favorites/toggle/${mangaId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur lors de l'ajout aux favoris");
+      }
+
+      const data = await res.json();
+      setIsBookmarked(data.isFavorite);
+      console.log(`✅ Favori ${data.isFavorite ? "ajouté" : "retiré"}`);
+    } catch (err: any) {
+      console.error("❌ Erreur favori:", err);
     }
   };
 
@@ -295,7 +336,7 @@ export default function MangaPage() {
               {manga.title}
             </h1>
             
-            {/* AUTEUR AVEC AVATAR ET BADGE */}
+            {/* ✅ AUTEUR AVEC AVATAR ET BADGE CERTIFIÉ - VERSION ÉPURÉE */}
             <div className="flex items-center gap-3 mt-2">
               {manga.author.avatarUrl ? (
                 <img
@@ -317,10 +358,16 @@ export default function MangaPage() {
               >
                 {manga.author.username}
               </Link>
+              {/* ✅ BADGE CERTIFIÉ EN SVG PUR - SANS TEXTE */}
               {manga.author.isCertified && (
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30">
-                  <Verified className="w-3.5 h-3.5 text-blue-400" />
-                  <span className="text-[10px] font-bold text-blue-400">Certifié</span>
+                <div 
+                  className="group relative flex items-center justify-center"
+                  title="Compte certifié"
+                >
+                  <Star className="w-4 h-4 md:w-5 md:h-5 text-amber-400 fill-amber-400" />
+                  <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                    Certifié
+                  </span>
                 </div>
               )}
             </div>
@@ -362,8 +409,19 @@ export default function MangaPage() {
             <button className="p-2 rounded-full bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-zinc-700/30">
               <Share2 className="w-5 h-5" />
             </button>
-            <button className="p-2 rounded-full bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors border border-zinc-700/30">
-              <Bookmark className="w-5 h-5" />
+            <button
+              onClick={handleBookmark}
+              className={`p-2 rounded-full transition-colors border ${
+                isBookmarked
+                  ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                  : "bg-zinc-800/60 text-zinc-400 hover:bg-zinc-800 hover:text-white border-zinc-700/30"
+              }`}
+            >
+              {isBookmarked ? (
+                <Check className="w-5 h-5" />
+              ) : (
+                <Bookmark className="w-5 h-5" />
+              )}
             </button>
           </div>
         </div>
@@ -393,7 +451,7 @@ export default function MangaPage() {
           </div>
         )}
 
-        {/* ✅ BOUTONS D'ACTION POUR LE CRÉATEUR */}
+        {/* BOUTONS D'ACTION POUR LE CRÉATEUR */}
         {user && user.id === manga.author.id && (
           <div className="flex gap-3">
             <Link
