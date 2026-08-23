@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, Trash2, MessageCircle, Send, BadgeCheck } from "lucide-react";
+import { Heart, Trash2, MessageCircle, Send, BadgeCheck, ChevronDown, ChevronUp } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
@@ -11,6 +11,7 @@ type Comment = {
   content: string;
   createdAt: string;
   likesCount: number;
+  isLiked?: boolean;
   user: {
     id: string;
     username: string;
@@ -36,7 +37,9 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(new Set());
 
+  // Récupérer l'ID de l'utilisateur depuis le token
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -49,6 +52,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
   }, []);
 
+  // ✅ Récupérer les commentaires + état des likes
   useEffect(() => {
     const fetchComments = async () => {
       setLoading(true);
@@ -56,9 +60,38 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
         const url = chapterId
           ? `${API_URL}/social/comments/chapter/${chapterId}`
           : `${API_URL}/social/comments/${mangaId}`;
+        
         const res = await fetch(url);
         const data = await res.json();
-        setComments(data.data || []);
+        const commentsData = data.data || [];
+
+        // ✅ Récupérer les likes de l'utilisateur
+        const token = localStorage.getItem("token");
+        let likedCommentIds: string[] = [];
+
+        if (token) {
+          try {
+            const likesRes = await fetch(`${API_URL}/social/comment-likes`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (likesRes.ok) {
+              likedCommentIds = await likesRes.json();
+            }
+          } catch (error) {
+            console.error("Erreur récupération likes:", error);
+          }
+        }
+
+        // ✅ Ajouter isLiked à chaque commentaire et ses réponses
+        const addLikedState = (comments: Comment[]): Comment[] => {
+          return comments.map((comment) => ({
+            ...comment,
+            isLiked: likedCommentIds.includes(comment.id),
+            replies: comment.replies ? addLikedState(comment.replies) : [],
+          }));
+        };
+
+        setComments(addLikedState(commentsData));
       } catch (error) {
         console.error("Erreur chargement commentaires:", error);
       } finally {
@@ -69,6 +102,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     fetchComments();
   }, [mangaId, chapterId]);
 
+  // ✅ Ajouter un commentaire
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
 
@@ -104,6 +138,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
   };
 
+  // ✅ Ajouter une réponse
   const handleAddReply = async (parentId: string) => {
     if (!replyContent.trim()) return;
 
@@ -138,12 +173,20 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
         );
         setReplyTo(null);
         setReplyContent("");
+        
+        // ✅ Si les réponses étaient fermées, les ouvrir
+        setExpandedReplies((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(parentId);
+          return newSet;
+        });
       }
     } catch (error) {
       console.error("Erreur ajout réponse:", error);
     }
   };
 
+  // ✅ Like sur un commentaire - CORRIGÉ
   const handleLike = async (commentId: string) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -152,52 +195,44 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
 
     try {
-      setComments((prev) =>
-        prev.map((comment) => {
-          if (comment.id === commentId) {
-            return {
-              ...comment,
-              likesCount: comment.likesCount + 1,
-            };
-          }
-          return comment;
-        })
-      );
-
       const res = await fetch(`${API_URL}/social/comment-like/${commentId}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) {
-        setComments((prev) =>
-          prev.map((comment) => {
-            if (comment.id === commentId) {
-              return {
-                ...comment,
-                likesCount: comment.likesCount - 1,
-              };
-            }
-            return comment;
-          })
-        );
+        throw new Error("Erreur lors du like");
       }
-    } catch (error) {
-      console.error("Erreur like:", error);
-      setComments((prev) =>
-        prev.map((comment) => {
+
+      const data = await res.json();
+
+      // ✅ Mise à jour avec les données du backend
+      const updateLikes = (comments: Comment[]): Comment[] => {
+        return comments.map((comment) => {
           if (comment.id === commentId) {
             return {
               ...comment,
-              likesCount: comment.likesCount - 1,
+              isLiked: data.liked,
+              likesCount: data.likesCount,
+            };
+          }
+          if (comment.replies) {
+            return {
+              ...comment,
+              replies: updateLikes(comment.replies),
             };
           }
           return comment;
-        })
-      );
+        });
+      };
+
+      setComments((prev) => updateLikes(prev));
+    } catch (error) {
+      console.error("Erreur like:", error);
     }
   };
 
+  // ✅ Supprimer un commentaire
   const handleDelete = async (commentId: string) => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -213,6 +248,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
       });
 
       if (!res.ok) {
+        // Recharger si erreur
         const url = chapterId
           ? `${API_URL}/social/comments/chapter/${chapterId}`
           : `${API_URL}/social/comments/${mangaId}`;
@@ -231,6 +267,19 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     }
   };
 
+  // ✅ Toggle affichage des réponses
+  const toggleReplies = (commentId: string) => {
+    setExpandedReplies((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(commentId)) {
+        newSet.delete(commentId);
+      } else {
+        newSet.add(commentId);
+      }
+      return newSet;
+    });
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("fr-FR", {
@@ -242,14 +291,18 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
     });
   };
 
+  // ✅ Composant d'affichage d'un commentaire
   const CommentItem = ({ comment, isReply = false }: { comment: Comment; isReply?: boolean }) => {
     const isAuthor = userId === comment.user.id;
     const badgeColor = comment.user.badgeColor || "#2563EB";
+    const hasReplies = comment.replies && comment.replies.length > 0;
+    const isExpanded = expandedReplies.has(comment.id);
 
     return (
-      <div className={`${isReply ? "ml-8" : ""} border-b border-zinc-800/60 py-4`}>
+      <div className={`${isReply ? "ml-6 md:ml-10 border-l-2 border-zinc-700/50 pl-4" : ""} border-b border-zinc-800/60 py-4`}>
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-700">
+          {/* Avatar */}
+          <div className="w-9 h-9 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-700">
             {comment.user.avatarUrl ? (
               <img
                 src={comment.user.avatarUrl}
@@ -264,30 +317,45 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
           </div>
 
           <div className="flex-1 min-w-0">
+            {/* En-tête */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-bold text-sm text-white">{comment.user.username}</span>
               {comment.user.isCertified && (
                 <BadgeCheck
-                  className="w-4 h-4"
+                  className="w-3.5 h-3.5"
                   fill={badgeColor}
                   color="black"
                   strokeWidth={1.5}
                 />
               )}
-              <span className="text-xs text-zinc-500">{formatDate(comment.createdAt)}</span>
+              <span className="text-[10px] text-zinc-500">{formatDate(comment.createdAt)}</span>
+              
+              {/* ✅ Mention "En réponse à" pour les réponses */}
+              {isReply && (
+                <span className="text-[10px] text-zinc-500">
+                  En réponse à <span className="text-zinc-300 font-medium">@{comment.parentUsername || "inconnu"}</span>
+                </span>
+              )}
             </div>
 
+            {/* Contenu */}
             <p className="text-sm text-zinc-300 mt-1">{comment.content}</p>
 
+            {/* Actions */}
             <div className="flex items-center gap-4 mt-2">
               <button
                 onClick={() => handleLike(comment.id)}
-                className="flex items-center gap-1 text-xs text-zinc-500 hover:text-rose-500 transition-colors"
+                className={`flex items-center gap-1 text-xs transition-colors ${
+                  comment.isLiked
+                    ? "text-rose-500"
+                    : "text-zinc-500 hover:text-rose-500"
+                }`}
               >
-                <Heart className="w-3.5 h-3.5" />
+                <Heart className={`w-3.5 h-3.5 ${comment.isLiked ? "fill-rose-500" : ""}`} />
                 <span>{comment.likesCount || 0}</span>
               </button>
 
+              {/* ✅ Bouton "Répondre" - UNIQUEMENT pour les commentaires de niveau 1 */}
               {!isReply && (
                 <button
                   onClick={() => setReplyTo(comment.id)}
@@ -307,14 +375,16 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
               )}
             </div>
 
+            {/* ✅ Formulaire de réponse */}
             {replyTo === comment.id && !isReply && (
               <div className="mt-3 flex gap-2">
                 <input
                   type="text"
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
-                  placeholder="Écrire une réponse..."
+                  placeholder={`Répondre à ${comment.user.username}...`}
                   className="flex-1 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition"
+                  onKeyDown={(e) => e.key === "Enter" && handleAddReply(comment.id)}
                 />
                 <button
                   onClick={() => handleAddReply(comment.id)}
@@ -324,12 +394,34 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
                 </button>
               </div>
             )}
+
+            {/* ✅ Bouton "Voir les réponses" */}
+            {hasReplies && !isReply && (
+              <button
+                onClick={() => toggleReplies(comment.id)}
+                className="flex items-center gap-1 mt-3 text-xs text-zinc-500 hover:text-white transition-colors"
+              >
+                {isExpanded ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {isExpanded
+                    ? "Masquer les réponses"
+                    : `Voir ${comment.replies?.length || 0} réponse${
+                        (comment.replies?.length || 0) > 1 ? "s" : ""
+                      }`}
+                </span>
+              </button>
+            )}
           </div>
         </div>
 
-        {comment.replies && comment.replies.length > 0 && (
-          <div className="mt-2 space-y-2">
-            {comment.replies.map((reply) => (
+        {/* ✅ Affichage des réponses (seulement si expand) */}
+        {hasReplies && !isReply && isExpanded && (
+          <div className="mt-2 space-y-1">
+            {comment.replies?.map((reply) => (
               <CommentItem key={reply.id} comment={reply} isReply={true} />
             ))}
           </div>
@@ -346,6 +438,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
         <span className="text-xs text-zinc-500">({comments.length})</span>
       </div>
 
+      {/* ✅ AJOUTER UN COMMENTAIRE */}
       <div className="flex gap-2 mb-4">
         <input
           type="text"
@@ -364,6 +457,7 @@ export function CommentSection({ mangaId, chapterId }: CommentSectionProps) {
         </button>
       </div>
 
+      {/* LISTE DES COMMENTAIRES */}
       {loading ? (
         <div className="flex justify-center py-8">
           <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
