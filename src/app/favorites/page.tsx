@@ -10,12 +10,12 @@ import {
   Heart, 
   Eye, 
   Bookmark, 
-  Trash2, 
   AlertCircle,
   BookOpen,
   Crown,
   Clock,
-  User
+  User,
+  Verified
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -35,6 +35,7 @@ type Favorite = {
       username: string;
       avatarUrl: string | null;
       isCertified: boolean;
+      badgeColor?: string | null;
     };
     _count: {
       chapters: number;
@@ -83,32 +84,6 @@ export default function FavoritesPage() {
   }, [router]);
 
   // ============================================
-  // SUPPRIMER UN FAVORI
-  // ============================================
-  const handleRemove = async (mangaId: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    if (!confirm("Retirer ce manga de vos favoris ?")) return;
-
-    try {
-      const res = await fetch(`${API_URL}/favorites/toggle/${mangaId}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.ok) {
-        setFavorites((prev) => prev.filter((fav) => fav.manga.id !== mangaId));
-      }
-    } catch (error) {
-      console.error("Erreur suppression favori:", error);
-    }
-  };
-
-  // ============================================
   // AFFICHAGE
   // ============================================
   if (loading) {
@@ -128,12 +103,15 @@ export default function FavoritesPage() {
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm font-medium hidden sm:inline">Retour</span>
           </button>
-          <span className="text-base font-bold tracking-tight text-white/90">
-            📚 Favoris
-          </span>
-          <span className="text-sm text-zinc-500">
-            {favorites.length}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-base font-bold tracking-tight text-white/90">
+              Favoris
+            </span>
+            <span className="text-sm text-zinc-500 bg-zinc-900 px-2.5 py-0.5 rounded-full">
+              {favorites.length}
+            </span>
+          </div>
+          <div className="w-9" />
         </div>
       </header>
 
@@ -178,102 +156,111 @@ export default function FavoritesPage() {
                 </Link>
               </div>
             ) : (
-              <div className="space-y-4">
-                {favorites.map((fav) => (
-                  <div
-                    key={fav.id}
-                    className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all group"
-                  >
-                    <div className="flex gap-4 p-4">
-                      {/* COUVERTURE */}
-                      <Link
-                        href={`/manga/${fav.manga.id}`}
-                        className="flex-shrink-0 w-20 h-28 md:w-24 md:h-32 bg-zinc-800 rounded-lg overflow-hidden"
+              <>
+                {/* COMPTEUR DE FAVORIS */}
+                <div className="flex items-center gap-2 mb-4 text-sm text-zinc-500">
+                  <Bookmark className="w-4 h-4" />
+                  <span>{favorites.length} manga{favorites.length > 1 ? 's' : ''} enregistré{favorites.length > 1 ? 's' : ''}</span>
+                </div>
+
+                <div className="space-y-4">
+                  {favorites.map((fav) => {
+                    const badgeColor = fav.manga.author.badgeColor || "#3B82F6";
+                    
+                    return (
+                      <div
+                        key={fav.id}
+                        className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl overflow-hidden hover:border-zinc-700 transition-all group"
                       >
-                        {fav.manga.coverUrl ? (
-                          <img
-                            src={fav.manga.coverUrl}
-                            alt={fav.manga.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <BookOpen className="w-8 h-8 text-zinc-600" />
+                        <div className="flex gap-4 p-4">
+                          {/* COUVERTURE */}
+                          <Link
+                            href={`/manga/${fav.manga.id}`}
+                            className="flex-shrink-0 w-20 h-28 md:w-24 md:h-32 bg-zinc-800 rounded-lg overflow-hidden"
+                          >
+                            {fav.manga.coverUrl ? (
+                              <img
+                                src={fav.manga.coverUrl}
+                                alt={fav.manga.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <BookOpen className="w-8 h-8 text-zinc-600" />
+                              </div>
+                            )}
+                          </Link>
+
+                          {/* INFOS */}
+                          <div className="flex-1 min-w-0">
+                            <Link href={`/manga/${fav.manga.id}`}>
+                              <h3 className="text-base md:text-lg font-bold text-white hover:text-blue-400 transition-colors line-clamp-1">
+                                {fav.manga.title}
+                              </h3>
+                            </Link>
+
+                            {/* AUTEUR AVEC BADGE CERTIFIÉ */}
+                            <Link
+                              href={`/creator/${fav.manga.author.username}`}
+                              className="flex items-center gap-1.5 text-sm text-zinc-400 hover:text-blue-400 transition-colors mt-0.5"
+                            >
+                              <User className="w-3.5 h-3.5" />
+                              <span>{fav.manga.author.username}</span>
+                              {fav.manga.author.isCertified && (
+                                <Verified
+                                  className="w-3.5 h-3.5"
+                                  fill={badgeColor}
+                                  color="black"
+                                  strokeWidth={1.5}
+                                />
+                              )}
+                            </Link>
+
+                            <div className="flex items-center gap-3 mt-2 text-xs text-zinc-500">
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {new Date(fav.createdAt).toLocaleDateString("fr-FR")}
+                              </span>
+                              <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                              <span className="flex items-center gap-1">
+                                <Eye className="w-3 h-3 text-sky-400" />
+                                {fav.manga.viewsCount || 0}
+                              </span>
+                              <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                              <span className="flex items-center gap-1">
+                                <Heart className="w-3 h-3 text-rose-400" />
+                                {fav.manga.likesCount || 0}
+                              </span>
+                              <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                              <span className="text-zinc-500">
+                                {fav.manga._count.chapters || 0} chapitres
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                fav.manga.status === "ONGOING" 
+                                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                  : fav.manga.status === "COMPLETED"
+                                  ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                                  : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                              }`}>
+                                {fav.manga.status === "ONGOING" ? "En cours" : fav.manga.status === "COMPLETED" ? "Terminé" : "En pause"}
+                              </span>
+                              {fav.manga.isPremium && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                  <Crown className="w-3 h-3 inline mr-0.5" />
+                                  Premium
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        )}
-                      </Link>
-
-                      {/* INFOS */}
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/manga/${fav.manga.id}`}>
-                          <h3 className="text-base md:text-lg font-bold text-white hover:text-blue-400 transition-colors line-clamp-1">
-                            {fav.manga.title}
-                          </h3>
-                        </Link>
-
-                        <Link
-                          href={`/creator/${fav.manga.author.username}`}
-                          className="text-sm text-zinc-400 hover:text-blue-400 transition-colors flex items-center gap-1"
-                        >
-                          <User className="w-3.5 h-3.5" />
-                          {fav.manga.author.username}
-                          {fav.manga.author.isCertified && (
-                            <span className="text-blue-400 text-xs font-bold">✓</span>
-                          )}
-                        </Link>
-
-                        <div className="flex items-center gap-3 mt-2 text-xs text-zinc-500">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {new Date(fav.createdAt).toLocaleDateString("fr-FR")}
-                          </span>
-                          <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                          <span className="flex items-center gap-1">
-                            <Eye className="w-3 h-3 text-sky-400" />
-                            {fav.manga.viewsCount || 0}
-                          </span>
-                          <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                          <span className="flex items-center gap-1">
-                            <Heart className="w-3 h-3 text-rose-400" />
-                            {fav.manga.likesCount || 0}
-                          </span>
-                          <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                          <span className="text-zinc-500">
-                            {fav.manga._count.chapters || 0} chapitres
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            fav.manga.status === "ONGOING" 
-                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                              : fav.manga.status === "COMPLETED"
-                              ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
-                              : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                          }`}>
-                            {fav.manga.status === "ONGOING" ? "En cours" : fav.manga.status === "COMPLETED" ? "Terminé" : "En pause"}
-                          </span>
-                          {fav.manga.isPremium && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                              <Crown className="w-3 h-3 inline mr-0.5" />
-                              Premium
-                            </span>
-                          )}
                         </div>
                       </div>
-
-                      {/* BOUTON SUPPRIMER */}
-                      <button
-                        onClick={() => handleRemove(fav.manga.id)}
-                        className="flex-shrink-0 p-2 rounded-full bg-zinc-800/60 hover:bg-rose-950/40 text-zinc-400 hover:text-rose-400 transition-all self-start opacity-60 hover:opacity-100 group-hover:opacity-100"
-                        title="Retirer des favoris"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </>
         )}
