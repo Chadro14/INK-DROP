@@ -70,7 +70,28 @@ export default function ChapterReader() {
   const [isLiked, setIsLiked] = useState(false);
 
   const mangaId = params.id as string;
-  const chapterNumber = parseInt(params.number as string);
+  const chapterId = params.chapterId as string;
+  const chapterNumber = parseInt(chapterId);
+
+  // ============================================
+  // ✅ VÉRIFIER SI LE CHAPITRE EST LIKÉ
+  // ============================================
+  const checkIfLiked = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_URL}/social/has-liked-chapter/${chapterId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsLiked(data.liked);
+      }
+    } catch (error) {
+      console.error("❌ Erreur vérification like:", error);
+    }
+  };
 
   // ============================================
   // RÉCUPÉRER LE CHAPITRE
@@ -104,6 +125,10 @@ export default function ChapterReader() {
               setHasAccess(true);
             }
           }
+          
+          // ✅ VÉRIFIER SI LE CHAPITRE EST LIKÉ
+          await checkIfLiked();
+          
         } else if (data.isFree) {
           setHasAccess(true);
         }
@@ -150,10 +175,33 @@ export default function ChapterReader() {
   };
 
   // ============================================
-  // LIKE
+  // ✅ LIKE - AVEC API
   // ============================================
-  const handleLike = () => {
-    setIsLiked(!isLiked);
+  const handleLike = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/social/like-chapter/${chapterId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Erreur lors du like");
+
+      const data = await res.json();
+      setIsLiked(data.liked);
+    } catch (error) {
+      console.error("❌ Erreur like:", error);
+      // Fallback UI
+      setIsLiked(!isLiked);
+    }
   };
 
   // ============================================
