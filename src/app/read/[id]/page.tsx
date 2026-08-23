@@ -23,7 +23,8 @@ import {
   UserPlus,
   MessageCircle,
   Settings,
-  LogOut
+  LogOut,
+  Verified
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -249,7 +250,7 @@ export default function CreatorProfilePage() {
               </div>
             )}
           </div>
-          {/* ✅ BADGE CERTIFIÉ SUR L'AVATAR (GARDÉ) */}
+          {/* ✅ BADGE CERTIFIÉ SUR L'AVATAR */}
           {profile.isCertified && (
             <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
               <BadgeCheck
@@ -262,10 +263,25 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
-        {/* NOM & BADGES */}
+        {/* ✅ NOM AVEC BADGE CERTIFIÉ À CÔTÉ */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
-          {/* ✅ SUPPRESSION DU BADGE CERTIFIÉ À CÔTÉ DU NOM */}
+          
+          {/* ✅ BADGE CERTIFIÉ EN SVG PUR À CÔTÉ DU NOM */}
+          {profile.isCertified && (
+            <div className="group relative flex items-center justify-center">
+              <Verified
+                className="w-5 h-5 md:w-6 md:h-6"
+                fill={activeBadgeColor}
+                color="black"
+                strokeWidth={1.5}
+              />
+              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                Certifié
+              </span>
+            </div>
+          )}
+
           {profile.premiumActive && (
             <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
               <Crown className="w-3 h-3 fill-current" />
@@ -279,7 +295,7 @@ export default function CreatorProfilePage() {
           {profile.bio || "Créateur sur INKDROP"}
         </p>
 
-        {/* INFOS - EMAIL SUPPRIMÉ */}
+        {/* INFOS */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-6">
           <span className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-blue-400" /> 
@@ -462,7 +478,7 @@ export default function CreatorProfilePage() {
               </div>
               {profile.isCertified && (
                 <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                  <BadgeCheck className="w-4 h-4 text-blue-400" />
+                  <BadgeCheck className="w-4 h-4" fill={activeBadgeColor} color="black" strokeWidth={1.5} />
                   <span className="text-zinc-300 text-sm">Compte certifié</span>
                 </div>
               )}
