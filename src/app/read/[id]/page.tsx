@@ -1,136 +1,245 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { CommentSection } from "@/components/comments/CommentSection";
 import { Loader } from "@/components/ui/loader";
 import { 
   ArrowLeft, 
-  BookOpen, 
-  Calendar, 
-  User, 
-  Grid,
-  Heart,
+  ChevronLeft, 
+  ChevronRight,
+  Lock,
   Eye,
-  Share2,
-  Plus,
-  Edit,
+  Heart,
+  Sparkles,
   Crown,
-  BadgeCheck,
-  Globe,
+  Share2,
+  Bookmark,
   Check,
-  UserPlus,
-  MessageCircle,
-  Settings,
-  LogOut,
-  Verified
+  AlertCircle,
+  FileText,
+  Image as ImageIcon
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-type CreatorProfile = {
-  id: string;
-  username: string;
-  email: string;
-  avatarUrl: string | null;
-  bio: string | null;
-  role: string;
-  isCertified: boolean;
-  premiumActive: boolean;
-  premiumPlan?: string | null;
-  createdAt: string;
-  avatarColor: string | null;
-  badgeColor?: string | null;
-  _count: {
-    mangas: number;
-    followers: number;
-    following: number;
-  };
-  mangas?: any[];
-  isFollowing?: boolean;
+type Page = {
+  url: string;
+  order: number;
+  isFree: boolean;
 };
 
-export default function CreatorProfilePage() {
+type Chapter = {
+  id: string;
+  number: number;
+  title: string;
+  contentType: string;
+  pdfUrl: string | null;
+  pages: Page[];
+  isFree: boolean;
+  price: number;
+  pageCount: number;
+  summary: string | null;
+  publishedAt: string;
+  manga: {
+    id: string;
+    title: string;
+    author: {
+      username: string;
+    };
+  };
+};
+
+type User = {
+  id: string;
+  premiumActive: boolean;
+};
+
+export default function ChapterReader() {
   const params = useParams();
   const router = useRouter();
-  const username = params?.username as string;
-
-  const [profile, setProfile] = useState<CreatorProfile | null>(null);
+  const [chapter, setChapter] = useState<Chapter | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [isCurrentUser, setIsCurrentUser] = useState(false);
-  const [activeTab, setActiveTab] = useState<"mangas" | "about">("mangas");
+  const [hasAccess, setHasAccess] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  
+  // ✅ ÉTAT POUR LE LIKE
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+
+  const mangaId = params.id as string;
+  const chapterId = params.chapterId as string;
+  const chapterNumber = parseInt(chapterId);
 
   // ============================================
-  // RÉCUPÉRER LE PROFIL + STATUT FOLLOW
+  // GÉNÉRER UN SESSION ID
+  // ============================================
+  const generateSessionId = () => {
+    const existing = localStorage.getItem("sessionId");
+    if (existing) return existing;
+
+    const newId = crypto.randomUUID();
+    localStorage.setItem("sessionId", newId);
+    return newId;
+  };
+
+  // ============================================
+  // INCRÉMENTER LES VUES (MÉTHODE TIKTOK)
+  // ============================================
+  const incrementView = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const sessionId = generateSessionId();
+
+      const res = await fetch(`${API_URL}/views/increment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({
+          mangaId,
+          chapterId,
+          sessionId,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.counted) {
+          console.log("✅ Vue comptabilisée:", data.viewsCount);
+        } else {
+          console.log("⏭️ Déjà vu, pas de re-comptage (méthode TikTok)");
+        }
+      }
+    } catch (err) {
+      console.error("❌ Erreur vue:", err);
+    }
+  };
+
+  // ============================================
+  // ✅ VÉRIFIER SI LE CHAPITRE EST LIKÉ
+  // ============================================
+  const checkIfLiked = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_URL}/social/has-liked-chapter/${chapterId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsLiked(data.liked);
+      }
+    } catch (error) {
+      console.error("❌ Erreur vérification like:", error);
+    }
+  };
+
+  // ============================================
+  // RÉCUPÉRER LE CHAPITRE
   // ============================================
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchChapter = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const url = `${API_URL}/mangas/${mangaId}/chapters/number/${chapterNumber}`;
+        console.log('📡 Appel API:', url);
 
-        const res = await fetch(`${API_URL}/users/username/${username}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-
+        const res = await fetch(url);
+        
         if (!res.ok) {
-          throw new Error("Utilisateur non trouvé");
+          throw new Error(`Chapitre non trouvé (${res.status})`);
         }
-
+        
         const data = await res.json();
-        setProfile(data);
+        console.log('📦 Données reçues:', data);
+        
+        setChapter(data);
+        setLikesCount(data.likesCount || 0);
 
+        const token = localStorage.getItem("token");
         if (token) {
-          try {
-            const meRes = await fetch(`${API_URL}/users/me`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (meRes.ok) {
-              const meData = await meRes.json();
-              setIsCurrentUser(meData.id === data.id);
-
-              if (meData.id !== data.id) {
-                const followRes = await fetch(`${API_URL}/follow/is-following/${data.id}`, {
-                  headers: { Authorization: `Bearer ${token}` },
-                });
-                if (followRes.ok) {
-                  const followData = await followRes.json();
-                  setIsFollowing(followData.following || false);
-                }
-              }
+          const userRes = await fetch(`${API_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (userRes.ok) {
+            const userData = await userRes.json();
+            setUser(userData);
+            if (data.isFree || userData.premiumActive) {
+              setHasAccess(true);
             }
-          } catch (e) {
-            console.error("Erreur vérification statut:", e);
           }
+          
+          // ✅ VÉRIFIER SI LE CHAPITRE EST LIKÉ
+          await checkIfLiked();
+          
+        } else if (data.isFree) {
+          setHasAccess(true);
         }
+
+        // ✅ INCRÉMENTER LA VUE (1 VUE = 1 PERSONNE - MÉTHODE TIKTOK)
+        await incrementView();
+
       } catch (err: any) {
-        setError(err.message || "Erreur de chargement");
+        console.error('❌ Erreur:', err);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    if (username) {
-      fetchProfile();
-    }
-  }, [username]);
+    fetchChapter();
+  }, [mangaId, chapterNumber]);
 
   // ============================================
-  // S'ABONNER / SE DÉSABONNER
+  // NAVIGATION PAGES
   // ============================================
-  const handleFollow = async () => {
+  const nextPage = () => {
+    if (chapter?.pages && currentPage < chapter.pages.length - 1) {
+      setCurrentPage(currentPage + 1);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  // ============================================
+  // ACHETER LE CHAPITRE
+  // ============================================
+  const handleBuy = () => {
+    alert(`Paiement de ${chapter?.price || 0.50}$ pour le chapitre ${chapterNumber}`);
+  };
+
+  // ============================================
+  // BOOKMARK
+  // ============================================
+  const handleBookmark = () => {
+    setIsBookmarked(!isBookmarked);
+  };
+
+  // ============================================
+  // ✅ LIKE - AVEC API ET LIKESCOUNT
+  // ============================================
+  const handleLike = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/login");
       return;
     }
 
-    if (!profile) return;
-
     try {
-      const res = await fetch(`${API_URL}/follow/${profile.id}`, {
+      const res = await fetch(`${API_URL}/social/like/chapter/${chapterId}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -138,360 +247,323 @@ export default function CreatorProfilePage() {
         },
       });
 
-      const data = await res.json();
+      if (!res.ok) throw new Error("Erreur lors du like");
 
-      if (res.ok) {
-        const newStatus = data.following !== undefined ? data.following : true;
-        setIsFollowing(newStatus);
-        setProfile((prev) => prev ? {
-          ...prev,
-          _count: {
-            ...prev._count,
-            followers: newStatus ? prev._count.followers + 1 : prev._count.followers - 1,
-          },
-        } : null);
-      } else {
-        console.error("Erreur follow:", data);
-      }
+      const data = await res.json();
+      
+      // ✅ UTILISER LE COMPTEUR RENVOYÉ PAR LE BACKEND
+      setIsLiked(data.liked);
+      setLikesCount(data.likesCount);
+      
+      console.log(`✅ Like ${data.liked ? "ajouté" : "retiré"} - Total: ${data.likesCount}`);
     } catch (error) {
-      console.error("Erreur follow:", error);
+      console.error("❌ Erreur like:", error);
     }
   };
 
   // ============================================
-  // PARTAGER LE PROFIL
+  // SHARE
   // ============================================
   const handleShare = () => {
-    const shareUrl = `https://ink-drop-one.vercel.app/creator/${profile?.username}`;
-    
+    const shareUrl = `https://ink-drop-one.vercel.app/manga/${mangaId}/chapter/${chapterNumber}`;
     if (navigator.share) {
-      navigator.share({
-        title: `INKDROP - ${profile?.username}`,
-        text: `Découvre le profil de ${profile?.username} sur INKDROP !`,
-        url: shareUrl,
-      }).catch(() => {});
+      navigator.share({ title: chapter?.title || `Chapitre ${chapterNumber}`, url: shareUrl });
     } else {
       navigator.clipboard.writeText(shareUrl);
-      alert("Lien copié !");
+      alert("🔗 Lien copié !");
     }
   };
 
+  // ============================================
+  // AFFICHAGE
+  // ============================================
   if (loading) {
-    return <Loader message="Chargement du profil" />;
+    return <Loader message="Chargement du chapitre" />;
   }
 
-  if (error || !profile) {
+  if (error || !chapter) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4">
         <div className="w-16 h-16 rounded-full bg-rose-950/30 flex items-center justify-center mb-4">
-          <svg className="w-8 h-8 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
+          <AlertCircle className="w-8 h-8 text-rose-400" />
         </div>
-        <p className="text-zinc-400 text-center">{error || "Utilisateur non trouvé"}</p>
-        <Link
-          href="/discover"
-          className="mt-4 px-6 py-2.5 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
-        >
-          Retourner à la découverte
-        </Link>
+        <h2 className="text-xl font-bold text-white mb-2">Erreur de chargement</h2>
+        <p className="text-zinc-400 text-center max-w-md">{error || "Chapitre non trouvé"}</p>
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all"
+          >
+            Réessayer
+          </button>
+          <Link
+            href={`/manga/${mangaId}`}
+            className="px-6 py-2.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-white font-semibold transition-all"
+          >
+            Retourner au manga
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const activeBadgeColor = profile.badgeColor || profile.avatarColor || "#3B82F6";
+  // ============================================
+  // PAS D'ACCÈS → ACHAT
+  // ============================================
+  if (!hasAccess) {
+    return (
+      <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
+        <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+          <div className="flex items-center justify-between max-w-4xl mx-auto">
+            <Link href={`/manga/${mangaId}`} className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5">
+              <ArrowLeft className="w-5 h-5" />
+              <span className="text-sm font-medium">Retour</span>
+            </Link>
+            <span className="text-base font-bold tracking-tight text-white/90">
+              Chap. {chapterNumber}
+            </span>
+            <div className="w-9" />
+          </div>
+        </header>
+
+        <main className="flex-1 flex flex-col items-center justify-center px-4 text-center">
+          <div className="w-24 h-24 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center mb-6">
+            <Lock className="w-12 h-12 text-amber-400" />
+          </div>
+          <h2 className="text-2xl font-extrabold text-white mb-2">Chapitre payant</h2>
+          <p className="text-zinc-400 text-sm mb-1">
+            Chapitre {chapterNumber} — <span className="text-amber-400 font-semibold">{chapter.price || 0.50}$</span>
+          </p>
+          <p className="text-zinc-500 text-xs mb-6">
+            {chapter.pageCount || 0} pages
+          </p>
+          <button
+            onClick={handleBuy}
+            className="px-8 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-bold transition-all shadow-lg shadow-amber-500/20"
+          >
+            Acheter le chapitre
+          </button>
+          <div className="mt-6 flex items-center gap-2 text-xs text-zinc-500">
+            <Crown className="w-4 h-4 text-amber-400" />
+            <span>Ou abonne-toi à INKDROP Premium pour un accès illimité</span>
+          </div>
+          <Link href="/premium" className="mt-2 text-amber-400 hover:text-amber-300 text-sm font-medium transition-colors">
+            Voir les offres Premium →
+          </Link>
+        </main>
+
+        <BottomNav />
+      </div>
+    );
+  }
+
+  // ============================================
+  // LECTURE DU CHAPITRE
+  // ============================================
+  const isPdf = chapter.contentType === 'PDF';
 
   return (
-    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
+    <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
 
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <button
-            onClick={() => router.back()}
-            className="text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-zinc-900 flex items-center gap-1.5"
-          >
+          <Link href={`/manga/${mangaId}`} className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5">
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium hidden sm:inline">Retour</span>
-          </button>
-          <span className="text-base font-bold tracking-tight text-white/90">
-            @{profile.username.toLowerCase()}
+            <span className="text-sm font-medium">Retour</span>
+          </Link>
+          <span className="text-base font-bold tracking-tight text-white/90 truncate max-w-[150px]">
+            Chap. {chapterNumber}
           </span>
-          <button
-            onClick={handleShare}
-            className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleBookmark}
+              className={`p-2 rounded-full hover:bg-zinc-900 transition-colors ${isBookmarked ? "text-blue-400" : "text-zinc-400 hover:text-white"}`}
+            >
+              {isBookmarked ? <Check className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
+            </button>
+            <button
+              onClick={handleLike}
+              className={`p-2 rounded-full hover:bg-zinc-900 transition-colors ${isLiked ? "text-rose-500" : "text-zinc-400 hover:text-white"}`}
+            >
+              <Heart className={`w-5 h-5 ${isLiked ? "fill-rose-500" : ""}`} />
+            </button>
+            <button
+              onClick={handleShare}
+              className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* BANNIÈRE */}
-      <div className="h-32 md:h-48 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
-      </div>
-
-      <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
-
-        {/* AVATAR */}
-        <div className="relative mb-3 group">
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 overflow-hidden border-4 border-zinc-950 shadow-2xl ring-2 ring-blue-500/30 shrink-0">
-            {profile.avatarUrl ? (
-              <img 
-                src={profile.avatarUrl} 
-                alt={profile.username} 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-3xl md:text-4xl font-black text-blue-400 bg-gradient-to-br from-zinc-800 to-zinc-900">
-                {profile.username?.charAt(0).toUpperCase() || "?"}
-              </div>
-            )}
-          </div>
-          {/* ✅ BADGE CERTIFIÉ SUR L'AVATAR */}
-          {profile.isCertified && (
-            <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
-              <BadgeCheck
-                className="w-6 h-6 md:w-7 md:h-7"
-                fill={activeBadgeColor}
-                color="black"
-                strokeWidth={1.5}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* ✅ NOM AVEC BADGE CERTIFIÉ À CÔTÉ */}
-        <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
-          <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
-          
-          {/* ✅ BADGE CERTIFIÉ EN SVG PUR À CÔTÉ DU NOM */}
-          {profile.isCertified && (
-            <div className="group relative flex items-center justify-center">
-              <Verified
-                className="w-5 h-5 md:w-6 md:h-6"
-                fill={activeBadgeColor}
-                color="black"
-                strokeWidth={1.5}
-              />
-              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                Certifié
-              </span>
-            </div>
-          )}
-
-          {profile.premiumActive && (
-            <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
-              <Crown className="w-3 h-3 fill-current" />
-              Premium
+      {/* CONTENU */}
+      <main className="flex-1 px-4 py-6 max-w-4xl mx-auto w-full">
+        
+        {/* TITRE */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-white">
+            {chapter.title || `Chapitre ${chapterNumber}`}
+          </h1>
+          <p className="text-zinc-400 text-sm mt-1">{chapter.manga.title}</p>
+          <div className="flex items-center justify-center gap-3 mt-2 text-xs text-zinc-500">
+            <span className="flex items-center gap-1">
+              {isPdf ? <FileText className="w-3.5 h-3.5" /> : <ImageIcon className="w-3.5 h-3.5" />}
+              {chapter.pageCount || 0} {isPdf ? 'pages' : 'pages'}
             </span>
-          )}
-        </div>
-
-        {/* BIO */}
-        <p className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal">
-          {profile.bio || "Créateur sur INKDROP"}
-        </p>
-
-        {/* INFOS */}
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-6">
-          <span className="flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-blue-400" /> 
-            Membre depuis {new Date(profile.createdAt).toLocaleDateString()}
-          </span>
-          <span className="w-1 h-1 rounded-full bg-zinc-700" />
-          <span className="flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5 text-blue-400" />
-            {profile.role === 'CREATOR' ? 'Créateur' : 'Membre'}
-          </span>
-        </div>
-
-        {/* STATS SOCIALES */}
-        <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
-          <div className="text-center">
-            <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
-            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Abonnements</p>
-          </div>
-          <div className="h-7 w-[1px] bg-zinc-800" />
-          <div className="text-center">
-            <p className="text-lg md:text-xl font-black text-white">{profile._count?.followers || 0}</p>
-            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Abonnés</p>
-          </div>
-          <div className="h-7 w-[1px] bg-zinc-800" />
-          <div className="text-center">
-            <p className="text-lg md:text-xl font-black text-blue-400">{profile._count?.mangas || 0}</p>
-            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Mangas</p>
+            <span className="w-1 h-1 rounded-full bg-zinc-700" />
+            <span className={chapter.isFree ? "text-emerald-400" : "text-amber-400"}>
+              {chapter.isFree ? "Gratuit" : `${chapter.price || 0.50}$`}
+            </span>
           </div>
         </div>
 
-        {/* BOUTONS D'ACTION */}
-        <div className="flex gap-2.5 w-full max-w-md md:max-w-lg mb-8">
-          {isCurrentUser ? (
-            <>
-              <Link
-                href="/profile/edit"
-                className="flex-1 py-2.5 rounded-full bg-white hover:bg-zinc-200 text-black text-xs md:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2"
-              >
-                <Edit className="w-4 h-4" />
-                <span className="hidden sm:inline">Modifier le profil</span>
-                <span className="sm:hidden">Modifier</span>
-              </Link>
-              <Link
-                href="/creator/upload"
-                className="px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-bold transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Publier</span>
-                <span className="sm:hidden">+</span>
-              </Link>
-            </>
-          ) : (
-            <button
-              onClick={handleFollow}
-              className={`flex-1 py-2.5 rounded-full text-xs md:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 ${
-                isFollowing
-                  ? "bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700"
-                  : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20"
-              }`}
-            >
-              {isFollowing ? (
-                <>
-                  <Check className="w-4 h-4" />
-                  Abonné
-                </>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4" />
-                  S'abonner
-                </>
-              )}
-            </button>
-          )}
-          <button
-            onClick={handleShare}
-            className="p-2.5 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-800 transition-all flex items-center justify-center"
-            title="Partager"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
-        </div>
+        {/* RÉSUMÉ */}
+        {chapter.summary && (
+          <div className="bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border border-blue-500/30 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-blue-400" />
+              <h3 className="text-sm font-bold text-blue-400">Résumé du chapitre</h3>
+            </div>
+            <p className="text-zinc-300 text-sm leading-relaxed">{chapter.summary}</p>
+          </div>
+        )}
 
-        {/* BARRE D'ONGLETS */}
-        <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
-          <button
-            onClick={() => setActiveTab("mangas")}
-            className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
-              activeTab === "mangas"
-                ? "border-blue-500 text-white"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            <Grid className="w-4 h-4" />
-            <span>Mangas ({profile._count?.mangas || 0})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("about")}
-            className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
-              activeTab === "about"
-                ? "border-blue-500 text-white"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            <User className="w-4 h-4" />
-            <span>À propos</span>
-          </button>
-        </div>
-
-        {/* TAB 1 : MANGAS */}
-        {activeTab === "mangas" && (
-          <div className="w-full">
-            {!profile.mangas || profile.mangas.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center bg-zinc-900/30 rounded-2xl border border-zinc-800/40 max-w-md mx-auto my-2">
-                <BookOpen className="w-10 h-10 text-zinc-700" />
-                <p className="text-zinc-400 mt-3 text-sm font-medium">Aucun manga publié</p>
-                {isCurrentUser && (
-                  <Link
-                    href="/creator/upload"
-                    className="mt-4 px-5 py-2 rounded-full bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-all shadow shadow-blue-600/20"
-                  >
-                    Publier ton premier projet
-                  </Link>
-                )}
-              </div>
+        {/* ===== LECTEUR PDF ===== */}
+        {isPdf && (
+          <div className="bg-zinc-900/60 rounded-xl border border-zinc-800/80 overflow-hidden shadow-xl">
+            {chapter.pdfUrl ? (
+              <iframe
+                src={chapter.pdfUrl}
+                className="w-full h-[70vh] border-0"
+                title={`Chapitre ${chapterNumber}`}
+                sandbox="allow-scripts allow-same-origin"
+              />
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
-                {profile.mangas.map((manga: any) => (
-                  <Link
-                    key={manga.id}
-                    href={`/manga/${manga.id}`}
-                    className="group relative aspect-[2/3] bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800/60 hover:scale-[1.02] hover:border-blue-500/50 transition-all duration-200"
-                  >
-                    {manga.coverUrl || manga.imageUrl ? (
-                      <img 
-                        src={manga.coverUrl || manga.imageUrl} 
-                        alt={manga.title} 
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <BookOpen className="w-8 h-8 text-zinc-700" />
-                      </div>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 p-1.5 md:p-2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end justify-between">
-                      <span className="flex items-center gap-1 text-white text-[10px] md:text-xs font-bold drop-shadow">
-                        <Eye className="w-3 h-3 text-sky-400" /> {manga.viewsCount || 0}
-                      </span>
-                      <span className="flex items-center gap-1 text-white text-[10px] md:text-xs font-bold drop-shadow">
-                        <Heart className="w-3 h-3 text-rose-500 fill-rose-500" /> {manga.likesCount || 0}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
+              <div className="flex flex-col items-center justify-center h-96 bg-zinc-900/40 rounded-xl p-8 text-center">
+                <FileText className="w-12 h-12 text-zinc-600 mb-4" />
+                <p className="text-zinc-400">PDF non disponible</p>
+                <p className="text-zinc-500 text-xs mt-1">Le fichier n'a pas pu être chargé</p>
               </div>
             )}
           </div>
         )}
 
-        {/* TAB 2 : À PROPOS */}
-        {activeTab === "about" && (
-          <div className="w-full max-w-md mx-auto">
-            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 space-y-4">
-              <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                <User className="w-4 h-4 text-blue-400" />
-                <span className="text-zinc-300 text-sm">@{profile.username}</span>
-              </div>
-              {profile.bio && (
-                <div className="flex items-start gap-3 py-2 border-b border-zinc-800/40">
-                  <BookOpen className="w-4 h-4 text-blue-400 mt-0.5" />
-                  <span className="text-zinc-300 text-sm">{profile.bio}</span>
+        {/* ===== LECTEUR IMAGES ===== */}
+        {!isPdf && chapter.pages && chapter.pages.length > 0 && (
+          <div className="space-y-4">
+            {/* Compteur de pages */}
+            <div className="text-center text-sm text-zinc-500">
+              Page {currentPage + 1} / {chapter.pages.length}
+            </div>
+
+            {/* Image de la page */}
+            <div className="relative bg-zinc-900/40 rounded-xl border border-zinc-800/80 overflow-hidden shadow-xl">
+              {chapter.pages[currentPage]?.url ? (
+                <img
+                  src={chapter.pages[currentPage].url}
+                  alt={`Page ${currentPage + 1}`}
+                  className="w-full h-auto rounded-xl"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-96 bg-zinc-900/40 p-8 text-center">
+                  <ImageIcon className="w-12 h-12 text-zinc-600 mb-4" />
+                  <p className="text-zinc-400">Image non disponible</p>
+                  <p className="text-zinc-500 text-xs mt-1">Page {currentPage + 1}</p>
                 </div>
               )}
-              <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                <Calendar className="w-4 h-4 text-blue-400" />
-                <span className="text-zinc-300 text-sm">Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
-              </div>
-              <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                <Globe className="w-4 h-4 text-blue-400" />
-                <span className="text-zinc-300 text-sm">{profile.role === 'CREATOR' ? 'Créateur' : 'Membre'}</span>
-              </div>
-              {profile.isCertified && (
-                <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                  <BadgeCheck className="w-4 h-4" fill={activeBadgeColor} color="black" strokeWidth={1.5} />
-                  <span className="text-zinc-300 text-sm">Compte certifié</span>
-                </div>
+
+              {/* Navigation sur l'image */}
+              {currentPage > 0 && (
+                <button
+                  onClick={prevPage}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-zinc-950/80 hover:bg-zinc-800 border border-zinc-700 transition-all"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
               )}
-              {profile.premiumActive && (
-                <div className="flex items-center gap-3 py-2">
-                  <Crown className="w-4 h-4 text-amber-400" />
-                  <span className="text-zinc-300 text-sm">Abonnement Premium actif</span>
-                </div>
+
+              {currentPage < chapter.pages.length - 1 && (
+                <button
+                  onClick={nextPage}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-full bg-zinc-950/80 hover:bg-zinc-800 border border-zinc-700 transition-all"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              )}
+            </div>
+
+            {/* Indicateurs de progression */}
+            <div className="flex justify-center gap-1.5">
+              {chapter.pages.slice(0, 20).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setCurrentPage(index);
+                    window.scrollTo(0, 0);
+                  }}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    index === currentPage
+                      ? "w-6 bg-blue-500"
+                      : "w-1.5 bg-zinc-600 hover:bg-zinc-500"
+                  }`}
+                />
+              ))}
+              {chapter.pages.length > 20 && (
+                <span className="text-[10px] text-zinc-500 ml-1">
+                  +{chapter.pages.length - 20}
+                </span>
               )}
             </div>
           </div>
         )}
 
+        {/* SI AUCUNE PAGE DISPONIBLE */}
+        {!isPdf && (!chapter.pages || chapter.pages.length === 0) && (
+          <div className="flex flex-col items-center justify-center h-96 bg-zinc-900/40 rounded-xl border border-zinc-800/80 p-8 text-center">
+            <ImageIcon className="w-12 h-12 text-zinc-600 mb-4" />
+            <p className="text-zinc-400">Aucune page disponible</p>
+            <p className="text-zinc-500 text-xs mt-1">Ce chapitre ne contient pas d'images</p>
+          </div>
+        )}
+
+        {/* COMMENTAIRES */}
+        <div className="mt-8">
+          <CommentSection mangaId={mangaId} chapterId={chapter.id} />
+        </div>
+
+        {/* NAVIGATION ENTRE CHAPITRES */}
+        <div className="flex items-center justify-between gap-2 mt-6">
+          <Link
+            href={`/manga/${mangaId}/chapter/${chapterNumber - 1}`}
+            className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 ${
+              chapterNumber > 1
+                ? "bg-zinc-800/60 hover:bg-zinc-800 text-white border border-zinc-700/50"
+                : "bg-zinc-900/40 text-zinc-600 cursor-not-allowed pointer-events-none border border-zinc-800/30"
+            }`}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Précédent
+          </Link>
+          <Link
+            href={`/manga/${mangaId}`}
+            className="px-4 py-2.5 rounded-xl text-sm font-medium bg-zinc-800/60 hover:bg-zinc-800 text-white border border-zinc-700/50 transition-all"
+          >
+            Tous les chapitres
+          </Link>
+          <Link
+            href={`/manga/${mangaId}/chapter/${chapterNumber + 1}`}
+            className="px-4 py-2.5 rounded-xl text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-lg shadow-blue-600/20 flex items-center gap-1.5"
+          >
+            Suivant
+            <ChevronRight className="w-5 h-5" />
+          </Link>
+        </div>
       </main>
 
       <BottomNav />
