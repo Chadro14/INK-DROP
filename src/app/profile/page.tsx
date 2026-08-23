@@ -33,7 +33,8 @@ import {
   Gift,
   Clock,
   Smartphone,
-  CreditCard
+  CreditCard,
+  Bookmark // ✅ AJOUTÉ
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -59,6 +60,7 @@ type UserProfile = {
     mangas: number;
     followers: number;
     following: number;
+    favorites?: number; // ✅ AJOUTÉ
   };
   mangas?: any[];
   earnings?: {
@@ -165,7 +167,6 @@ export default function ProfilePage() {
 
   const activeBadgeColor = profile.badgeColor || profile.avatarColor || "#3B82F6";
 
-  // ✅ DÉTERMINER LE PLAN PREMIUM
   const getPlanLabel = (plan?: string | null) => {
     if (!plan) return "Premium";
     const map: Record<string, string> = {
@@ -222,7 +223,6 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
-          {/* ✅ BADGE CERTIFIÉ SUR L'AVATAR (GARDÉ) */}
           {profile.isCertified && (
             <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
               <BadgeCheck
@@ -238,7 +238,6 @@ export default function ProfilePage() {
         {/* ===== NOM & BADGES ===== */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
-          {/* ✅ SUPPRESSION DU BADGE CERTIFIÉ À CÔTÉ DU NOM */}
           {profile.premiumActive && (
             <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
               <Crown className="w-3 h-3 fill-current" />
@@ -451,7 +450,6 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* ===== DÉTAIL DES REVENUS ===== */}
             {profile.earnings && (
               <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
                 <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
@@ -543,6 +541,21 @@ export default function ProfilePage() {
                 <ChevronRight className="w-4 h-4 text-zinc-500" />
               </Link>
             )}
+
+            {/* ===== ✅ FAVORIS ===== */}
+            <Link
+              href="/favorites"
+              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Bookmark className="w-5 h-5 text-blue-400" />
+                <span className="text-sm font-semibold text-white">Mes favoris</span>
+                <span className="text-[10px] text-zinc-500">
+                  ({profile._count?.favorites || 0})
+                </span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-500" />
+            </Link>
 
             {/* ===== PARAMÈTRES ===== */}
             <Link
