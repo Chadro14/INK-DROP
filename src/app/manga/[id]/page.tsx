@@ -3,9 +3,9 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Loader } from "@/components/ui/loader";
+import { CommentSection } from "@/components/comments/CommentSection";
 import { 
   ArrowLeft, 
   Heart, 
@@ -20,10 +20,7 @@ import {
   Clock,
   ChevronRight,
   FileText,
-  Image as ImageIcon,
   AlertCircle,
-  User,
-  Star,
   Verified
 } from "lucide-react";
 
@@ -239,10 +236,9 @@ export default function MangaPage() {
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
 
-      {/* HEADER */}
+      {/* HEADER - ✅ Navigation corrigée */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
-          {/* ✅ Bouton retour vers l'accueil (pas vers le chapitre) */}
           <Link
             href="/"
             className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all flex items-center gap-2"
@@ -447,41 +443,28 @@ export default function MangaPage() {
           )}
         </div>
 
-        {/* STATS SUPPLEMENTAIRES - ABONNÉS CORRIGÉ */}
+        {/* ✅ STATS SUPPLEMENTAIRES - AVEC SUBSCRIBERS CORRIGÉ */}
         <div className="grid grid-cols-3 gap-3">
-          {/* ✅ ABONNÉS - maintenant avec subscribersCount */}
           <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4 text-center">
-            <div className="flex items-center justify-center gap-2 text-zinc-400 mb-1">
-              <Users className="w-4 h-4" />
-            </div>
+            <Users className="w-5 h-5 text-zinc-400 mx-auto mb-1" />
             <p className="text-lg font-bold text-white">{subscribersCount}</p>
             <p className="text-xs text-zinc-500">Abonnés</p>
           </div>
           <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4 text-center">
-            <div className="flex items-center justify-center gap-2 text-zinc-400 mb-1">
-              <MessageCircle className="w-4 h-4" />
-            </div>
+            <MessageCircle className="w-5 h-5 text-zinc-400 mx-auto mb-1" />
             <p className="text-lg font-bold text-white">{manga.commentsCount || 0}</p>
             <p className="text-xs text-zinc-500">Commentaires</p>
           </div>
           <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4 text-center">
-            <div className="flex items-center justify-center gap-2 text-zinc-400 mb-1">
-              <Clock className="w-4 h-4" />
-            </div>
+            <Clock className="w-5 h-5 text-zinc-400 mx-auto mb-1" />
             <p className="text-lg font-bold text-white">{manga.chapters.length}</p>
             <p className="text-xs text-zinc-500">Chapitres</p>
           </div>
         </div>
 
-        {/* ✅ SECTION COMMENTAIRES - AVEC REF */}
+        {/* ✅ SECTION COMMENTAIRES */}
         <div ref={commentRef}>
-          {/* Le composant CommentSection sera rendu ici */}
-          {/* Tu peux ajouter ton composant CommentSection existant ici */}
-          <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-6 text-center text-zinc-500">
-            <MessageCircle className="w-8 h-8 mx-auto mb-2 text-zinc-600" />
-            <p className="text-sm">Section commentaires</p>
-            <p className="text-xs text-zinc-600 mt-1">(À intégrer avec votre composant)</p>
-          </div>
+          <CommentSection mangaId={mangaId} />
         </div>
 
       </main>
