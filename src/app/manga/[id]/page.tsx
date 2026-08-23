@@ -12,6 +12,7 @@ import {
   Eye, 
   Share2, 
   Bookmark, 
+  Check,
   Users,
   MessageCircle,
   Sparkles,
@@ -23,7 +24,9 @@ import {
   Verified,
   Plus,
   Edit,
-  Star
+  Star,
+  UserPlus,
+  UserCheck
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -81,6 +84,9 @@ export default function MangaPage() {
   const [subscribersCount, setSubscribersCount] = useState(0);
   const [isViewCounted, setIsViewCounted] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  
+  // ✅ ÉTAT POUR L'ABONNEMENT
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   // ============================================
   // SCROLL VERS LES COMMENTAIRES
@@ -137,6 +143,16 @@ export default function MangaPage() {
               const favData = await favRes.json();
               setIsBookmarked(favData.isFavorite);
             }
+
+            // ✅ Vérifier si l'utilisateur est abonné
+            const subRes = await fetch(
+              `${API_URL}/social/is-subscribed/${mangaId}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (subRes.ok) {
+              const subData = await subRes.json();
+              setIsSubscribed(subData.subscribed);
+            }
           }
         }
 
@@ -182,7 +198,7 @@ export default function MangaPage() {
   };
 
   // ============================================
-  // ✅ GESTION DU LIKE - CORRIGÉ
+  // GESTION DU LIKE
   // ============================================
   const handleLike = async () => {
     const token = localStorage.getItem("token");
@@ -206,7 +222,6 @@ export default function MangaPage() {
 
       const data = await res.json();
       
-      // ✅ UTILISER LE COMPTEUR RENVOYÉ PAR LE BACKEND
       setIsLiked(data.liked);
       setLikesCount(data.likesCount);
       
@@ -217,7 +232,7 @@ export default function MangaPage() {
   };
 
   // ============================================
-  // ✅ GESTION DU FAVORI (BOOKMARK)
+  // GESTION DU FAVORI (BOOKMARK)
   // ============================================
   const handleBookmark = async () => {
     const token = localStorage.getItem("token");
@@ -244,6 +259,38 @@ export default function MangaPage() {
       console.log(`✅ Favori ${data.isFavorite ? "ajouté" : "retiré"}`);
     } catch (err: any) {
       console.error("❌ Erreur favori:", err);
+    }
+  };
+
+  // ============================================
+  // ✅ GESTION DE L'ABONNEMENT
+  // ============================================
+  const handleSubscribe = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/social/subscribe/${mangaId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur lors de l'abonnement");
+      }
+
+      const data = await res.json();
+      setIsSubscribed(data.subscribed);
+      setSubscribersCount((prev) => data.subscribed ? prev + 1 : prev - 1);
+      console.log(`✅ Abonnement ${data.subscribed ? "ajouté" : "retiré"}`);
+    } catch (err: any) {
+      console.error("❌ Erreur abonnement:", err);
     }
   };
 
@@ -358,13 +405,18 @@ export default function MangaPage() {
               >
                 {manga.author.username}
               </Link>
-              {/* ✅ BADGE CERTIFIÉ EN SVG PUR - SANS TEXTE */}
+              {/* ✅ BADGE CERTIFIÉ EN SVG PUR - AVEC LA COULEUR PERSONNALISÉE */}
               {manga.author.isCertified && (
                 <div 
                   className="group relative flex items-center justify-center"
                   title="Compte certifié"
                 >
-                  <Star className="w-4 h-4 md:w-5 md:h-5 text-amber-400 fill-amber-400" />
+                  <Verified
+                    className="w-4 h-4 md:w-5 md:h-5"
+                    fill={manga.author.badgeColor || "#3B82F6"}
+                    color="black"
+                    strokeWidth={1.5}
+                  />
                   <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                     Certifié
                   </span>
@@ -375,10 +427,11 @@ export default function MangaPage() {
         </div>
       </div>
 
-      {/* STATS - LIKES, VUES, COMMENTAIRES */}
+      {/* STATS - LIKES, VUES, COMMENTAIRES + ABONNEMENT */}
       <div className="max-w-4xl mx-auto w-full px-4 -mt-4 relative z-10">
         <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 md:p-6 backdrop-blur-md flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-wrap">
+            {/* ✅ LIKE */}
             <button
               onClick={handleLike}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
@@ -391,11 +444,13 @@ export default function MangaPage() {
               <span className="font-bold">{likesCount}</span>
             </button>
 
+            {/* ✅ VUES */}
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800/60 text-zinc-400 border border-zinc-700/30">
               <Eye className="w-5 h-5" />
               <span className="font-bold">{viewsCount}</span>
             </div>
 
+            {/* ✅ COMMENTAIRES */}
             <button
               onClick={scrollToComments}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all border border-zinc-700/30"
@@ -403,6 +458,33 @@ export default function MangaPage() {
               <MessageCircle className="w-5 h-5" />
               <span className="font-bold">{manga.commentsCount || 0}</span>
             </button>
+
+            {/* ✅ ABONNEMENT - UNIQUEMENT POUR LES LECTEURS (pas le créateur) */}
+            {user && user.id !== manga.author.id && (
+              <button
+                onClick={handleSubscribe}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
+                  isSubscribed
+                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                    : "bg-zinc-800/60 text-zinc-400 hover:bg-zinc-800 hover:text-white border border-zinc-700/30"
+                }`}
+              >
+                {isSubscribed ? (
+                  <UserCheck className="w-5 h-5" />
+                ) : (
+                  <UserPlus className="w-5 h-5" />
+                )}
+                <span className="font-bold">{subscribersCount}</span>
+              </button>
+            )}
+
+            {/* ✅ SI L'UTILISATEUR EST LE CRÉATEUR, AFFICHER SEULEMENT LE COMPTEUR */}
+            {(!user || user.id === manga.author.id) && (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800/60 text-zinc-400 border border-zinc-700/30">
+                <Users className="w-5 h-5" />
+                <span className="font-bold">{subscribersCount}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-3">
