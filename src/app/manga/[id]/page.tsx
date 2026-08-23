@@ -24,7 +24,6 @@ import {
   Verified,
   Plus,
   Edit,
-  Star,
   UserPlus,
   UserCheck
 } from "lucide-react";
@@ -85,7 +84,6 @@ export default function MangaPage() {
   const [isViewCounted, setIsViewCounted] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   
-  // ✅ ÉTAT POUR L'ABONNEMENT
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   // ============================================
@@ -93,6 +91,18 @@ export default function MangaPage() {
   // ============================================
   const scrollToComments = () => {
     commentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // ============================================
+  // GÉNÉRER UN SESSION ID
+  // ============================================
+  const generateSessionId = () => {
+    const existing = localStorage.getItem("sessionId");
+    if (existing) return existing;
+
+    const newId = crypto.randomUUID();
+    localStorage.setItem("sessionId", newId);
+    return newId;
   };
 
   // ============================================
@@ -134,7 +144,6 @@ export default function MangaPage() {
               setIsLiked(likeData.liked);
             }
 
-            // ✅ Vérifier si le manga est en favori
             const favRes = await fetch(
               `${API_URL}/favorites/check/${mangaId}`,
               { headers: { Authorization: `Bearer ${token}` } }
@@ -144,7 +153,6 @@ export default function MangaPage() {
               setIsBookmarked(favData.isFavorite);
             }
 
-            // ✅ Vérifier si l'utilisateur est abonné
             const subRes = await fetch(
               `${API_URL}/social/is-subscribed/${mangaId}`,
               { headers: { Authorization: `Bearer ${token}` } }
@@ -156,9 +164,8 @@ export default function MangaPage() {
           }
         }
 
-        if (!isViewCounted) {
-          await incrementView();
-        }
+        // ✅ INCÉMENTER LA VUE (1 VUE = 1 PERSONNE - MÉTHODE TIKTOK)
+        await incrementView();
 
         console.log("✅ Chargement terminé");
       } catch (err: any) {
@@ -173,24 +180,34 @@ export default function MangaPage() {
   }, [mangaId]);
 
   // ============================================
-  // INCRÉMENTER LES VUES
+  // ✅ INCRÉMENTER LES VUES (MÉTHODE TIKTOK)
   // ============================================
   const incrementView = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/mangas/${mangaId}/view`, {
+      const sessionId = generateSessionId();
+
+      const res = await fetch(`${API_URL}/views/increment`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` }),
         },
+        body: JSON.stringify({
+          mangaId,
+          sessionId,
+        }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        setViewsCount(data.viewsCount || viewsCount + 1);
-        setIsViewCounted(true);
-        console.log("✅ Vue incrémentée:", data.viewsCount);
+        if (data.counted) {
+          setViewsCount(data.viewsCount);
+          setIsViewCounted(true);
+          console.log("✅ Vue comptabilisée:", data.viewsCount);
+        } else {
+          console.log("⏭️ Déjà vu, pas de re-comptage (méthode TikTok)");
+        }
       }
     } catch (err) {
       console.error("❌ Erreur vue:", err);
@@ -263,7 +280,7 @@ export default function MangaPage() {
   };
 
   // ============================================
-  // ✅ GESTION DE L'ABONNEMENT
+  // GESTION DE L'ABONNEMENT
   // ============================================
   const handleSubscribe = async () => {
     const token = localStorage.getItem("token");
@@ -383,7 +400,6 @@ export default function MangaPage() {
               {manga.title}
             </h1>
             
-            {/* ✅ AUTEUR AVEC AVATAR ET BADGE CERTIFIÉ - VERSION ÉPURÉE */}
             <div className="flex items-center gap-3 mt-2">
               {manga.author.avatarUrl ? (
                 <img
@@ -405,7 +421,6 @@ export default function MangaPage() {
               >
                 {manga.author.username}
               </Link>
-              {/* ✅ BADGE CERTIFIÉ EN SVG PUR - AVEC LA COULEUR PERSONNALISÉE */}
               {manga.author.isCertified && (
                 <div 
                   className="group relative flex items-center justify-center"
@@ -431,7 +446,6 @@ export default function MangaPage() {
       <div className="max-w-4xl mx-auto w-full px-4 -mt-4 relative z-10">
         <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 md:p-6 backdrop-blur-md flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-wrap">
-            {/* ✅ LIKE */}
             <button
               onClick={handleLike}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
@@ -444,13 +458,11 @@ export default function MangaPage() {
               <span className="font-bold">{likesCount}</span>
             </button>
 
-            {/* ✅ VUES */}
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800/60 text-zinc-400 border border-zinc-700/30">
               <Eye className="w-5 h-5" />
               <span className="font-bold">{viewsCount}</span>
             </div>
 
-            {/* ✅ COMMENTAIRES */}
             <button
               onClick={scrollToComments}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800/60 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all border border-zinc-700/30"
@@ -459,7 +471,6 @@ export default function MangaPage() {
               <span className="font-bold">{manga.commentsCount || 0}</span>
             </button>
 
-            {/* ✅ ABONNEMENT - UNIQUEMENT POUR LES LECTEURS (pas le créateur) */}
             {user && user.id !== manga.author.id && (
               <button
                 onClick={handleSubscribe}
@@ -478,7 +489,6 @@ export default function MangaPage() {
               </button>
             )}
 
-            {/* ✅ SI L'UTILISATEUR EST LE CRÉATEUR, AFFICHER SEULEMENT LE COMPTEUR */}
             {(!user || user.id === manga.author.id) && (
               <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800/60 text-zinc-400 border border-zinc-700/30">
                 <Users className="w-5 h-5" />
@@ -533,23 +543,15 @@ export default function MangaPage() {
           </div>
         )}
 
-        {/* BOUTONS D'ACTION POUR LE CRÉATEUR */}
+        {/* ✅ BOUTON AJOUTER UN CHAPITRE SEULEMENT (SUPPRESSION DU BOUTON MODIFIER) */}
         {user && user.id === manga.author.id && (
-          <div className="flex gap-3">
-            <Link
-              href={`/manga/${mangaId}/chapter/new`}
-              className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Ajouter un chapitre
-            </Link>
-            <Link
-              href={`/manga/${mangaId}/edit`}
-              className="px-4 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-            >
-              <Edit className="w-5 h-5" />
-            </Link>
-          </div>
+          <Link
+            href={`/manga/${mangaId}/chapter/new`}
+            className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Ajouter un chapitre
+          </Link>
         )}
 
         {/* CHAPITRES */}
