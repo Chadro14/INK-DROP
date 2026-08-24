@@ -167,6 +167,7 @@ export default function PremiumPage() {
     }
   };
 
+  // ✅ CORRECTION : Rediriger vers /payment au lieu de /premium/subscribe
   const handleSubscribe = (planId: string) => {
     if (!isAuthenticated) {
       router.push("/login?redirect=/premium");
@@ -246,7 +247,6 @@ export default function PremiumPage() {
                   </div>
                 )}
 
-                {/* ✅ BADGE ACTUEL */}
                 {isCurrentPlan && (
                   <div className="absolute -top-3 right-1/2 translate-x-1/2 px-4 py-1 rounded-full bg-emerald-500 text-white text-xs font-bold flex items-center gap-1">
                     <Check className="w-3 h-3" />
