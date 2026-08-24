@@ -16,7 +16,8 @@ import {
   Loader2,
   Lock,
   Heart,
-  Crown
+  Crown,
+  Globe
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -36,6 +37,33 @@ type Operator = {
   description: string;
 };
 
+// ✅ PAYS SUPPORTÉS PAR PAWAPAY
+type Country = {
+  name: string;
+  code: string;
+  operators: string[];
+};
+
+const countries: Country[] = [
+  { name: "République Démocratique du Congo", code: "+243", operators: ["orange", "mpesa"] },
+  { name: "Kenya", code: "+254", operators: ["mpesa"] },
+  { name: "Ghana", code: "+233", operators: ["mpesa"] },
+  { name: "Zambie", code: "+260", operators: ["mpesa"] },
+  { name: "Côte d'Ivoire", code: "+225", operators: ["orange"] },
+  { name: "Sénégal", code: "+221", operators: ["orange"] },
+  { name: "Cameroun", code: "+237", operators: ["orange", "mpesa"] },
+  { name: "Bénin", code: "+229", operators: ["orange"] },
+  { name: "Burkina Faso", code: "+226", operators: ["orange"] },
+  { name: "Gabon", code: "+241", operators: ["orange"] },
+  { name: "Mozambique", code: "+258", operators: ["mpesa"] },
+  { name: "Niger", code: "+227", operators: ["orange"] },
+  { name: "Rwanda", code: "+250", operators: ["mpesa"] },
+  { name: "Sierra Leone", code: "+232", operators: ["orange"] },
+  { name: "Tanzanie", code: "+255", operators: ["mpesa"] },
+  { name: "Ouganda", code: "+256", operators: ["mpesa"] },
+  { name: "Malawi", code: "+265", operators: ["mpesa"] },
+];
+
 function PaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -45,6 +73,7 @@ function PaymentContent() {
   const [processing, setProcessing] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [operator, setOperator] = useState<string>("orange");
+  const [country, setCountry] = useState<string>("République Démocratique du Congo");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
@@ -90,12 +119,52 @@ function PaymentContent() {
     },
   ];
 
+  // ✅ Récupérer le code pays sélectionné
+  const selectedCountry = countries.find(c => c.name === country);
+  const countryCode = selectedCountry?.code || "+243";
+
+  // ✅ Filtrer les opérateurs disponibles pour le pays sélectionné
+  const availableOperators = operators.filter(op => 
+    selectedCountry?.operators.includes(op.id)
+  );
+
+  // ✅ Validation du numéro selon l'opérateur
+  const validatePhoneNumber = (phone: string, op: string): boolean => {
+    const clean = phone.replace(/\D/g, '');
+    
+    if (clean.length < 7 || clean.length > 15) {
+      return false;
+    }
+
+    if (op === "mpesa") {
+      // M-Pesa : commence par 07, 08, 09, ou 7 (Kenya)
+      return /^(07|08|09|7)\d{7,13}$/.test(clean);
+    }
+
+    if (op === "orange") {
+      // Orange Money : commence par 07, 08, 77, 78, 79
+      return /^(07|08|77|78|79)\d{7,13}$/.test(clean);
+    }
+
+    return true;
+  };
+
   // ============================================
   // ✅ INITIER LE PAIEMENT
   // ============================================
   const handlePayment = async () => {
-    if (!phoneNumber || phoneNumber.length < 8) {
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+
+    // ✅ Vérifier que le numéro est rempli
+    if (!phoneNumber || cleanPhone.length < 7) {
       setError("Veuillez entrer un numéro de téléphone valide");
+      return;
+    }
+
+    // ✅ Vérifier que le numéro correspond à l'opérateur
+    if (!validatePhoneNumber(cleanPhone, operator)) {
+      const opName = operator === "mpesa" ? "M-Pesa" : "Orange Money";
+      setError(`Le numéro ne correspond pas à ${opName}. Vérifiez votre numéro.`);
       return;
     }
 
@@ -110,16 +179,22 @@ function PaymentContent() {
         return;
       }
 
-      // ✅ APPEL AU BACKEND
-      const res = await fetch(`${API_URL}/premium/subscribe`, {
+      // ✅ APPEL AU BACKEND AVEC TOUTES LES INFOS
+      const res = await fetch(`${API_URL}/payments/initiate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          plan: planId,
-          paymentMethod: "mobile_money",
+          amount: plan.price,
+          currency: "USD",
+          phoneNumber: cleanPhone,
+          operator: operator,
+          type: "PREMIUM",
+          plan: planId === "yearly" ? "yearly" : "monthly",
+          country: country,
+          description: `Abonnement ${plan.name}`,
         }),
       });
 
@@ -209,6 +284,32 @@ function PaymentContent() {
           </div>
         </div>
 
+        {/* ===== PAYS ===== */}
+        <div className="space-y-2 mb-6">
+          <label className="text-sm font-semibold text-zinc-300 flex items-center gap-2">
+            <Globe className="w-4 h-4 text-amber-400" />
+            Pays
+          </label>
+          <select
+            value={country}
+            onChange={(e) => {
+              setCountry(e.target.value);
+              // ✅ Réinitialiser l'opérateur si non disponible
+              const newCountry = countries.find(c => c.name === e.target.value);
+              if (newCountry && !newCountry.operators.includes(operator)) {
+                setOperator(newCountry.operators[0] || "orange");
+              }
+            }}
+            className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-white focus:border-amber-500 outline-none transition-all appearance-none"
+          >
+            {countries.map((c) => (
+              <option key={c.name} value={c.name}>
+                {c.name} ({c.code})
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* ===== OPÉRATEUR ===== */}
         <div className="space-y-3 mb-6">
           <label className="text-sm font-semibold text-zinc-300 flex items-center gap-2">
@@ -216,27 +317,33 @@ function PaymentContent() {
             Choisissez votre opérateur
           </label>
           <div className="grid grid-cols-2 gap-3">
-            {operators.map((op) => (
-              <button
-                key={op.id}
-                onClick={() => setOperator(op.id)}
-                className={`p-4 rounded-xl border text-center transition-all ${
-                  operator === op.id
-                    ? `border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-900/20`
-                    : `border-zinc-800 hover:border-zinc-700`
-                }`}
-              >
-                <img
-                  src={op.icon}
-                  alt={op.name}
-                  className="h-8 w-auto mx-auto mb-1 object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <p className="text-xs font-medium text-zinc-300">{op.name}</p>
-              </button>
-            ))}
+            {availableOperators.length > 0 ? (
+              availableOperators.map((op) => (
+                <button
+                  key={op.id}
+                  onClick={() => setOperator(op.id)}
+                  className={`p-4 rounded-xl border text-center transition-all ${
+                    operator === op.id
+                      ? `border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-900/20`
+                      : `border-zinc-800 hover:border-zinc-700`
+                  }`}
+                >
+                  <img
+                    src={op.icon}
+                    alt={op.name}
+                    className="h-8 w-auto mx-auto mb-1 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                  <p className="text-xs font-medium text-zinc-300">{op.name}</p>
+                </button>
+              ))
+            ) : (
+              <p className="text-sm text-zinc-500 col-span-2 text-center py-4">
+                Aucun opérateur disponible pour ce pays
+              </p>
+            )}
           </div>
         </div>
 
@@ -248,7 +355,7 @@ function PaymentContent() {
           </label>
           <div className="relative">
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">
-              +243
+              {countryCode}
             </span>
             <input
               type="tel"
@@ -258,7 +365,14 @@ function PaymentContent() {
               className="w-full pl-14 pr-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:border-amber-500 outline-none transition-all"
             />
           </div>
-          <p className="text-xs text-zinc-500">Exemple: 812345678</p>
+          <p className="text-xs text-zinc-500">
+            Exemple: {countryCode} 812345678
+          </p>
+          {operator && (
+            <p className="text-[10px] text-zinc-600">
+              {operator === "mpesa" ? "📱 M-Pesa" : "📱 Orange Money"} : Le numéro doit correspondre à l'opérateur sélectionné
+            </p>
+          )}
         </div>
 
         {/* ===== ERREUR ===== */}
@@ -272,7 +386,7 @@ function PaymentContent() {
         {/* ===== BOUTON PAYER ===== */}
         <button
           onClick={handlePayment}
-          disabled={processing}
+          disabled={processing || availableOperators.length === 0}
           className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-bold text-base transition-all shadow-lg shadow-amber-900/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {processing ? (
