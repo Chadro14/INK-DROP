@@ -3,6 +3,7 @@ import { Outfit } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import AiChatbot from '@/components/ai/AiChatbot';
+import { SocketProvider } from '@/providers/SocketProvider'; // ✅ AJOUTÉ
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -79,7 +80,10 @@ export default function RootLayout({
       </head>
       <body className={`${outfit.variable} min-h-screen flex flex-col bg-black text-white`}>
         <Providers>
-          {children}
+          {/* ✅ WRAPPER AVEC LE SOCKET PROVIDER */}
+          <SocketProvider>
+            {children}
+          </SocketProvider>
           <AiChatbot />
         </Providers>
       </body>
