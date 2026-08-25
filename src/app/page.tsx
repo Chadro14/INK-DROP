@@ -23,8 +23,10 @@ import {
   Library,
   BadgeCheck,
   Loader2,
-  RotateCcw
+  RotateCcw,
+  Bell
 } from "lucide-react";
+import { io, Socket } from 'socket.io-client';
 
 const API_URL = "https://ink-backend.vercel.app";
 const SAVE_DEBOUNCE = 500;
@@ -175,6 +177,14 @@ export default function Home() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
+
+  // ============================================
+  // ✅ NOTIFICATIONS : ÉTATS ET SOCKET
+  // ============================================
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotification, setShowNotification] = useState(false);
+  const [latestNotification, setLatestNotification] = useState<any>(null);
 
   // ============================================
   // SAUVEGARDER DANS LE BACKEND
@@ -337,6 +347,54 @@ export default function Home() {
       saveStateDebounced();
     }
   }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage, loading, isRestored, saveStateDebounced]);
+
+  // ============================================
+  // ✅ WEBSOCKET - CONNEXION AUX NOTIFICATIONS
+  // ============================================
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const userId = payload.id;
+
+      if (!userId) return;
+
+      const newSocket = io(API_URL, {
+        query: { userId },
+        transports: ['websocket'],
+      });
+
+      newSocket.on('connect', () => {
+        console.log('✅ Connecté au serveur WebSocket');
+      });
+
+      newSocket.on('notification', (data) => {
+        console.log('📩 Notification reçue:', data);
+        setLatestNotification(data);
+        setShowNotification(true);
+        
+        setNotifications((prev) => [data, ...prev]);
+        
+        setTimeout(() => {
+          setShowNotification(false);
+        }, 5000);
+      });
+
+      newSocket.on('disconnect', () => {
+        console.log('❌ Déconnecté du serveur WebSocket');
+      });
+
+      setSocket(newSocket);
+
+      return () => {
+        newSocket.disconnect();
+      };
+    } catch (error) {
+      console.error('❌ Erreur connexion WebSocket:', error);
+    }
+  }, []);
 
   // ============================================
   // ✅ NAVIGATION VERS LE PROFIL D'UN CRÉATEUR (CORRIGÉ)
@@ -1244,6 +1302,30 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ===== ✅ TOAST DE NOTIFICATION ===== */}
+      {showNotification && latestNotification && (
+        <div className="fixed top-4 left-4 right-4 z-50 max-w-sm mx-auto bg-zinc-900 border border-blue-500/30 rounded-2xl shadow-2xl shadow-blue-900/30 p-4 animate-slide-down">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-full bg-blue-500/20 flex-shrink-0">
+              <Bell className="w-4 h-4 text-blue-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white">{latestNotification.title || 'Nouvelle notification'}</p>
+              <p className="text-xs text-zinc-400">{latestNotification.body || ''}</p>
+              <p className="text-[10px] text-zinc-500 mt-1">
+                {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowNotification(false)}
+              className="text-zinc-500 hover:text-white transition-colors flex-shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ===== ✅ NOTIFICATION D'INSTALLATION PWA (CENTRÉE) ===== */}
       {showInstallBanner && !isAppInstalled && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
@@ -1285,18 +1367,15 @@ export default function Home() {
               </svg>
             </div>
 
-            {/* Titre */}
             <h2 className="text-2xl font-extrabold text-white text-center">
               Installer INKDROP
             </h2>
 
-            {/* Description */}
             <p className="text-zinc-400 text-center mt-2 text-sm leading-relaxed">
               Profitez de l'application <br />
               <span className="text-blue-400 font-medium">plus rapide et hors ligne</span>
             </p>
 
-            {/* Avantages */}
             <div className="flex justify-center gap-6 mt-4 text-xs text-zinc-500">
               <div className="text-center">
                 <svg className="w-5 h-5 mx-auto text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1321,7 +1400,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Bouton Installer */}
             <button
               onClick={handleInstall}
               className="w-full mt-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-bold text-base transition-all shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2"
@@ -1333,7 +1411,6 @@ export default function Home() {
               Installer l'application
             </button>
 
-            {/* Pas maintenant */}
             <button
               onClick={handleDismissInstall}
               className="w-full mt-3 py-2 text-zinc-500 hover:text-zinc-300 text-sm font-medium transition-colors"
