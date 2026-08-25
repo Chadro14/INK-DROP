@@ -35,7 +35,7 @@ import {
   Smartphone,
   CreditCard,
   Bookmark,
-  Bell // ✅ AJOUTÉ
+  Bell
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -148,39 +148,29 @@ export default function ProfilePage() {
     }
   };
 
-  // ============================================
-  // ✅ TESTER LES NOTIFICATIONS
-  // ============================================
-  const testNotification = async () => {
+  // ✅ RÉCUPÉRER LE NOMBRE DE NOTIFICATIONS NON LUES
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
     const token = localStorage.getItem("token");
-    if (!token) {
-      alert("Connecte-toi d'abord !");
-      return;
-    }
+    if (!token) return;
 
     try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/notifications/test`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const res = await fetch(`${API_URL}/notifications/unread`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Erreur lors de l'envoi");
+      if (res.ok) {
+        const data = await res.json();
+        setUnreadCount(data.count || 0);
       }
-
-      alert("✅ Notification de test envoyée ! Vérifie le coin en haut à gauche.");
-      console.log("✅ Notification envoyée:", data);
-    } catch (err: any) {
-      alert("❌ Erreur: " + err.message);
-      console.error("❌ Erreur notification:", err);
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error("Erreur chargement notifications non lues:", error);
     }
   };
+
+  useEffect(() => {
+    fetchUnreadCount();
+  }, []);
 
   if (loading) {
     return <Loader message="Chargement de votre profil" />;
@@ -223,6 +213,18 @@ export default function ProfilePage() {
             @{profile.username.toLowerCase()}
           </span>
           <div className="flex items-center gap-2 md:gap-3 text-zinc-400">
+            {/* ✅ BOUTON NOTIFICATIONS - AJOUTÉ */}
+            <Link
+              href="/notifications"
+              className="relative p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
             <button onClick={handleShare} className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all">
               <Share2 className="w-5 h-5" />
             </button>
@@ -592,18 +594,7 @@ export default function ProfilePage() {
               <ChevronRight className="w-4 h-4 text-zinc-500" />
             </Link>
 
-            {/* ===== ✅ TEST NOTIFICATION ===== */}
-            <button
-              onClick={testNotification}
-              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-blue-500/30 transition-all group"
-            >
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-blue-400" />
-                <span className="text-sm font-semibold text-white">Tester les notifications</span>
-                <span className="text-[10px] text-zinc-500">(🔔 WebSocket)</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-blue-400 transition-colors" />
-            </button>
+            {/* ===== ANCIEN TEST NOTIFICATION SUPPRIMÉ ===== */}
 
             {/* ===== PARAMÈTRES ===== */}
             <Link
