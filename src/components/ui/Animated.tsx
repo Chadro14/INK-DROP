@@ -34,7 +34,7 @@ export const FadeIn = ({
 );
 
 // ============================================
-// 2. FADE IN UP - Apparition par le bas (plus marqué)
+// 2. FADE IN UP - Apparition par le bas
 // ============================================
 export const FadeInUp = ({ 
   children, 
@@ -253,6 +253,83 @@ export const PageTransition = ({
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, y: -10 }}
     transition={{ duration: 0.3, ease: "easeInOut" }}
+    className={className}
+  >
+    {children}
+  </motion.div>
+);
+
+// ============================================
+// 11. TYPEWRITER - Effet machine à écrire
+// ============================================
+interface TypewriterProps {
+  text: string;
+  className?: string;
+  speed?: number;
+  delay?: number;
+}
+
+export const Typewriter = ({ 
+  text, 
+  className = "", 
+  speed = 0.05, 
+  delay = 0 
+}: TypewriterProps) => {
+  const words = text.split(' ');
+  
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: (i = 1) => ({
+      opacity: 1,
+      transition: { staggerChildren: speed, delayChildren: delay },
+    }),
+  };
+
+  const childVariants = {
+    hidden: { opacity: 0, y: 10 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        damping: 12,
+        stiffness: 100,
+      },
+    },
+  };
+
+  return (
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className={className}
+    >
+      {words.map((word, index) => (
+        <motion.span
+          key={index}
+          variants={childVariants}
+          className="inline-block mr-1"
+        >
+          {word}
+        </motion.span>
+      ))}
+    </motion.div>
+  );
+};
+
+// ============================================
+// 12. SHAKE - Secousse (pour erreurs)
+// ============================================
+export const Shake = ({ 
+  children, 
+  className = "" 
+}: { children: ReactNode; className?: string }) => (
+  <motion.div
+    animate={{ 
+      x: [0, -10, 10, -10, 10, 0],
+      transition: { duration: 0.5, ease: "easeInOut" }
+    }}
     className={className}
   >
     {children}
