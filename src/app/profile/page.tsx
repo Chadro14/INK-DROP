@@ -34,7 +34,8 @@ import {
   Clock,
   Smartphone,
   CreditCard,
-  Bookmark // ✅ AJOUTÉ
+  Bookmark,
+  Bell // ✅ AJOUTÉ
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -60,7 +61,7 @@ type UserProfile = {
     mangas: number;
     followers: number;
     following: number;
-    favorites?: number; // ✅ AJOUTÉ
+    favorites?: number;
   };
   mangas?: any[];
   earnings?: {
@@ -144,6 +145,40 @@ export default function ProfilePage() {
     } else {
       navigator.clipboard.writeText(shareUrl);
       alert("Lien copié !");
+    }
+  };
+
+  // ============================================
+  // ✅ TESTER LES NOTIFICATIONS
+  // ============================================
+  const testNotification = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Connecte-toi d'abord !");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/notifications/test`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Erreur lors de l'envoi");
+      }
+
+      alert("✅ Notification de test envoyée ! Vérifie le coin en haut à gauche.");
+      console.log("✅ Notification envoyée:", data);
+    } catch (err: any) {
+      alert("❌ Erreur: " + err.message);
+      console.error("❌ Erreur notification:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -542,7 +577,7 @@ export default function ProfilePage() {
               </Link>
             )}
 
-            {/* ===== ✅ FAVORIS ===== */}
+            {/* ===== FAVORIS ===== */}
             <Link
               href="/favorites"
               className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
@@ -556,6 +591,19 @@ export default function ProfilePage() {
               </div>
               <ChevronRight className="w-4 h-4 text-zinc-500" />
             </Link>
+
+            {/* ===== ✅ TEST NOTIFICATION ===== */}
+            <button
+              onClick={testNotification}
+              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-blue-500/30 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <Bell className="w-5 h-5 text-blue-400" />
+                <span className="text-sm font-semibold text-white">Tester les notifications</span>
+                <span className="text-[10px] text-zinc-500">(🔔 WebSocket)</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-blue-400 transition-colors" />
+            </button>
 
             {/* ===== PARAMÈTRES ===== */}
             <Link
