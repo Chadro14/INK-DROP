@@ -23,7 +23,6 @@ import {
   AlertCircle,
   Verified,
   Plus,
-  Edit,
   UserPlus,
   UserCheck,
   Lock
@@ -165,7 +164,6 @@ export default function MangaPage() {
           }
         }
 
-        // ✅ INCÉMENTER LA VUE (1 VUE = 1 PERSONNE - MÉTHODE TIKTOK)
         await incrementView();
 
         console.log("✅ Chargement terminé");
@@ -181,7 +179,7 @@ export default function MangaPage() {
   }, [mangaId]);
 
   // ============================================
-  // ✅ INCRÉMENTER LES VUES (MÉTHODE TIKTOK)
+  // INCRÉMENTER LES VUES (MÉTHODE TIKTOK)
   // ============================================
   const incrementView = async () => {
     try {
@@ -554,7 +552,7 @@ export default function MangaPage() {
           </div>
         )}
 
-        {/* ✅ BOUTON AJOUTER UN CHAPITRE - SANS LIMITE */}
+        {/* BOUTON AJOUTER UN CHAPITRE */}
         {user && user.id === manga.author.id && (
           <Link
             href={`/manga/${mangaId}/chapter/new`}
@@ -610,7 +608,10 @@ export default function MangaPage() {
                           {chapter.isFree ? (
                             <span className="text-emerald-400 font-medium">Gratuit</span>
                           ) : (
-                            <span className="text-amber-400 font-medium">{chapter.price || 0.50}$</span>
+                            <span className="text-amber-400 font-medium">
+                              {chapter.price || 0.50}$
+                              {isPaid && <span className="text-[10px] text-zinc-500 ml-1">(50 MANAS)</span>}
+                            </span>
                           )}
                         </div>
                       </div>
