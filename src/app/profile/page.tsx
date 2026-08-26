@@ -35,7 +35,8 @@ import {
   Smartphone,
   CreditCard,
   Bookmark,
-  Bell
+  Bell,
+  Coins as ManasIcon
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -213,7 +214,7 @@ export default function ProfilePage() {
             @{profile.username.toLowerCase()}
           </span>
           <div className="flex items-center gap-2 md:gap-3 text-zinc-400">
-            {/* ✅ BOUTON NOTIFICATIONS - AJOUTÉ */}
+            {/* ✅ BOUTON NOTIFICATIONS */}
             <Link
               href="/notifications"
               className="relative p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all"
@@ -306,7 +307,7 @@ export default function ProfilePage() {
           </span>
         </div>
 
-        {/* ===== STATS SOCIALES ===== */}
+        {/* ===== STATS SOCIALES + SOLDE MANAS ===== */}
         <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
           <div className="text-center">
             <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
@@ -319,7 +320,10 @@ export default function ProfilePage() {
           </div>
           <div className="h-7 w-[1px] bg-zinc-800" />
           <div className="text-center">
-            <p className="text-lg md:text-xl font-black text-blue-400">{profile.manas || 0}</p>
+            <p className="text-lg md:text-xl font-black text-blue-400 flex items-center justify-center gap-1">
+              <ManasIcon className="w-5 h-5" />
+              {profile.manas || 0}
+            </p>
             <p className="text-[11px] md:text-xs text-zinc-400 font-medium">MANAS</p>
           </div>
         </div>
@@ -593,8 +597,6 @@ export default function ProfilePage() {
               </div>
               <ChevronRight className="w-4 h-4 text-zinc-500" />
             </Link>
-
-            {/* ===== ANCIEN TEST NOTIFICATION SUPPRIMÉ ===== */}
 
             {/* ===== PARAMÈTRES ===== */}
             <Link
