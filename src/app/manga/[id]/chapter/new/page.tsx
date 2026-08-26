@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import {
@@ -14,6 +14,8 @@ import {
   Sparkles,
   Plus,
   X,
+  Lock,
+  Coins,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -34,6 +36,42 @@ export default function ChapterUploadPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // ✅ ÉTATS POUR LE CHAPITRE PAYANT
+  const [totalChapters, setTotalChapters] = useState(0);
+  const [isPaidChapter, setIsPaidChapter] = useState(false);
+  const [canBePaid, setCanBePaid] = useState(false);
+  const [paidPages, setPaidPages] = useState<number[]>([]);
+
+  // ✅ RÉCUPÉRER LE NOMBRE TOTAL DE CHAPITRES
+  useEffect(() => {
+    const fetchTotalChapters = async () => {
+      try {
+        const res = await fetch(`${API_URL}/mangas/${mangaId}/chapters`);
+        if (res.ok) {
+          const data = await res.json();
+          setTotalChapters(data.length || 0);
+        }
+      } catch (error) {
+        console.error("Erreur récupération chapitres:", error);
+      }
+    };
+
+    if (mangaId) {
+      fetchTotalChapters();
+    }
+  }, [mangaId]);
+
+  // ✅ VÉRIFIER SI LE CHAPITRE PEUT ÊTRE PAYANT
+  useEffect(() => {
+    const num = parseInt(number);
+    if (!isNaN(num) && totalChapters >= 10 && num === totalChapters) {
+      setCanBePaid(true);
+    } else {
+      setCanBePaid(false);
+      setIsPaidChapter(false);
+    }
+  }, [number, totalChapters]);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selected = Array.from(e.target.files);
@@ -43,6 +81,15 @@ export default function ChapterUploadPage() {
 
   const removePhoto = (index: number) => {
     setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ✅ TOGGLE POUR MARQUER UNE PAGE COMME PAYANTE
+  const togglePagePaid = (index: number) => {
+    setPaidPages((prev) =>
+      prev.includes(index)
+        ? prev.filter((i) => i !== index)
+        : [...prev, index]
+    );
   };
 
   const getMimeType = (file: File): string => {
@@ -62,9 +109,6 @@ export default function ChapterUploadPage() {
     return mimeTypes[ext || ''] || 'application/octet-stream';
   };
 
-  // ============================================
-  // ✅ handleSubmit CORRIGÉ
-  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -98,9 +142,6 @@ export default function ChapterUploadPage() {
 
       const filenames = filesToUpload.map((file) => file.name);
 
-      // ==========================================
-      // ÉTAPE 1 : Obtenir les URLs signées
-      // ==========================================
       const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/upload-urls`, {
         method: "POST",
         headers: {
@@ -118,22 +159,16 @@ export default function ChapterUploadPage() {
       const responseData = await urlRes.json();
       console.log('📦 Réponse de upload-urls:', responseData);
 
-      // ==========================================
-      // ✅ ÉTAPE 2 : Extraire les URLs et les clés
-      // ==========================================
       let uploadUrls: string[] = [];
       let keys: string[] = [];
 
       if (Array.isArray(responseData)) {
-        // Cas 1: Réponse est un tableau direct
         uploadUrls = responseData.map((item: any) => item.uploadUrl || item);
         keys = responseData.map((item: any) => item.key || item);
       } else if (responseData.files && Array.isArray(responseData.files)) {
-        // ✅ Cas 2: Réponse a un champ "files" (STRUCTURE ACTUELLE)
         uploadUrls = responseData.files.map((file: any) => file.uploadUrl || file.signedUrl);
         keys = responseData.files.map((file: any) => file.key || file.path);
       } else {
-        // Cas 3: Fallback
         uploadUrls = responseData.uploadUrls || responseData.urls || [responseData.uploadUrl];
         keys = responseData.keys || responseData.fileKeys || [];
       }
@@ -141,9 +176,6 @@ export default function ChapterUploadPage() {
       console.log('🔑 Clés extraites:', keys);
       console.log('📤 URLs d\'upload:', uploadUrls);
 
-      // ==========================================
-      // ÉTAPE 3 : Upload des fichiers vers Supabase
-      // ==========================================
       for (let i = 0; i < filesToUpload.length; i++) {
         const file = filesToUpload[i];
         const targetUrl = uploadUrls[i] || uploadUrls[0];
@@ -175,31 +207,35 @@ export default function ChapterUploadPage() {
         }
       }
 
-      // ==========================================
-      // ✅ ÉTAPE 4 : Vérifier que les clés existent
-      // ==========================================
       if (keys.length === 0) {
         throw new Error("Aucune clé de fichier reçue du backend. Vérifie la réponse de upload-urls.");
       }
 
       setProgress("Enregistrement du chapitre en base de données...");
 
-      // ==========================================
-      // ÉTAPE 5 : Finaliser le chapitre
-      // ==========================================
+      // ✅ CONSTRUCTION DU BODY AVEC FREE PAGE INDEXES
+      const finalizeBody: any = {
+        number: chapterNum,
+        title: title.trim() || undefined,
+        keys: keys,
+        mode: mode === "images" ? "PHOTOS" : "PDF",
+        isDraft: false,
+      };
+
+      // ✅ AJOUTER LES PAGES PAYANTES SI LE CHAPITRE EST PAYANT
+      if (isPaidChapter && mode === "images" && paidPages.length > 0) {
+        finalizeBody.freePageIndexes = JSON.stringify(
+          keys.map((_, index) => !paidPages.includes(index))
+        );
+      }
+
       const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/finalize`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          number: chapterNum,
-          title: title.trim() || undefined,
-          keys: keys, // ✅ Maintenant keys contient les bonnes valeurs
-          mode: mode === "images" ? "PHOTOS" : "PDF",
-          isDraft: false,
-        }),
+        body: JSON.stringify(finalizeBody),
       });
 
       if (!finalizeRes.ok) {
@@ -210,9 +246,6 @@ export default function ChapterUploadPage() {
       const finalizeData = await finalizeRes.json();
       console.log('📦 Réponse de finalize:', finalizeData);
 
-      // ==========================================
-      // ÉTAPE 6 : Succès et redirection
-      // ==========================================
       setProgress("Finalisation...");
       setSuccess(true);
 
@@ -230,6 +263,10 @@ export default function ChapterUploadPage() {
       setProgress("");
     }
   };
+
+  // ✅ VÉRIFIER SI LE CHAPITRE EST LE DERNIER (ET >= 10)
+  const chapterNum = parseInt(number);
+  const isLastChapter = !isNaN(chapterNum) && totalChapters >= 10 && chapterNum === totalChapters;
 
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
@@ -306,6 +343,14 @@ export default function ChapterUploadPage() {
                 required
                 className="w-full px-4 py-2.5 bg-zinc-950/80 border border-zinc-800/80 rounded-xl text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
               />
+              {totalChapters > 0 && (
+                <p className="text-[10px] text-zinc-500">
+                  Total : {totalChapters} chapitres
+                  {totalChapters >= 10 && (
+                    <span className="text-amber-400 ml-1">(Le chapitre {totalChapters} peut être payant)</span>
+                  )}
+                </p>
+              )}
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-xs md:text-sm font-bold text-zinc-300">
@@ -320,6 +365,89 @@ export default function ChapterUploadPage() {
               />
             </div>
           </div>
+
+          {/* ✅ SECTION CHAPITRE PAYANT */}
+          {mode === "images" && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-amber-400" />
+                <label className="text-xs md:text-sm font-bold text-zinc-300">
+                  Pages payantes
+                </label>
+              </div>
+
+              {isLastChapter ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setIsPaidChapter(!isPaidChapter)}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                        isPaidChapter
+                          ? "bg-amber-600 text-white"
+                          : "bg-zinc-800 text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      {isPaidChapter ? "🔒 Payant" : "🆓 Gratuit"}
+                    </button>
+                    <span className="text-xs text-zinc-500">
+                      {isPaidChapter
+                        ? "Les lecteurs paieront 50 MANAS pour ce chapitre"
+                        : "Chapitre gratuit pour tous"}
+                    </span>
+                  </div>
+
+                  {isPaidChapter && photoFiles.length > 0 && (
+                    <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl">
+                      <p className="text-xs text-zinc-400 mb-2">Sélectionnez les pages payantes :</p>
+                      <div className="flex flex-wrap gap-2">
+                        {photoFiles.map((_, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => togglePagePaid(index)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                              paidPages.includes(index)
+                                ? "bg-amber-600 text-white"
+                                : "bg-zinc-800 text-zinc-400 hover:text-white"
+                            }`}
+                          >
+                            Page {index + 1}
+                            {paidPages.includes(index) && " 🔒"}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-zinc-500 mt-2">
+                        {paidPages.length} page(s) payante(s) • Chaque page payante coûte 0.55$ aux lecteurs
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl">
+                  <div className="flex items-center gap-2 text-zinc-500">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-medium">
+                      {totalChapters < 10
+                        ? "Les 10 premiers chapitres sont gratuits"
+                        : "Seul le dernier chapitre peut être payant"}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {mode === "pdf" && (
+            <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl">
+              <div className="flex items-center gap-2 text-zinc-500">
+                <FileText className="w-4 h-4 text-blue-400" />
+                <span className="text-sm font-medium">
+                  Les PDF sont automatiquement payants si le chapitre est le dernier (≥ 10 chapitres)
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3">
             <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center justify-between">
@@ -359,6 +487,7 @@ export default function ChapterUploadPage() {
                         />
                         <span className="absolute bottom-1 left-1 bg-black/80 px-1.5 py-0.5 rounded text-[9px] font-bold text-white">
                           #{idx + 1}
+                          {isPaidChapter && paidPages.includes(idx) && " 🔒"}
                         </span>
                         <button
                           type="button"
