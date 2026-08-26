@@ -68,6 +68,7 @@ type UserProfile = {
     followers: number;
     following: number;
     favorites?: number;
+    likes?: number;
   };
   mangas?: any[];
   earnings?: {
@@ -224,7 +225,7 @@ export default function ProfilePage() {
 
   // ✅ CALCUL DES REVENUS
   const totalEarnings = profile?.earnings?.total || 0;
-  const manasValueInDollars = (profile?.manas || 0) / 100; // 100 MANAS = 1$
+  const isCreator = profile?.role === 'CREATOR' || profile?.role === 'ADMIN';
 
   if (loading) {
     return <Loader message="Chargement de votre profil" />;
@@ -526,22 +527,48 @@ export default function ProfilePage() {
         {activeTab === "stats" && (
           <div className="w-full max-w-xl mx-auto space-y-3">
             
-            {/* ===== STATS PRINCIPALES ===== */}
+            {/* ===== STATS PRINCIPALES (AVEC DISTINCTION CRÉATEUR / LECTEUR) ===== */}
             <div className="grid grid-cols-3 gap-2.5">
-              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                <DollarSign className="w-5 h-5 mx-auto text-emerald-400 mb-1" />
-                <p className="text-base md:text-lg font-black text-white">
-                  ${(profile.manas / 100).toFixed(2)}
-                </p>
-                <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Balance</p>
-              </div>
-              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                <TrendingUp className="w-5 h-5 mx-auto text-blue-400 mb-1" />
-                <p className="text-base md:text-lg font-black text-white">
-                  ${totalEarnings.toFixed(2)}
-                </p>
-                <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Revenus</p>
-              </div>
+              
+              {/* ✅ 1. Balance - UNIQUEMENT POUR CRÉATEUR */}
+              {isCreator ? (
+                <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
+                  <DollarSign className="w-5 h-5 mx-auto text-emerald-400 mb-1" />
+                  <p className="text-base md:text-lg font-black text-white">
+                    ${(profile.manas / 100).toFixed(2)}
+                  </p>
+                  <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Balance</p>
+                </div>
+              ) : (
+                <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
+                  <ManasIcon className="w-5 h-5 mx-auto text-blue-400 mb-1" />
+                  <p className="text-base md:text-lg font-black text-white">
+                    {profile.manas}
+                  </p>
+                  <p className="text-[10px] md:text-xs text-zinc-400 font-medium">MANAS</p>
+                </div>
+              )}
+
+              {/* ✅ 2. Revenus - UNIQUEMENT POUR CRÉATEUR */}
+              {isCreator ? (
+                <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
+                  <TrendingUp className="w-5 h-5 mx-auto text-blue-400 mb-1" />
+                  <p className="text-base md:text-lg font-black text-white">
+                    ${totalEarnings.toFixed(2)}
+                  </p>
+                  <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Revenus</p>
+                </div>
+              ) : (
+                <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
+                  <Heart className="w-5 h-5 mx-auto text-rose-400 mb-1" />
+                  <p className="text-base md:text-lg font-black text-white">
+                    {profile._count?.likes || 0}
+                  </p>
+                  <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Likes reçus</p>
+                </div>
+              )}
+
+              {/* ✅ 3. Niveau - TOUT LE MONDE */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
                 <Award className="w-5 h-5 mx-auto text-purple-400 mb-1" />
                 <p className="text-base md:text-lg font-black text-white">{profile.steamLevel || 1}</p>
@@ -549,8 +576,8 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* ===== DÉTAIL DES REVENUS ===== */}
-            {profile.earnings && (
+            {/* ===== DÉTAIL DES REVENUS (UNIQUEMENT CRÉATEUR) ===== */}
+            {isCreator && profile.earnings && (
               <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
                 <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
                   Détail des revenus
@@ -587,7 +614,7 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* ===== BONUS QUOTIDIEN ===== */}
+            {/* ===== BONUS QUOTIDIEN (TOUT LE MONDE) ===== */}
             <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -720,7 +747,7 @@ export default function ProfilePage() {
             </Link>
 
             {/* ===== ✅ RETRAIT D'ARGENT (CRÉATEUR UNIQUEMENT) ===== */}
-            {profile.role === 'CREATOR' && (
+            {isCreator && (
               <Link
                 href="/creator/balance"
                 className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-950/40 to-emerald-950/20 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 transition-all group"
