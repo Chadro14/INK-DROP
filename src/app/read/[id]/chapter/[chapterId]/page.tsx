@@ -20,7 +20,9 @@ import {
   Check,
   AlertCircle,
   FileText,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Coins,
+  Loader2
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -68,10 +70,37 @@ export default function ChapterReader() {
   const [currentPage, setCurrentPage] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  
+  // ✅ ÉTATS POUR MANAS
+  const [manasBalance, setManasBalance] = useState(0);
+  const [isPayingWithManas, setIsPayingWithManas] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState("");
 
   const mangaId = params.id as string;
   const chapterId = params.chapterId as string;
   const chapterNumber = parseInt(chapterId);
+
+  // ============================================
+  // ✅ RÉCUPÉRER LE SOLDE MANAS
+  // ============================================
+  const fetchManasBalance = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_URL}/manas/balance`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setManasBalance(data.balance);
+      }
+    } catch (error) {
+      console.error("❌ Erreur récupération solde MANAS:", error);
+    }
+  };
 
   // ============================================
   // ✅ VÉRIFIER SI LE CHAPITRE EST LIKÉ
@@ -90,6 +119,52 @@ export default function ChapterReader() {
       }
     } catch (error) {
       console.error("❌ Erreur vérification like:", error);
+    }
+  };
+
+  // ============================================
+  // ✅ PAYER AVEC MANAS
+  // ============================================
+  const handlePayWithManas = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setProcessing(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/manas/purchase-chapter`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          mangaId: mangaId,
+          chapterNumber: chapterNumber,
+          priceInManas: 50,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Erreur lors du paiement");
+      }
+
+      // ✅ Succès
+      setHasAccess(true);
+      setManasBalance(data.balance);
+      setSuccess(true);
+      setPaymentMessage("✅ Chapitre débloqué avec 50 MANAS !");
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      setError(err.message || "Erreur lors du paiement");
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -129,6 +204,9 @@ export default function ChapterReader() {
           // ✅ VÉRIFIER SI LE CHAPITRE EST LIKÉ
           await checkIfLiked();
           
+          // ✅ RÉCUPÉRER LE SOLDE MANAS
+          await fetchManasBalance();
+          
         } else if (data.isFree) {
           setHasAccess(true);
         }
@@ -161,7 +239,7 @@ export default function ChapterReader() {
   };
 
   // ============================================
-  // ACHETER LE CHAPITRE
+  // ACHETER LE CHAPITRE (Mobile Money)
   // ============================================
   const handleBuy = () => {
     alert(`Paiement de ${chapter?.price || 0.50}$ pour le chapitre ${chapterNumber}`);
@@ -199,7 +277,6 @@ export default function ChapterReader() {
       setIsLiked(data.liked);
     } catch (error) {
       console.error("❌ Erreur like:", error);
-      // Fallback UI
       setIsLiked(!isLiked);
     }
   };
@@ -251,7 +328,7 @@ export default function ChapterReader() {
   }
 
   // ============================================
-  // PAS D'ACCÈS → ACHAT
+  // PAS D'ACCÈS → ACHAT (MANAS + MOBILE MONEY)
   // ============================================
   if (!hasAccess) {
     return (
@@ -280,12 +357,65 @@ export default function ChapterReader() {
           <p className="text-zinc-500 text-xs mb-6">
             {chapter.pageCount || 0} pages
           </p>
-          <button
-            onClick={handleBuy}
-            className="px-8 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-bold transition-all shadow-lg shadow-amber-500/20"
-          >
-            Acheter le chapitre
-          </button>
+          
+          {/* ✅ MESSAGE DE SUCCÈS */}
+          {success && (
+            <div className="mb-4 p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-emerald-300 text-sm flex items-center gap-2">
+              <Check className="w-4 h-4" />
+              <span>{paymentMessage}</span>
+            </div>
+          )}
+
+          {/* ✅ ERREUR */}
+          {error && (
+            <div className="mb-4 p-3 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* ✅ SOLDE MANAS */}
+          <div className="flex items-center gap-2 text-sm text-zinc-500 mb-4">
+            <span>💰 Solde MANAS :</span>
+            <span className="text-blue-400 font-bold">{manasBalance} MANAS</span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* ✅ BOUTON PAYER AVEC MANAS */}
+            <button
+              onClick={handlePayWithManas}
+              disabled={processing || manasBalance < 50}
+              className="px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {processing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Traitement...
+                </>
+              ) : (
+                <>
+                  <Coins className="w-4 h-4" />
+                  Payer 50 MANAS
+                </>
+              )}
+            </button>
+
+            {/* ✅ BOUTON PAYER AVEC MOBILE MONEY */}
+            <button
+              onClick={handleBuy}
+              className="px-6 py-2.5 rounded-full bg-amber-600 hover:bg-amber-500 text-white font-bold transition-all"
+            >
+              Payer avec Mobile Money
+            </button>
+          </div>
+
+          {/* ✅ SOLDE INSUFFISANT */}
+          {manasBalance < 50 && (
+            <p className="text-xs text-rose-400 mt-3">
+              ⚠️ Solde insuffisant. Vous avez {manasBalance} MANAS, il vous en faut 50.
+            </p>
+          )}
+
           <div className="mt-6 flex items-center gap-2 text-xs text-zinc-500">
             <Crown className="w-4 h-4 text-amber-400" />
             <span>Ou abonne-toi à INKDROP Premium pour un accès illimité</span>
