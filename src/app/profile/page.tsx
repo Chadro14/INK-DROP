@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Loader } from "@/components/ui/loader";
 import { 
@@ -83,6 +84,7 @@ export default function ProfilePage() {
   // ✅ ÉTATS POUR LE BONUS QUOTIDIEN
   const [bonusLoading, setBonusLoading] = useState(false);
   const [bonusMessage, setBonusMessage] = useState("");
+  const [bonusAnimation, setBonusAnimation] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -204,12 +206,15 @@ export default function ProfilePage() {
         throw new Error(data.message || "Erreur lors du bonus");
       }
 
-      setBonusMessage("✅ +1 MANAS !");
+      setBonusMessage("+1 MANAS ajouté à votre solde !");
       setProfile((prev) => prev ? { ...prev, manas: data.balance } : null);
-      setTimeout(() => setBonusMessage(""), 3000);
+      
+      // ✅ DÉCLENCHER L'ANIMATION
+      setBonusAnimation(true);
+      setTimeout(() => setBonusAnimation(false), 3000);
+      
     } catch (err: any) {
-      setBonusMessage(err.message || "❌ Déjà réclamé aujourd'hui");
-      setTimeout(() => setBonusMessage(""), 3000);
+      setBonusMessage(err.message || "Bonus déjà réclamé aujourd'hui, revenez dans 2 jours");
     } finally {
       setBonusLoading(false);
     }
@@ -582,7 +587,7 @@ export default function ProfilePage() {
                 </button>
               </div>
               {bonusMessage && (
-                <p className={`text-xs mt-2 ${bonusMessage.includes('✅') ? 'text-emerald-400' : 'text-rose-400'}`}>
+                <p className={`text-xs mt-2 ${bonusMessage.includes('+1') ? 'text-emerald-400' : 'text-rose-400'}`}>
                   {bonusMessage}
                 </p>
               )}
@@ -729,6 +734,32 @@ export default function ProfilePage() {
       </main>
 
       <BottomNav />
+
+      {/* ===== ANIMATION DU BONUS MANAS ===== */}
+      <AnimatePresence>
+        {bonusAnimation && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            transition={{ type: "spring", duration: 0.6 }}
+            className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none"
+          >
+            <div className="bg-gradient-to-br from-emerald-950/95 to-emerald-900/95 border-2 border-emerald-500 rounded-2xl p-8 text-center shadow-2xl shadow-emerald-500/40 backdrop-blur-sm">
+              <motion.div
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 0.8, repeat: Infinity }}
+              >
+                <Coins className="w-16 h-16 text-emerald-400 mx-auto mb-3" />
+              </motion.div>
+              <p className="text-2xl font-bold text-white">+1 MANAS</p>
+              <p className="text-emerald-300 text-sm mt-1">Bonus quotidien reçu</p>
+              <div className="w-16 h-1 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full mx-auto mt-3" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
