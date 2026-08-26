@@ -214,7 +214,7 @@ export default function MangaPage() {
   };
 
   // ============================================
-  // GESTION DU LIKE
+  // ✅ GESTION DU LIKE + GAIN MANAS POUR LE CRÉATEUR
   // ============================================
   const handleLike = async () => {
     const token = localStorage.getItem("token");
@@ -240,6 +240,28 @@ export default function MangaPage() {
       
       setIsLiked(data.liked);
       setLikesCount(data.likesCount);
+
+      // ✅ SI LE LIKE EST AJOUTÉ ET L'UTILISATEUR N'EST PAS L'AUTEUR
+      if (data.liked && user && user.id !== manga?.author.id) {
+        try {
+          const manasRes = await fetch(`${API_URL}/manas/event/like-received`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              mangaId: mangaId,
+            }),
+          });
+
+          if (manasRes.ok) {
+            console.log("✅ +2 MANAS pour le créateur (like reçu)");
+          }
+        } catch (manasError) {
+          console.error("❌ Erreur gain MANAS:", manasError);
+        }
+      }
       
       console.log(`✅ Like ${data.liked ? "ajouté" : "retiré"} - Total: ${data.likesCount}`);
     } catch (err: any) {
