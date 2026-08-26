@@ -37,7 +37,11 @@ import {
   Bookmark,
   Bell,
   Coins as ManasIcon,
-  Loader2
+  Loader2,
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Wallet
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -208,7 +212,6 @@ export default function ProfilePage() {
       setBonusMessage("+1 MANAS ajouté à votre solde !");
       setProfile((prev) => prev ? { ...prev, manas: data.balance } : null);
       
-      // ✅ DÉCLENCHER L'ANIMATION
       setBonusAnimation(true);
       setTimeout(() => setBonusAnimation(false), 3000);
       
@@ -218,6 +221,10 @@ export default function ProfilePage() {
       setBonusLoading(false);
     }
   };
+
+  // ✅ CALCUL DES REVENUS
+  const totalEarnings = profile?.earnings?.total || 0;
+  const manasValueInDollars = (profile?.manas || 0) / 100; // 100 MANAS = 1$
 
   if (loading) {
     return <Loader message="Chargement de votre profil" />;
@@ -422,7 +429,7 @@ export default function ProfilePage() {
             }`}
           >
             <Zap className="w-4 h-4" />
-            <span>Niveau & Stats</span>
+            <span>Balance & Stats</span>
           </button>
           <button
             onClick={() => setActiveTab("menu")}
@@ -515,27 +522,34 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ===== TAB 2 : STATS ===== */}
+        {/* ===== TAB 2 : STATS & BALANCE ===== */}
         {activeTab === "stats" && (
           <div className="w-full max-w-xl mx-auto space-y-3">
+            
+            {/* ===== STATS PRINCIPALES ===== */}
             <div className="grid grid-cols-3 gap-2.5">
               <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                <Zap className="w-5 h-5 mx-auto text-blue-400 mb-1" />
-                <p className="text-base md:text-lg font-black text-white">{profile.steamPoints || 0}</p>
-                <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Points Steam</p>
+                <DollarSign className="w-5 h-5 mx-auto text-emerald-400 mb-1" />
+                <p className="text-base md:text-lg font-black text-white">
+                  ${(profile.manas / 100).toFixed(2)}
+                </p>
+                <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Balance</p>
+              </div>
+              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
+                <TrendingUp className="w-5 h-5 mx-auto text-blue-400 mb-1" />
+                <p className="text-base md:text-lg font-black text-white">
+                  ${totalEarnings.toFixed(2)}
+                </p>
+                <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Revenus</p>
               </div>
               <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
                 <Award className="w-5 h-5 mx-auto text-purple-400 mb-1" />
-                <p className="text-base md:text-lg font-black text-white">Niv. {profile.steamLevel || 1}</p>
+                <p className="text-base md:text-lg font-black text-white">{profile.steamLevel || 1}</p>
                 <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Niveau</p>
-              </div>
-              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                <Coins className="w-5 h-5 mx-auto text-emerald-400 mb-1" />
-                <p className="text-base md:text-lg font-black text-white">{profile.earnings?.total || 0}$</p>
-                <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Revenus</p>
               </div>
             </div>
 
+            {/* ===== DÉTAIL DES REVENUS ===== */}
             {profile.earnings && (
               <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
                 <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
@@ -544,21 +558,36 @@ export default function ProfilePage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-zinc-400">Total</span>
-                    <span className="text-white font-bold">{profile.earnings.total}$</span>
+                    <span className="text-white font-bold">${profile.earnings.total.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-400">Payé</span>
-                    <span className="text-emerald-400">{profile.earnings.paid}$</span>
+                    <span className="text-emerald-400">${profile.earnings.paid.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-400">En attente</span>
-                    <span className="text-yellow-400">{profile.earnings.pending}$</span>
+                    <span className="text-yellow-400">${profile.earnings.pending.toFixed(2)}</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-zinc-800/60">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">MANAS en portefeuille</span>
+                    <span className="text-white font-bold flex items-center gap-1">
+                      <ManasIcon className="w-4 h-4 text-blue-400" />
+                      {profile.manas} MANAS
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-zinc-400">Valeur estimée</span>
+                    <span className="text-emerald-400 font-bold">
+                      ${(profile.manas / 100).toFixed(2)}
+                    </span>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ===== ✅ BONUS QUOTIDIEN ===== */}
+            {/* ===== BONUS QUOTIDIEN ===== */}
             <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -690,6 +719,29 @@ export default function ProfilePage() {
               <ChevronRight className="w-4 h-4 text-zinc-500" />
             </Link>
 
+            {/* ===== ✅ RETRAIT D'ARGENT (CRÉATEUR UNIQUEMENT) ===== */}
+            {profile.role === 'CREATOR' && (
+              <Link
+                href="/creator/balance"
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-950/40 to-emerald-950/20 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white group-hover:text-emerald-400 transition-colors">
+                      Retirer de l'argent
+                    </p>
+                    <p className="text-[10px] text-zinc-500">
+                      {profile.manas || 0} MANAS ≈ ${(profile.manas / 100).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            )}
+
             {/* ===== PARAMÈTRES ===== */}
             <Link
               href="/profile/settings"
@@ -734,7 +786,7 @@ export default function ProfilePage() {
 
       <BottomNav />
 
-      {/* ===== ANIMATION DU BONUS MANAS (SANS FRAMER-MOTION) ===== */}
+      {/* ===== ANIMATION DU BONUS MANAS ===== */}
       {bonusAnimation && (
         <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
           <div className="bg-gradient-to-br from-emerald-950/95 to-emerald-900/95 border-2 border-emerald-500 rounded-2xl p-8 text-center shadow-2xl shadow-emerald-500/40 backdrop-blur-sm animate-scale-up">
