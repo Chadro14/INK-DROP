@@ -25,7 +25,8 @@ import {
   Plus,
   Edit,
   UserPlus,
-  UserCheck
+  UserCheck,
+  Lock
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -340,6 +341,10 @@ export default function MangaPage() {
   // ============================================
   // AFFICHAGE - MANGA
   // ============================================
+  const totalChapters = manga.chapters.length;
+  const lastChapter = manga.chapters[totalChapters - 1];
+  const hasPaidChapter = totalChapters >= 10 && lastChapter && !lastChapter.isFree;
+
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
 
@@ -393,6 +398,12 @@ export default function MangaPage() {
                 <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                   <Crown className="w-3 h-3 inline mr-1" />
                   Premium
+                </span>
+              )}
+              {hasPaidChapter && (
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <Lock className="w-3 h-3 inline mr-1" />
+                  Chapitre payant
                 </span>
               )}
             </div>
@@ -543,7 +554,7 @@ export default function MangaPage() {
           </div>
         )}
 
-        {/* ✅ BOUTON AJOUTER UN CHAPITRE SEULEMENT (SUPPRESSION DU BOUTON MODIFIER) */}
+        {/* ✅ BOUTON AJOUTER UN CHAPITRE - SANS LIMITE */}
         {user && user.id === manga.author.id && (
           <Link
             href={`/manga/${mangaId}/chapter/new`}
@@ -554,7 +565,7 @@ export default function MangaPage() {
           </Link>
         )}
 
-        {/* CHAPITRES */}
+        {/* CHAPITRES AVEC BADGE PAYANT */}
         <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl overflow-hidden">
           <div className="p-4 border-b border-zinc-800/60 flex items-center justify-between">
             <h2 className="font-bold text-white">Chapitres</h2>
@@ -567,36 +578,47 @@ export default function MangaPage() {
             </div>
           ) : (
             <div className="divide-y divide-zinc-800/40">
-              {manga.chapters.map((chapter) => (
-                <Link
-                  key={chapter.id}
-                  href={`/manga/${mangaId}/chapter/${chapter.number}`}
-                  className="flex items-center justify-between p-4 hover:bg-zinc-900/40 transition-colors group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-sm font-bold text-zinc-400">
-                      {chapter.number}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors">
-                        {chapter.title || `Chapitre ${chapter.number}`}
-                      </p>
-                      <div className="flex items-center gap-3 text-xs text-zinc-500">
-                        <span className="flex items-center gap-1">
-                          <FileText className="w-3 h-3" />
-                          {chapter.pageCount || 0} pages
-                        </span>
-                        {chapter.isFree ? (
-                          <span className="text-emerald-400 font-medium">Gratuit</span>
-                        ) : (
-                          <span className="text-amber-400 font-medium">{chapter.price || 0.50}$</span>
-                        )}
+              {manga.chapters.map((chapter, index) => {
+                const isLast = index === manga.chapters.length - 1;
+                const isPaid = manga.chapters.length >= 10 && isLast && !chapter.isFree;
+
+                return (
+                  <Link
+                    key={chapter.id}
+                    href={`/manga/${mangaId}/chapter/${chapter.number}`}
+                    className="flex items-center justify-between p-4 hover:bg-zinc-900/40 transition-colors group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-sm font-bold text-zinc-400">
+                        {chapter.number}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors flex items-center gap-2">
+                          {chapter.title || `Chapitre ${chapter.number}`}
+                          {isPaid && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                              <Lock className="w-3 h-3" />
+                              Payant
+                            </span>
+                          )}
+                        </p>
+                        <div className="flex items-center gap-3 text-xs text-zinc-500">
+                          <span className="flex items-center gap-1">
+                            <FileText className="w-3 h-3" />
+                            {chapter.pageCount || 0} pages
+                          </span>
+                          {chapter.isFree ? (
+                            <span className="text-emerald-400 font-medium">Gratuit</span>
+                          ) : (
+                            <span className="text-amber-400 font-medium">{chapter.price || 0.50}$</span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
-                </Link>
-              ))}
+                    <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
