@@ -70,10 +70,10 @@ export default function ChapterReader() {
   const [currentPage, setCurrentPage] = useState(0);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
+  const [manasEarned, setManasEarned] = useState(false);
   
-  // ✅ ÉTATS POUR MANAS
+  // États pour MANAS
   const [manasBalance, setManasBalance] = useState(0);
-  const [isPayingWithManas, setIsPayingWithManas] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
@@ -83,7 +83,7 @@ export default function ChapterReader() {
   const chapterNumber = parseInt(chapterId);
 
   // ============================================
-  // ✅ RÉCUPÉRER LE SOLDE MANAS
+  // RÉCUPÉRER LE SOLDE MANAS
   // ============================================
   const fetchManasBalance = async () => {
     const token = localStorage.getItem("token");
@@ -103,7 +103,38 @@ export default function ChapterReader() {
   };
 
   // ============================================
-  // ✅ VÉRIFIER SI LE CHAPITRE EST LIKÉ
+  // ✅ GAGNER 1 MANAS POUR LA LECTURE
+  // ============================================
+  const earnManasForReading = async () => {
+    const token = localStorage.getItem("token");
+    if (!token || manasEarned) return;
+
+    try {
+      const res = await fetch(`${API_URL}/manas/event/chapter-read`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          chapterId: chapter?.id,
+          mangaId: mangaId,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setManasEarned(true);
+        setManasBalance(data.balance);
+        console.log(`✅ +1 MANAS pour la lecture du chapitre ${chapterNumber}`);
+      }
+    } catch (error) {
+      console.error("❌ Erreur gain MANAS lecture:", error);
+    }
+  };
+
+  // ============================================
+  // VÉRIFIER SI LE CHAPITRE EST LIKÉ
   // ============================================
   const checkIfLiked = async () => {
     const token = localStorage.getItem("token");
@@ -123,7 +154,7 @@ export default function ChapterReader() {
   };
 
   // ============================================
-  // ✅ PAYER AVEC MANAS
+  // PAYER AVEC MANAS
   // ============================================
   const handlePayWithManas = async () => {
     const token = localStorage.getItem("token");
@@ -155,11 +186,10 @@ export default function ChapterReader() {
         throw new Error(data.message || "Erreur lors du paiement");
       }
 
-      // ✅ Succès
       setHasAccess(true);
       setManasBalance(data.balance);
       setSuccess(true);
-      setPaymentMessage("✅ Chapitre débloqué avec 50 MANAS !");
+      setPaymentMessage("Chapitre débloqué avec 50 MANAS !");
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
       setError(err.message || "Erreur lors du paiement");
@@ -201,10 +231,7 @@ export default function ChapterReader() {
             }
           }
           
-          // ✅ VÉRIFIER SI LE CHAPITRE EST LIKÉ
           await checkIfLiked();
-          
-          // ✅ RÉCUPÉRER LE SOLDE MANAS
           await fetchManasBalance();
           
         } else if (data.isFree) {
@@ -220,6 +247,15 @@ export default function ChapterReader() {
 
     fetchChapter();
   }, [mangaId, chapterNumber]);
+
+  // ============================================
+  // ✅ GAGNER 1 MANAS APRÈS AVOIR OBTENU L'ACCÈS
+  // ============================================
+  useEffect(() => {
+    if (hasAccess && chapter && !manasEarned) {
+      earnManasForReading();
+    }
+  }, [hasAccess, chapter]);
 
   // ============================================
   // NAVIGATION PAGES
@@ -253,7 +289,7 @@ export default function ChapterReader() {
   };
 
   // ============================================
-  // ✅ LIKE - AVEC API
+  // LIKE
   // ============================================
   const handleLike = async () => {
     const token = localStorage.getItem("token");
@@ -290,7 +326,7 @@ export default function ChapterReader() {
       navigator.share({ title: chapter?.title || `Chapitre ${chapterNumber}`, url: shareUrl });
     } else {
       navigator.clipboard.writeText(shareUrl);
-      alert("🔗 Lien copié !");
+      alert("Lien copié !");
     }
   };
 
@@ -328,7 +364,7 @@ export default function ChapterReader() {
   }
 
   // ============================================
-  // PAS D'ACCÈS → ACHAT (MANAS + MOBILE MONEY)
+  // PAS D'ACCÈS → ACHAT
   // ============================================
   if (!hasAccess) {
     return (
@@ -358,7 +394,6 @@ export default function ChapterReader() {
             {chapter.pageCount || 0} pages
           </p>
           
-          {/* ✅ MESSAGE DE SUCCÈS */}
           {success && (
             <div className="mb-4 p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-emerald-300 text-sm flex items-center gap-2">
               <Check className="w-4 h-4" />
@@ -366,7 +401,6 @@ export default function ChapterReader() {
             </div>
           )}
 
-          {/* ✅ ERREUR */}
           {error && (
             <div className="mb-4 p-3 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-sm flex items-center gap-2">
               <AlertCircle className="w-4 h-4" />
@@ -374,14 +408,12 @@ export default function ChapterReader() {
             </div>
           )}
 
-          {/* ✅ SOLDE MANAS */}
           <div className="flex items-center gap-2 text-sm text-zinc-500 mb-4">
-            <span>💰 Solde MANAS :</span>
+            <span>Solde MANAS :</span>
             <span className="text-blue-400 font-bold">{manasBalance} MANAS</span>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* ✅ BOUTON PAYER AVEC MANAS */}
             <button
               onClick={handlePayWithManas}
               disabled={processing || manasBalance < 50}
@@ -400,7 +432,6 @@ export default function ChapterReader() {
               )}
             </button>
 
-            {/* ✅ BOUTON PAYER AVEC MOBILE MONEY */}
             <button
               onClick={handleBuy}
               className="px-6 py-2.5 rounded-full bg-amber-600 hover:bg-amber-500 text-white font-bold transition-all"
@@ -409,7 +440,6 @@ export default function ChapterReader() {
             </button>
           </div>
 
-          {/* ✅ SOLDE INSUFFISANT */}
           {manasBalance < 50 && (
             <p className="text-xs text-rose-400 mt-3">
               ⚠️ Solde insuffisant. Vous avez {manasBalance} MANAS, il vous en faut 50.
@@ -438,7 +468,6 @@ export default function ChapterReader() {
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
 
-      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <Link href={`/manga/${mangaId}`} className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5">
@@ -471,10 +500,8 @@ export default function ChapterReader() {
         </div>
       </header>
 
-      {/* CONTENU */}
       <main className="flex-1 px-4 py-6 max-w-4xl mx-auto w-full">
         
-        {/* TITRE */}
         <div className="text-center mb-6">
           <h1 className="text-2xl md:text-3xl font-extrabold text-white">
             {chapter.title || `Chapitre ${chapterNumber}`}
@@ -483,7 +510,7 @@ export default function ChapterReader() {
           <div className="flex items-center justify-center gap-3 mt-2 text-xs text-zinc-500">
             <span className="flex items-center gap-1">
               {isPdf ? <FileText className="w-3.5 h-3.5" /> : <ImageIcon className="w-3.5 h-3.5" />}
-              {chapter.pageCount || 0} {isPdf ? 'pages' : 'pages'}
+              {chapter.pageCount || 0} pages
             </span>
             <span className="w-1 h-1 rounded-full bg-zinc-700" />
             <span className={chapter.isFree ? "text-emerald-400" : "text-amber-400"}>
@@ -492,7 +519,6 @@ export default function ChapterReader() {
           </div>
         </div>
 
-        {/* RÉSUMÉ */}
         {chapter.summary && (
           <div className="bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border border-blue-500/30 rounded-xl p-4 mb-6">
             <div className="flex items-center gap-2 mb-2">
@@ -503,7 +529,6 @@ export default function ChapterReader() {
           </div>
         )}
 
-        {/* ===== LECTEUR PDF ===== */}
         {isPdf && (
           <div className="bg-zinc-900/60 rounded-xl border border-zinc-800/80 overflow-hidden shadow-xl">
             {chapter.pdfUrl ? (
@@ -523,15 +548,12 @@ export default function ChapterReader() {
           </div>
         )}
 
-        {/* ===== LECTEUR IMAGES ===== */}
         {!isPdf && chapter.pages && chapter.pages.length > 0 && (
           <div className="space-y-4">
-            {/* Compteur de pages */}
             <div className="text-center text-sm text-zinc-500">
               Page {currentPage + 1} / {chapter.pages.length}
             </div>
 
-            {/* Image de la page */}
             <div className="relative bg-zinc-900/40 rounded-xl border border-zinc-800/80 overflow-hidden shadow-xl">
               {chapter.pages[currentPage]?.url ? (
                 <img
@@ -551,7 +573,6 @@ export default function ChapterReader() {
                 </div>
               )}
 
-              {/* Navigation sur l'image */}
               {currentPage > 0 && (
                 <button
                   onClick={prevPage}
@@ -571,7 +592,6 @@ export default function ChapterReader() {
               )}
             </div>
 
-            {/* Indicateurs de progression */}
             <div className="flex justify-center gap-1.5">
               {chapter.pages.slice(0, 20).map((_, index) => (
                 <button
@@ -596,7 +616,6 @@ export default function ChapterReader() {
           </div>
         )}
 
-        {/* SI AUCUNE PAGE DISPONIBLE */}
         {!isPdf && (!chapter.pages || chapter.pages.length === 0) && (
           <div className="flex flex-col items-center justify-center h-96 bg-zinc-900/40 rounded-xl border border-zinc-800/80 p-8 text-center">
             <ImageIcon className="w-12 h-12 text-zinc-600 mb-4" />
@@ -605,12 +624,10 @@ export default function ChapterReader() {
           </div>
         )}
 
-        {/* COMMENTAIRES */}
         <div className="mt-8">
           <CommentSection mangaId={mangaId} chapterId={chapter.id} />
         </div>
 
-        {/* NAVIGATION ENTRE CHAPITRES */}
         <div className="flex items-center justify-between gap-2 mt-6">
           <Link
             href={`/manga/${mangaId}/chapter/${chapterNumber - 1}`}
