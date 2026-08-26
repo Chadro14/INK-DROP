@@ -36,7 +36,8 @@ import {
   CreditCard,
   Bookmark,
   Bell,
-  Coins as ManasIcon
+  Coins as ManasIcon,
+  Loader2
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -78,6 +79,10 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"mangas" | "stats" | "menu">("mangas");
+
+  // ✅ ÉTATS POUR LE BONUS QUOTIDIEN
+  const [bonusLoading, setBonusLoading] = useState(false);
+  const [bonusMessage, setBonusMessage] = useState("");
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -173,6 +178,43 @@ export default function ProfilePage() {
     fetchUnreadCount();
   }, []);
 
+  // ✅ FONCTION POUR RÉCLAMER LE BONUS QUOTIDIEN
+  const claimDailyBonus = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setBonusLoading(true);
+    setBonusMessage("");
+
+    try {
+      const res = await fetch(`${API_URL}/manas/daily-bonus`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Erreur lors du bonus");
+      }
+
+      setBonusMessage("✅ +1 MANAS !");
+      setProfile((prev) => prev ? { ...prev, manas: data.balance } : null);
+      setTimeout(() => setBonusMessage(""), 3000);
+    } catch (err: any) {
+      setBonusMessage(err.message || "❌ Déjà réclamé aujourd'hui");
+      setTimeout(() => setBonusMessage(""), 3000);
+    } finally {
+      setBonusLoading(false);
+    }
+  };
+
   if (loading) {
     return <Loader message="Chargement de votre profil" />;
   }
@@ -214,7 +256,6 @@ export default function ProfilePage() {
             @{profile.username.toLowerCase()}
           </span>
           <div className="flex items-center gap-2 md:gap-3 text-zinc-400">
-            {/* ✅ BOUTON NOTIFICATIONS */}
             <Link
               href="/notifications"
               className="relative p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all"
@@ -512,6 +553,40 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
+
+            {/* ===== ✅ BONUS QUOTIDIEN ===== */}
+            <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                    <Gift className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-white">Bonus quotidien</p>
+                    <p className="text-xs text-zinc-500">+1 MANAS tous les 2 jours</p>
+                  </div>
+                </div>
+                <button
+                  onClick={claimDailyBonus}
+                  disabled={bonusLoading}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {bonusLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Gift className="w-4 h-4" />
+                      Réclamer
+                    </>
+                  )}
+                </button>
+              </div>
+              {bonusMessage && (
+                <p className={`text-xs mt-2 ${bonusMessage.includes('✅') ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {bonusMessage}
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -594,6 +669,19 @@ export default function ProfilePage() {
                 <span className="text-[10px] text-zinc-500">
                   ({profile._count?.favorites || 0})
                 </span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-500" />
+            </Link>
+
+            {/* ===== HISTORIQUE MANAS ===== */}
+            <Link
+              href="/profile/manas-history"
+              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Coins className="w-5 h-5 text-blue-400" />
+                <span className="text-sm font-semibold text-white">Historique MANAS</span>
+                <span className="text-[10px] text-zinc-500">({profile.manas || 0})</span>
               </div>
               <ChevronRight className="w-4 h-4 text-zinc-500" />
             </Link>
