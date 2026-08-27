@@ -28,7 +28,8 @@ import {
   Coins,
   Sparkles,
   Loader2,
-  Gift
+  Gift,
+  AlertCircle
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -75,6 +76,9 @@ export default function CreatorProfilePage() {
   const [sendManasAmount, setSendManasAmount] = useState("");
   const [sendingManas, setSendingManas] = useState(false);
 
+  // ============================================
+  // RÉCUPÉRER LE SOLDE DE L'UTILISATEUR
+  // ============================================
   useEffect(() => {
     const fetchUserBalance = async () => {
       const token = localStorage.getItem("token");
@@ -96,6 +100,9 @@ export default function CreatorProfilePage() {
     fetchUserBalance();
   }, []);
 
+  // ============================================
+  // RÉCUPÉRER LE PROFIL + STATUT FOLLOW
+  // ============================================
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -147,6 +154,9 @@ export default function CreatorProfilePage() {
     }
   }, [username]);
 
+  // ============================================
+  // S'ABONNER / SE DÉSABONNER
+  // ============================================
   const handleFollow = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -185,7 +195,9 @@ export default function CreatorProfilePage() {
     }
   };
 
-  // ✅ COLLABORER - SANS EMOJI
+  // ============================================
+  // COLLABORER AVEC LE CRÉATEUR
+  // ============================================
   const handleCollaborate = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -231,7 +243,9 @@ export default function CreatorProfilePage() {
     }
   };
 
-  // ✅ ENVOYER DES MANAS - SANS EMOJI
+  // ============================================
+  // ENVOYER DES MANAS À UN AMI
+  // ============================================
   const handleSendManas = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -285,6 +299,9 @@ export default function CreatorProfilePage() {
     }
   };
 
+  // ============================================
+  // PARTAGER LE PROFIL
+  // ============================================
   const handleShare = () => {
     const shareUrl = `https://ink-drop-one.vercel.app/creator/${profile?.username}`;
     
@@ -331,6 +348,7 @@ export default function CreatorProfilePage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
+      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <button
@@ -352,6 +370,7 @@ export default function CreatorProfilePage() {
         </div>
       </header>
 
+      {/* BANNIÈRE */}
       <div className="h-32 md:h-48 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
       </div>
@@ -385,6 +404,7 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
+        {/* NOM AVEC BADGE CERTIFIÉ */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
           
@@ -410,10 +430,12 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
+        {/* BIO */}
         <p className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal">
           {profile.bio || "Créateur sur INKDROP"}
         </p>
 
+        {/* INFOS */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-6">
           <span className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-blue-400" /> 
@@ -435,6 +457,7 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
+        {/* STATS SOCIALES */}
         <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
           <div className="text-center">
             <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
@@ -452,6 +475,7 @@ export default function CreatorProfilePage() {
           </div>
         </div>
 
+        {/* BOUTONS D'ACTION */}
         <div className="flex gap-2.5 w-full max-w-md md:max-w-lg mb-8">
           {isCurrentUser ? (
             <>
@@ -503,9 +527,10 @@ export default function CreatorProfilePage() {
           </button>
         </div>
 
-        {/* ✅ BOUTONS MANAS + ACHAT MANAS */}
+        {/* ===== BOUTONS MANAS + COLLABORATION + ACHAT ===== */}
         {!isCurrentUser && !loading && (
           <div className="flex flex-wrap items-center justify-center gap-3 mb-6 w-full max-w-md">
+            
             {/* ENVOYER DES MANAS */}
             <button
               onClick={() => setShowSendManas(true)}
@@ -515,12 +540,16 @@ export default function CreatorProfilePage() {
               Envoyer des MANAS
             </button>
 
-            {/* COLLABORATION */}
+            {/* COLLABORATION - TOUJOURS VISIBLE */}
             {isCreator && (
               <button
                 onClick={handleCollaborate}
-                disabled={collaborating || userManasBalance < 250}
-                className="px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 text-white text-xs font-bold transition-all shadow-lg shadow-purple-900/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                disabled={collaborating}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all shadow-lg flex items-center gap-2 ${
+                  userManasBalance >= 250
+                    ? "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 text-white shadow-purple-900/30"
+                    : "bg-zinc-800 text-zinc-400 cursor-not-allowed border border-zinc-700"
+                }`}
               >
                 {collaborating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -533,7 +562,7 @@ export default function CreatorProfilePage() {
               </button>
             )}
 
-            {/* ✅ ACHETER DES MANAS (SI SOLDE INSUFFISANT) */}
+            {/* ACHETER DES MANAS (SI SOLDE INSUFFISANT) */}
             {isCreator && userManasBalance < 250 && (
               <Link
                 href="/payment?plan=manas"
@@ -546,6 +575,22 @@ export default function CreatorProfilePage() {
           </div>
         )}
 
+        {/* ✅ MESSAGE SOLDE INSUFFISANT POUR COLLABORATION */}
+        {isCreator && userManasBalance < 250 && (
+          <div className="flex items-center gap-2 p-2.5 bg-amber-950/30 border border-amber-500/30 rounded-xl text-amber-300 text-xs mb-4 max-w-md w-full">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>Solde insuffisant pour collaborer (250 MANAS requis).</span>
+            <Link
+              href="/payment?plan=manas"
+              className="ml-auto px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold transition-all flex items-center gap-1"
+            >
+              <Coins className="w-3 h-3" />
+              Acheter
+            </Link>
+          </div>
+        )}
+
+        {/* BARRE D'ONGLETS */}
         <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
           <button
             onClick={() => setActiveTab("mangas")}
@@ -571,6 +616,7 @@ export default function CreatorProfilePage() {
           </button>
         </div>
 
+        {/* TAB 1 : MANGAS */}
         {activeTab === "mangas" && (
           <div className="w-full">
             {!profile.mangas || profile.mangas.length === 0 ? (
@@ -620,6 +666,7 @@ export default function CreatorProfilePage() {
           </div>
         )}
 
+        {/* TAB 2 : À PROPOS */}
         {activeTab === "about" && (
           <div className="w-full max-w-md mx-auto">
             <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 space-y-4">
@@ -667,7 +714,7 @@ export default function CreatorProfilePage() {
 
       <BottomNav />
 
-      {/* ===== MODAL ENVOYER DES MANAS (SANS EMOJI) ===== */}
+      {/* ===== MODAL ENVOYER DES MANAS ===== */}
       {showSendManas && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-6 max-w-sm w-full">
