@@ -85,17 +85,23 @@ export default function QRCodePage() {
         const qr = await qrRes.json();
         const user = await userRes.json();
 
+        // ✅ FORCER UNE VALEUR PAR DÉFAUT
+        const defaultColor = "#3B82F6";
+        const badgeColor = user.badgeColor || qr.badgeColor || defaultColor;
+        const qrColor = qr.qrColor || user.badgeColor || defaultColor;
+
         setQrData({
           ...qr,
-          avatarUrl: user.avatarUrl,
-          isCertified: user.isCertified,
-          premiumActive: user.premiumActive,
-          createdAt: user.createdAt,
-          qrColor: qr.qrColor || user.badgeColor || "#3B82F6",
-          badgeColor: user.badgeColor || qr.badgeColor || "#3B82F6", // ✅ CORRIGÉ
+          avatarUrl: user.avatarUrl || null,
+          isCertified: user.isCertified || false,
+          premiumActive: user.premiumActive || false,
+          createdAt: user.createdAt || new Date().toISOString(),
+          qrColor: qrColor,
+          badgeColor: badgeColor,
         });
-        setSelectedColor(qr.qrColor || user.badgeColor || "#3B82F6");
+        setSelectedColor(qrColor);
       } catch (err: any) {
+        console.error("❌ Erreur fetchQR:", err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -439,12 +445,12 @@ export default function QRCodePage() {
           </p>
           {isPremium && (
             <p className="text-xs text-purple-400/60 mt-2">
-               Premium : QR code personnalisé avec votre avatar
+              ✨ Premium : QR code personnalisé avec votre avatar
             </p>
           )}
           {!isPremium && (
             <p className="text-xs text-amber-400/60 mt-2">
-               Passez Premium pour un QR code avec votre avatar
+              👑 Passez Premium pour un QR code avec votre avatar
             </p>
           )}
         </div>
