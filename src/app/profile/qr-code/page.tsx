@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -20,8 +20,6 @@ import {
   ChevronRight,
   Copy,
   Check,
-  Palette,
-  Zap,
   Eye,
 } from "lucide-react";
 
@@ -47,18 +45,10 @@ export default function QRCodePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [selectedColor, setSelectedColor] = useState("#3B82F6");
-  const [updatingColor, setUpdatingColor] = useState(false);
-  const [hovered, setHovered] = useState(false);
+  const [shared, setShared] = useState(false);
+  const qrRef = useRef<HTMLDivElement>(null);
 
-  // ✅ MÊME LOGIQUE QUE LE PROFIL POUR LA COULEUR
   const activeBadgeColor = qrData?.badgeColor || qrData?.qrColor || "#3B82F6";
-
-  const premiumColors = [
-    "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B", "#10B981",
-    "#EF4444", "#06B6D4", "#F472B6", "#818CF8", "#34D399",
-  ];
 
   useEffect(() => {
     const fetchQR = async () => {
@@ -85,7 +75,6 @@ export default function QRCodePage() {
         const qr = await qrRes.json();
         const user = await userRes.json();
 
-        // ✅ FORCER UNE VALEUR PAR DÉFAUT
         const defaultColor = "#3B82F6";
         const badgeColor = user.badgeColor || qr.badgeColor || defaultColor;
         const qrColor = qr.qrColor || user.badgeColor || defaultColor;
@@ -99,7 +88,6 @@ export default function QRCodePage() {
           qrColor: qrColor,
           badgeColor: badgeColor,
         });
-        setSelectedColor(qrColor);
       } catch (err: any) {
         console.error("❌ Erreur fetchQR:", err);
         setError(err.message);
@@ -111,43 +99,122 @@ export default function QRCodePage() {
     fetchQR();
   }, [router]);
 
-  const updateQRColor = async (color: string) => {
-    if (!qrData?.premiumActive) return;
-
-    setUpdatingColor(true);
-    const token = localStorage.getItem("token");
+  // ============================================
+  // 📤 FONCTION DE PARTAGE (comme Telegram)
+  // ============================================
+  const handleShare = async () => {
+    if (!qrRef.current || !qrData) return;
 
     try {
-      const res = await fetch(`${API_URL}/qr/color`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ color }),
-      });
+      // 1. Créer un canvas avec le QR + Avatar + Nom
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || "Erreur lors de la mise à jour");
+      canvas.width = 800;
+      canvas.height = 1000;
+
+      // Fond noir
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // ===== AVATAR =====
+      const avatarSize = 120;
+      const avatarY = 80;
+
+      if (qrData.avatarUrl) {
+        const avatarImg = new Image();
+        avatarImg.crossOrigin = "anonymous";
+        avatarImg.src = qrData.avatarUrl;
+        await new Promise((resolve) => {
+          avatarImg.onload = resolve;
+          avatarImg.onerror = resolve;
+        });
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(avatarImg, (canvas.width - avatarSize) / 2, avatarY, avatarSize, avatarSize);
+        ctx.restore();
+      } else {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.fillStyle = "#3B82F6";
+        ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 50px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(qrData.username?.charAt(0).toUpperCase() || "?", canvas.width / 2, avatarY + avatarSize / 2 + 2);
+        ctx.restore();
       }
 
-      setSelectedColor(color);
-      setQrData((prev) => prev ? { ...prev, qrColor: color } : null);
+      // ===== NOM =====
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 36px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(qrData.username || "Utilisateur", canvas.width / 2, avatarY + avatarSize + 50);
 
-      const qrRes = await fetch(`${API_URL}/qr/me`, {
-        headers: { Authorization: `Bearer ${token}` },
+      // ===== STATUT =====
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "24px Arial";
+      ctx.fillText("QR Code", canvas.width / 2, avatarY + avatarSize + 90);
+
+      // ===== QR CODE =====
+      const qrImg = new Image();
+      qrImg.crossOrigin = "anonymous";
+      qrImg.src = qrData.qrImage;
+      await new Promise((resolve) => {
+        qrImg.onload = resolve;
+        qrImg.onerror = resolve;
       });
-      if (qrRes.ok) {
-        const newQr = await qrRes.json();
-        setQrData((prev) => prev ? { ...prev, qrImage: newQr.qrImage } : null);
-      }
 
-      setShowColorPicker(false);
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setUpdatingColor(false);
+      const qrSize = 400;
+      const qrX = (canvas.width - qrSize) / 2;
+      const qrY = avatarY + avatarSize + 120;
+      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+      // ===== TEXTE =====
+      ctx.fillStyle = "#4a4a4a";
+      ctx.font = "20px Arial";
+      ctx.fillText("Scannez le code QR", canvas.width / 2, qrY + qrSize + 50);
+
+      // 2. Convertir en fichier
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((b) => resolve(b!), "image/png");
+      });
+
+      const file = new File([blob], `qr-${qrData.username}.png`, { type: "image/png" });
+
+      // 3. Partager (API Web Share)
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `QR Code de ${qrData.username}`,
+          text: `Scannez le QR Code de ${qrData.username} sur INKDROP`,
+          files: [file],
+        });
+        setShared(true);
+        setTimeout(() => setShared(false), 3000);
+      } else {
+        // Fallback : téléchargement
+        const link = document.createElement("a");
+        link.href = canvas.toDataURL("image/png");
+        link.download = `qr-${qrData.username}.png`;
+        link.click();
+        alert("📱 Image téléchargée ! Partagez-la manuellement.");
+      }
+    } catch (error) {
+      console.error("Erreur partage:", error);
+      // Fallback : copier le lien
+      if (qrData.qrData) {
+        await navigator.clipboard.writeText(qrData.qrData);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+      }
     }
   };
 
@@ -157,25 +224,6 @@ export default function QRCodePage() {
     link.download = `qr-${qrData.username}.png`;
     link.href = qrData.qrImage;
     link.click();
-  };
-
-  const shareQR = async () => {
-    if (!qrData) return;
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `Scanner le QR de ${qrData.username}`,
-          text: `Scanner ce QR pour voir le profil de ${qrData.username} sur INKDROP !`,
-          url: qrData.qrData,
-        });
-      } else {
-        await navigator.clipboard.writeText(qrData.qrData);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 3000);
-      }
-    } catch (error) {
-      console.error("Erreur de partage:", error);
-    }
   };
 
   const copyLink = async () => {
@@ -216,7 +264,7 @@ export default function QRCodePage() {
             <span className="text-sm font-medium">Retour</span>
           </Link>
           <span className="text-sm font-bold text-white/90 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-blue-400" />
+            <QrCode className="w-4 h-4 text-blue-400" />
             Mon QR Code
           </span>
           <div className="w-16" />
@@ -234,11 +282,10 @@ export default function QRCodePage() {
       <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
 
         {/* ===== CARTE PRINCIPALE ===== */}
-        <div className="w-full max-w-md bg-zinc-900/40 backdrop-blur-sm border border-zinc-800/60 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black/50">
+        <div ref={qrRef} className="w-full max-w-md bg-zinc-900/40 backdrop-blur-sm border border-zinc-800/60 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black/50">
 
-          {/* ===== EN-TÊTE AVEC AVATAR (COMME LE PROFIL) ===== */}
+          {/* ===== EN-TÊTE AVEC AVATAR ===== */}
           <div className="flex items-center gap-4 mb-6 pb-4 border-b border-zinc-800/60">
-            {/* Avatar avec badge */}
             <div className="relative shrink-0">
               <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-900 overflow-hidden ring-2 ring-blue-500/30 ring-offset-2 ring-offset-zinc-950">
                 {qrData.avatarUrl ? (
@@ -249,7 +296,6 @@ export default function QRCodePage() {
                   </div>
                 )}
               </div>
-              {/* ✅ Badge de certification (comme le profil) */}
               {qrData.isCertified && (
                 <div className="absolute bottom-0 right-0 bg-zinc-950 p-0.5 rounded-full shadow-lg">
                   <BadgeCheck
@@ -260,7 +306,6 @@ export default function QRCodePage() {
                   />
                 </div>
               )}
-              {/* ✅ Icône Premium (comme le profil) */}
               {isPremium && (
                 <div className="absolute -top-1 -right-1">
                   <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -268,7 +313,6 @@ export default function QRCodePage() {
               )}
             </div>
 
-            {/* Infos utilisateur */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-white truncate">@{qrData.username}</h2>
@@ -288,22 +332,13 @@ export default function QRCodePage() {
             </div>
           </div>
 
-          {/* ===== QR CODE AVEC AVATAR AU CENTRE ===== */}
+          {/* ===== QR CODE ===== */}
           <div className="flex flex-col items-center">
-            <div
-              className="relative bg-white rounded-2xl p-3 shadow-2xl shadow-blue-500/10 border border-zinc-800/40 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20"
-              onMouseEnter={() => setHovered(true)}
-              onMouseLeave={() => setHovered(false)}
-            >
+            <div className="relative bg-white rounded-2xl p-3 shadow-2xl shadow-blue-500/10 border border-zinc-800/40">
               <img
                 src={qrData.qrImage}
                 alt={`QR Code de ${qrData.username}`}
-                className={`w-48 h-48 md:w-56 md:h-56 object-contain transition-transform duration-700 ${
-                  hovered ? "scale-[1.02]" : "scale-100"
-                }`}
-                style={{
-                  filter: `drop-shadow(0 0 30px ${activeBadgeColor}30)`,
-                }}
+                className="w-48 h-48 md:w-56 md:h-56 object-contain"
               />
               <div className="absolute -bottom-2 -right-2 bg-zinc-950 rounded-full p-1 border border-zinc-800">
                 <div
@@ -345,57 +380,6 @@ export default function QRCodePage() {
             </div>
           </div>
 
-          {/* ===== CHANGER LA COULEUR (PREMIUM UNIQUEMENT) ===== */}
-          {isPremium && (
-            <div className="mt-6">
-              <button
-                onClick={() => setShowColorPicker(!showColorPicker)}
-                className="flex items-center justify-between w-full px-4 py-3 rounded-xl bg-zinc-900/60 border border-zinc-800/40 hover:border-blue-500/30 transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <Palette className="w-4 h-4 text-purple-400" />
-                  <span className="text-sm font-medium text-white">Couleur du QR</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-6 h-6 rounded-full border-2 border-zinc-700 shadow-inner"
-                    style={{ backgroundColor: selectedColor }}
-                  />
-                  <ChevronRight className={`w-4 h-4 text-zinc-500 transition-transform ${showColorPicker ? "rotate-90" : ""}`} />
-                </div>
-              </button>
-
-              {showColorPicker && (
-                <div className="mt-3 p-3 bg-zinc-900/80 rounded-xl border border-zinc-800/40">
-                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-3">Choisissez une couleur</p>
-                  <div className="grid grid-cols-5 gap-2">
-                    {premiumColors.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => updateQRColor(color)}
-                        disabled={updatingColor}
-                        className={`w-full aspect-square rounded-full transition-all hover:scale-110 ${
-                          selectedColor === color ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-950" : ""
-                        }`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                  <div className="mt-3 flex items-center gap-3">
-                    <input
-                      type="color"
-                      value={selectedColor}
-                      onChange={(e) => updateQRColor(e.target.value)}
-                      className="w-8 h-8 rounded-full cursor-pointer border-0 p-0 bg-transparent"
-                      disabled={updatingColor}
-                    />
-                    <span className="text-xs text-zinc-500">Couleur personnalisée</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* ===== ACTIONS ===== */}
           <div className="flex flex-col gap-2.5 mt-6">
             <button
@@ -408,12 +392,21 @@ export default function QRCodePage() {
             </button>
 
             <button
-              onClick={shareQR}
+              onClick={handleShare}
               className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white transition-all shadow-lg shadow-blue-600/20 group"
             >
-              <Share2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
-              <span className="text-sm font-bold">Partager mon QR</span>
-              <ChevronRight className="w-4 h-4 text-blue-300 group-hover:translate-x-1 transition-transform ml-auto" />
+              {shared ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span className="text-sm font-bold">Partagé !</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <span className="text-sm font-bold">Partager mon QR</span>
+                  <ChevronRight className="w-4 h-4 text-blue-300 group-hover:translate-x-1 transition-transform ml-auto" />
+                </>
+              )}
             </button>
 
             <button
@@ -445,12 +438,12 @@ export default function QRCodePage() {
           </p>
           {isPremium && (
             <p className="text-xs text-purple-400/60 mt-2">
-               Premium : QR code personnalisé avec votre avatar
+              ⭐ Premium : QR code personnalisé avec votre avatar
             </p>
           )}
           {!isPremium && (
             <p className="text-xs text-amber-400/60 mt-2">
-               Passez Premium pour un QR code avec votre avatar
+              👑 Passez Premium pour un QR code avec votre avatar
             </p>
           )}
         </div>
