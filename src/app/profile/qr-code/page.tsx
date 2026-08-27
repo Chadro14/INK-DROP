@@ -38,6 +38,7 @@ type QRData = {
   premiumActive?: boolean;
   createdAt?: string;
   qrColor?: string;
+  badgeColor?: string;
 };
 
 export default function QRCodePage() {
@@ -50,6 +51,9 @@ export default function QRCodePage() {
   const [selectedColor, setSelectedColor] = useState("#3B82F6");
   const [updatingColor, setUpdatingColor] = useState(false);
   const [hovered, setHovered] = useState(false);
+
+  // ✅ MÊME LOGIQUE QUE LE PROFIL POUR LA COULEUR
+  const activeBadgeColor = qrData?.badgeColor || qrData?.qrColor || "#3B82F6";
 
   const premiumColors = [
     "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B", "#10B981",
@@ -88,6 +92,7 @@ export default function QRCodePage() {
           premiumActive: user.premiumActive,
           createdAt: user.createdAt,
           qrColor: qr.qrColor || user.badgeColor || "#3B82F6",
+          badgeColor: user.badgeColor,
         });
         setSelectedColor(qr.qrColor || user.badgeColor || "#3B82F6");
       } catch (err: any) {
@@ -197,6 +202,7 @@ export default function QRCodePage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
+      {/* ===== HEADER ===== */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <Link href="/profile" className="text-white/60 hover:text-white transition-colors flex items-center gap-1.5 group">
@@ -211,6 +217,7 @@ export default function QRCodePage() {
         </div>
       </header>
 
+      {/* ===== BANNIÈRE ===== */}
       <div className="h-32 md:h-40 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
         <div className="absolute inset-0 flex items-center justify-center opacity-5">
@@ -220,11 +227,12 @@ export default function QRCodePage() {
 
       <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
 
-        {/* Carte principale */}
-        <div className="w-full max-w-md bg-gradient-to-br from-zinc-900/80 to-zinc-950/80 backdrop-blur-sm border border-zinc-800/60 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black/50">
+        {/* ===== CARTE PRINCIPALE ===== */}
+        <div className="w-full max-w-md bg-zinc-900/40 backdrop-blur-sm border border-zinc-800/60 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black/50">
 
-          {/* En-tête avec avatar */}
+          {/* ===== EN-TÊTE AVEC AVATAR (COMME LE PROFIL) ===== */}
           <div className="flex items-center gap-4 mb-6 pb-4 border-b border-zinc-800/60">
+            {/* Avatar avec badge */}
             <div className="relative shrink-0">
               <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-zinc-900 overflow-hidden ring-2 ring-blue-500/30 ring-offset-2 ring-offset-zinc-950">
                 {qrData.avatarUrl ? (
@@ -235,11 +243,18 @@ export default function QRCodePage() {
                   </div>
                 )}
               </div>
+              {/* ✅ Badge de certification (comme le profil) */}
               {qrData.isCertified && (
-                <div className="absolute -bottom-1 -right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
-                  <BadgeCheck className="w-5 h-5 text-blue-500" fill="#3B82F6" />
+                <div className="absolute bottom-0 right-0 bg-zinc-950 p-0.5 rounded-full shadow-lg">
+                  <BadgeCheck
+                    className="w-5 h-5 md:w-6 md:h-6"
+                    fill={activeBadgeColor}
+                    color="black"
+                    strokeWidth={1.5}
+                  />
                 </div>
               )}
+              {/* ✅ Icône Premium (comme le profil) */}
               {isPremium && (
                 <div className="absolute -top-1 -right-1">
                   <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -247,6 +262,7 @@ export default function QRCodePage() {
               )}
             </div>
 
+            {/* Infos utilisateur */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-white truncate">@{qrData.username}</h2>
@@ -266,7 +282,7 @@ export default function QRCodePage() {
             </div>
           </div>
 
-          {/* QR Code avec effet */}
+          {/* ===== QR CODE AVEC AVATAR AU CENTRE ===== */}
           <div className="flex flex-col items-center">
             <div
               className="relative bg-white rounded-2xl p-3 shadow-2xl shadow-blue-500/10 border border-zinc-800/40 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/20"
@@ -280,14 +296,13 @@ export default function QRCodePage() {
                   hovered ? "scale-[1.02]" : "scale-100"
                 }`}
                 style={{
-                  filter: `drop-shadow(0 0 30px ${selectedColor}30)`,
+                  filter: `drop-shadow(0 0 30px ${activeBadgeColor}30)`,
                 }}
               />
-              {/* Badge flottant */}
               <div className="absolute -bottom-2 -right-2 bg-zinc-950 rounded-full p-1 border border-zinc-800">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg"
-                  style={{ backgroundColor: selectedColor }}
+                  style={{ backgroundColor: activeBadgeColor }}
                 >
                   <QrCode className="w-3.5 h-3.5 text-white" />
                 </div>
@@ -306,7 +321,7 @@ export default function QRCodePage() {
             </div>
           </div>
 
-          {/* Stats */}
+          {/* ===== STATISTIQUES ===== */}
           <div className="grid grid-cols-2 gap-3 mt-6">
             <div className="bg-zinc-900/60 rounded-2xl p-4 text-center border border-zinc-800/40 hover:border-blue-500/30 transition-all group">
               <div className="flex items-center justify-center gap-2 mb-1">
@@ -324,7 +339,7 @@ export default function QRCodePage() {
             </div>
           </div>
 
-          {/* Couleur (Premium) */}
+          {/* ===== CHANGER LA COULEUR (PREMIUM UNIQUEMENT) ===== */}
           {isPremium && (
             <div className="mt-6">
               <button
@@ -375,7 +390,7 @@ export default function QRCodePage() {
             </div>
           )}
 
-          {/* Actions */}
+          {/* ===== ACTIONS ===== */}
           <div className="flex flex-col gap-2.5 mt-6">
             <button
               onClick={downloadQR}
@@ -415,7 +430,7 @@ export default function QRCodePage() {
           </div>
         </div>
 
-        {/* Message info */}
+        {/* ===== MESSAGE D'INFORMATION ===== */}
         <div className="mt-6 max-w-md text-center">
           <p className="text-xs text-zinc-500 leading-relaxed">
             Votre QR code est unique et permanent. <br />
@@ -424,12 +439,12 @@ export default function QRCodePage() {
           </p>
           {isPremium && (
             <p className="text-xs text-purple-400/60 mt-2">
-              ✨ Premium : QR code personnalisé avec votre avatar
+               Premium : QR code personnalisé avec votre avatar
             </p>
           )}
           {!isPremium && (
             <p className="text-xs text-amber-400/60 mt-2">
-              👑 Passez Premium pour un QR code avec votre avatar
+               Passez Premium pour un QR code avec votre avatar
             </p>
           )}
         </div>
