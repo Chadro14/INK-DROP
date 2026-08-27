@@ -43,6 +43,7 @@ export default function AnimeDetailPage() {
           throw new Error("Anime non trouvé");
         }
         const data = await res.json();
+        console.log("🔍 Données reçues:", data); // LOG POUR DEBUG
         setAnime(data);
       } catch (err: any) {
         setError(err.message);
@@ -142,7 +143,7 @@ export default function AnimeDetailPage() {
             anime.episodes.map((episode) => (
               <Link
                 key={episode.id}
-                href={`/inkstream/watch/${episode.id}`}
+                href={`/inkstream/watch/${anime.id}/${episode.episodeNumber}`} // ✅ CORRIGÉ
                 className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/10 hover:border-white/30 transition-colors active:scale-[0.98]"
               >
                 <div className="flex items-center gap-3">
