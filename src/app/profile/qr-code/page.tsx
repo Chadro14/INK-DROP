@@ -438,12 +438,12 @@ export default function QRCodePage() {
           </p>
           {isPremium && (
             <p className="text-xs text-purple-400/60 mt-2">
-              ⭐ Premium : QR code personnalisé avec votre avatar
+               Premium : QR code personnalisé avec votre avatar
             </p>
           )}
           {!isPremium && (
             <p className="text-xs text-amber-400/60 mt-2">
-              👑 Passez Premium pour un QR code avec votre avatar
+               Passez Premium pour un QR code avec votre avatar
             </p>
           )}
         </div>
