@@ -16,11 +16,12 @@ import {
   Crown,
   User,
   Calendar,
-  Eye,
   Sparkles,
   ChevronRight,
   Copy,
   Check,
+  Palette,
+  Lock,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -35,6 +36,7 @@ type QRData = {
   isCertified?: boolean;
   premiumActive?: boolean;
   createdAt?: string;
+  qrColor?: string;
 };
 
 export default function QRCodePage() {
@@ -44,6 +46,23 @@ export default function QRCodePage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [selectedColor, setSelectedColor] = useState("#3B82F6");
+  const [updatingColor, setUpdatingColor] = useState(false);
+
+  // Couleurs prédéfinies pour les utilisateurs Premium
+  const premiumColors = [
+    "#3B82F6", // Bleu
+    "#8B5CF6", // Violet
+    "#EC4899", // Rose
+    "#F59E0B", // Orange
+    "#10B981", // Vert
+    "#EF4444", // Rouge
+    "#06B6D4", // Cyan
+    "#F472B6", // Rose clair
+    "#818CF8", // Bleu clair
+    "#34D399", // Vert clair
+  ];
 
   useEffect(() => {
     const fetchQR = async () => {
@@ -54,7 +73,6 @@ export default function QRCodePage() {
       }
 
       try {
-        // Récupérer le QR + les infos de l'utilisateur
         const [qrRes, userRes] = await Promise.all([
           fetch(`${API_URL}/qr/me`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -77,7 +95,9 @@ export default function QRCodePage() {
           isCertified: user.isCertified,
           premiumActive: user.premiumActive,
           createdAt: user.createdAt,
+          qrColor: qr.qrColor || user.badgeColor || "#3B82F6",
         });
+        setSelectedColor(qr.qrColor || user.badgeColor || "#3B82F6");
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -87,6 +107,51 @@ export default function QRCodePage() {
 
     fetchQR();
   }, [router]);
+
+  // ============================================
+  // CHANGER LA COULEUR DU QR (PREMIUM UNIQUEMENT)
+  // ============================================
+  const updateQRColor = async (color: string) => {
+    if (!qrData?.premiumActive) return;
+
+    setUpdatingColor(true);
+    const token = localStorage.getItem("token");
+
+    try {
+      const res = await fetch(`${API_URL}/qr/color`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ color }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Erreur lors de la mise à jour");
+      }
+
+      const data = await res.json();
+      setSelectedColor(color);
+      setQrData((prev) => prev ? { ...prev, qrColor: color } : null);
+
+      // Recharger le QR avec la nouvelle couleur
+      const qrRes = await fetch(`${API_URL}/qr/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (qrRes.ok) {
+        const newQr = await qrRes.json();
+        setQrData((prev) => prev ? { ...prev, qrImage: newQr.qrImage } : null);
+      }
+
+      setShowColorPicker(false);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setUpdatingColor(false);
+    }
+  };
 
   const downloadQR = () => {
     if (!qrData) return;
@@ -144,7 +209,7 @@ export default function QRCodePage() {
     );
   }
 
-  const avatarColor = qrData.avatarUrl ? "transparent" : "#3B82F6";
+  const isPremium = qrData.premiumActive;
 
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
@@ -201,7 +266,7 @@ export default function QRCodePage() {
                   <BadgeCheck className="w-5 h-5 text-blue-500" fill="#3B82F6" />
                 </div>
               )}
-              {qrData.premiumActive && (
+              {isPremium && (
                 <div className="absolute -top-1 -right-1">
                   <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />
                 </div>
@@ -214,7 +279,7 @@ export default function QRCodePage() {
                 <h2 className="text-lg font-bold text-white truncate">
                   @{qrData.username}
                 </h2>
-                {qrData.premiumActive && (
+                {isPremium && (
                   <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-600/20 text-amber-400 text-[9px] font-bold border border-amber-500/30">
                     PREMIUM
                   </span>
@@ -243,9 +308,15 @@ export default function QRCodePage() {
                 className={`w-48 h-48 md:w-56 md:h-56 object-contain transition-transform duration-700 ${
                   hovered ? "scale-[1.02]" : "scale-100"
                 }`}
+                style={{
+                  filter: `drop-shadow(0 0 20px ${selectedColor}40)`,
+                }}
               />
               <div className="absolute -bottom-2 -right-2 bg-zinc-950 rounded-full p-1 border border-zinc-800">
-                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: selectedColor }}
+                >
                   <QrCode className="w-3.5 h-3.5 text-white" />
                 </div>
               </div>
@@ -280,6 +351,60 @@ export default function QRCodePage() {
               <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Généré</p>
             </div>
           </div>
+
+          {/* ===== CHANGER LA COULEUR (PREMIUM UNIQUEMENT) ===== */}
+          {isPremium && (
+            <div className="mt-6">
+              <button
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                className="flex items-center justify-between w-full px-4 py-3 rounded-xl bg-zinc-900/60 border border-zinc-800/40 hover:border-blue-500/30 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <Palette className="w-4 h-4 text-purple-400" />
+                  <span className="text-sm font-medium text-white">Couleur du QR</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-6 h-6 rounded-full border-2 border-zinc-700 shadow-inner"
+                    style={{ backgroundColor: selectedColor }}
+                  />
+                  <ChevronRight className={`w-4 h-4 text-zinc-500 transition-transform ${showColorPicker ? "rotate-90" : ""}`} />
+                </div>
+              </button>
+
+              {showColorPicker && (
+                <div className="mt-3 p-3 bg-zinc-900/80 rounded-xl border border-zinc-800/40">
+                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-3">
+                    Choisissez une couleur
+                  </p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {premiumColors.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => updateQRColor(color)}
+                        disabled={updatingColor}
+                        className={`w-full aspect-square rounded-full transition-all hover:scale-110 ${
+                          selectedColor === color ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-950" : ""
+                        }`}
+                        style={{ backgroundColor: color }}
+                        title={color}
+                      />
+                    ))}
+                  </div>
+                  <div className="mt-3 flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={selectedColor}
+                      onChange={(e) => updateQRColor(e.target.value)}
+                      className="w-8 h-8 rounded-full cursor-pointer border-0 p-0 bg-transparent"
+                      disabled={updatingColor}
+                    />
+                    <span className="text-xs text-zinc-500">Couleur personnalisée</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ===== ACTIONS ===== */}
           <div className="flex flex-col gap-2.5 mt-6">
@@ -328,6 +453,16 @@ export default function QRCodePage() {
             Partagez-le avec vos amis pour qu'ils puissent découvrir votre profil
             et gagner des <span className="text-blue-400 font-medium">points</span>.
           </p>
+          {isPremium && (
+            <p className="text-xs text-purple-400/60 mt-2">
+              ✨ Premium : Personnalisez la couleur de votre QR code
+            </p>
+          )}
+          {!isPremium && (
+            <p className="text-xs text-amber-400/60 mt-2">
+              👑 Passez Premium pour personnaliser la couleur de votre QR code
+            </p>
+          )}
         </div>
       </main>
 
