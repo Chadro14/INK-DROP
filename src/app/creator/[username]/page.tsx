@@ -392,6 +392,7 @@ export default function CreatorProfilePage() {
               </div>
             )}
           </div>
+          {/* ✅ BADGE CERTIFIÉ SUR L'AVATAR - GARDÉ */}
           {profile.isCertified && (
             <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
               <BadgeCheck
@@ -404,23 +405,11 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
-        {/* NOM AVEC BADGE CERTIFIÉ */}
+        {/* NOM SANS BADGE CERTIFIÉ (DOUBLON SUPPRIMÉ) */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
           
-          {profile.isCertified && (
-            <div className="group relative flex items-center justify-center">
-              <Verified
-                className="w-5 h-5 md:w-6 md:h-6"
-                fill={activeBadgeColor}
-                color="black"
-                strokeWidth={1.5}
-              />
-              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-900 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                Certifié
-              </span>
-            </div>
-          )}
+          {/* ❌ BADGE CERTIFIÉ SUPPRIMÉ ICI (seulement sur l'avatar) */}
 
           {profile.premiumActive && (
             <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
