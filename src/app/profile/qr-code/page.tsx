@@ -92,7 +92,7 @@ export default function QRCodePage() {
           premiumActive: user.premiumActive,
           createdAt: user.createdAt,
           qrColor: qr.qrColor || user.badgeColor || "#3B82F6",
-          badgeColor: user.badgeColor,
+          badgeColor: user.badgeColor || qr.badgeColor || "#3B82F6", // ✅ CORRIGÉ
         });
         setSelectedColor(qr.qrColor || user.badgeColor || "#3B82F6");
       } catch (err: any) {
