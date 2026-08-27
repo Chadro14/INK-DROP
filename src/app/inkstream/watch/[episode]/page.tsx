@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ArrowLeft, Play, Pause, Volume2, Maximize2, AlertCircle } from "lucide-react";
 
-const API_URL = "https://ink-backend.vercel.app";
+const API_URL = "https://ink-backend.vercel.app/animes";
 
 type Episode = {
   id: string;
@@ -36,7 +36,7 @@ export default function WatchEpisodePage() {
       }
 
       try {
-        const res = await fetch(`${API_URL}/inkstream/${animeId}/watch/${episodeNumber}`, {
+        const res = await fetch(`${API_URL}/${animeId}/watch/${episodeNumber}`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -62,8 +62,8 @@ export default function WatchEpisodePage() {
           id: data.episode.id,
           episodeNumber: data.episode.episodeNumber,
           title: data.episode.title || `Épisode ${data.episode.episodeNumber}`,
-          streamUrl: data.streamUrl || "",
-          animeTitle: data.animeTitle || "Anime",
+          streamUrl: data.episode.videoUrl || "",
+          animeTitle: data.anime.title || "Anime",
         });
       } catch (err: any) {
         setError(err.message);
