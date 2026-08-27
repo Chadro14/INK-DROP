@@ -25,6 +25,15 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 
+// ✅ 5 couleurs fixes pour les Premium
+const PREMIUM_COLORS = [
+  "#3B82F6", // Bleu
+  "#8B5CF6", // Violet
+  "#EC4899", // Rose
+  "#F59E0B", // Orange
+  "#10B981", // Vert
+];
+
 type QRData = {
   userId: string;
   username: string;
@@ -46,6 +55,8 @@ export default function QRCodePage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [selectedColor, setSelectedColor] = useState("#3B82F6");
+  const [updatingColor, setUpdatingColor] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
 
   const activeBadgeColor = qrData?.badgeColor || qrData?.qrColor || "#3B82F6";
@@ -88,6 +99,7 @@ export default function QRCodePage() {
           qrColor: qrColor,
           badgeColor: badgeColor,
         });
+        setSelectedColor(qrColor);
       } catch (err: any) {
         console.error("❌ Erreur fetchQR:", err);
         setError(err.message);
@@ -100,13 +112,54 @@ export default function QRCodePage() {
   }, [router]);
 
   // ============================================
-  // 📤 FONCTION DE PARTAGE (comme Telegram)
+  // Changer la couleur du QR (Premium uniquement)
+  // ============================================
+  const changeQRColor = async (color: string) => {
+    if (!qrData?.premiumActive) return;
+
+    setUpdatingColor(true);
+    const token = localStorage.getItem("token");
+
+    try {
+      const res = await fetch(`${API_URL}/qr/color`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ color }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Erreur lors de la mise à jour");
+      }
+
+      setSelectedColor(color);
+      setQrData((prev) => prev ? { ...prev, qrColor: color } : null);
+
+      // Rafraîchir le QR
+      const qrRes = await fetch(`${API_URL}/qr/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (qrRes.ok) {
+        const newQr = await qrRes.json();
+        setQrData((prev) => prev ? { ...prev, qrImage: newQr.qrImage } : null);
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setUpdatingColor(false);
+    }
+  };
+
+  // ============================================
+  // 📤 FONCTION DE PARTAGE (avec design SVG)
   // ============================================
   const handleShare = async () => {
     if (!qrRef.current || !qrData) return;
 
     try {
-      // 1. Créer un canvas avec le QR + Avatar + Nom
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
@@ -114,12 +167,41 @@ export default function QRCodePage() {
       canvas.width = 800;
       canvas.height = 1000;
 
-      // Fond noir
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // ===== FOND AVEC DÉGRADÉ (comme l'appli) =====
+      const gradient = ctx.createLinearGradient(0, 0, 800, 1000);
+      gradient.addColorStop(0, "#0f0f1a");
+      gradient.addColorStop(0.5, "#1a1a2e");
+      gradient.addColorStop(1, "#0f0f1a");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 800, 1000);
+
+      // ===== BORDURE ARRONDIE AUTOUR DU QR =====
+      const borderX = 50;
+      const borderY = 250;
+      const borderWidth = 700;
+      const borderHeight = 500;
+      const radius = 40;
+
+      ctx.beginPath();
+      ctx.moveTo(borderX + radius, borderY);
+      ctx.lineTo(borderX + borderWidth - radius, borderY);
+      ctx.quadraticCurveTo(borderX + borderWidth, borderY, borderX + borderWidth, borderY + radius);
+      ctx.lineTo(borderX + borderWidth, borderY + borderHeight - radius);
+      ctx.quadraticCurveTo(borderX + borderWidth, borderY + borderHeight, borderX + borderWidth - radius, borderY + borderHeight);
+      ctx.lineTo(borderX + radius, borderY + borderHeight);
+      ctx.quadraticCurveTo(borderX, borderY + borderHeight, borderX, borderY + borderHeight - radius);
+      ctx.lineTo(borderX, borderY + radius);
+      ctx.quadraticCurveTo(borderX, borderY, borderX + radius, borderY);
+      ctx.closePath();
+
+      ctx.shadowColor = "#3B82F6";
+      ctx.shadowBlur = 30;
+      ctx.fillStyle = "rgba(255,255,255,0.05)";
+      ctx.fill();
+      ctx.shadowBlur = 0;
 
       // ===== AVATAR =====
-      const avatarSize = 120;
+      const avatarSize = 100;
       const avatarY = 80;
 
       if (qrData.avatarUrl) {
@@ -132,37 +214,37 @@ export default function QRCodePage() {
         });
         ctx.save();
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        ctx.arc(400, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-        ctx.drawImage(avatarImg, (canvas.width - avatarSize) / 2, avatarY, avatarSize, avatarSize);
+        ctx.drawImage(avatarImg, 350, avatarY, avatarSize, avatarSize);
         ctx.restore();
       } else {
         ctx.save();
         ctx.beginPath();
-        ctx.arc(canvas.width / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+        ctx.arc(400, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
         ctx.closePath();
         ctx.fillStyle = "#3B82F6";
         ctx.fill();
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 50px Arial";
+        ctx.font = "bold 40px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(qrData.username?.charAt(0).toUpperCase() || "?", canvas.width / 2, avatarY + avatarSize / 2 + 2);
+        ctx.fillText(qrData.username?.charAt(0).toUpperCase() || "?", 400, avatarY + avatarSize / 2 + 2);
         ctx.restore();
       }
 
       // ===== NOM =====
       ctx.fillStyle = "#ffffff";
-      ctx.font = "bold 36px Arial";
+      ctx.font = "bold 28px Arial";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(qrData.username || "Utilisateur", canvas.width / 2, avatarY + avatarSize + 50);
+      ctx.fillText(qrData.username || "Utilisateur", 400, avatarY + avatarSize + 40);
 
       // ===== STATUT =====
       ctx.fillStyle = "#6b7280";
-      ctx.font = "24px Arial";
-      ctx.fillText("QR Code", canvas.width / 2, avatarY + avatarSize + 90);
+      ctx.font = "18px Arial";
+      ctx.fillText("QR Code", 400, avatarY + avatarSize + 70);
 
       // ===== QR CODE =====
       const qrImg = new Image();
@@ -173,24 +255,48 @@ export default function QRCodePage() {
         qrImg.onerror = resolve;
       });
 
-      const qrSize = 400;
-      const qrX = (canvas.width - qrSize) / 2;
-      const qrY = avatarY + avatarSize + 120;
+      const qrSize = 350;
+      const qrX = (800 - qrSize) / 2;
+      const qrY = avatarY + avatarSize + 110;
+
+      // ✅ QR avec coins arrondis
+      ctx.save();
+      const qrRadius = 24;
+      ctx.beginPath();
+      ctx.moveTo(qrX + qrRadius, qrY);
+      ctx.lineTo(qrX + qrSize - qrRadius, qrY);
+      ctx.quadraticCurveTo(qrX + qrSize, qrY, qrX + qrSize, qrY + qrRadius);
+      ctx.lineTo(qrX + qrSize, qrY + qrSize - qrRadius);
+      ctx.quadraticCurveTo(qrX + qrSize, qrY + qrSize, qrX + qrSize - qrRadius, qrY + qrSize);
+      ctx.lineTo(qrX + qrRadius, qrY + qrSize);
+      ctx.quadraticCurveTo(qrX, qrY + qrSize, qrX, qrY + qrSize - qrRadius);
+      ctx.lineTo(qrX, qrY + qrRadius);
+      ctx.quadraticCurveTo(qrX, qrY, qrX + qrRadius, qrY);
+      ctx.closePath();
+      ctx.clip();
       ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+      ctx.restore();
 
       // ===== TEXTE =====
       ctx.fillStyle = "#4a4a4a";
-      ctx.font = "20px Arial";
-      ctx.fillText("Scannez le code QR", canvas.width / 2, qrY + qrSize + 50);
+      ctx.font = "18px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Scannez le code QR", 400, qrY + qrSize + 50);
 
-      // 2. Convertir en fichier
+      // ===== LOGO INKDROP EN BAS =====
+      ctx.fillStyle = "#3B82F6";
+      ctx.font = "bold 16px Arial";
+      ctx.fillText("INKDROP", 400, 940);
+
+      // ===== CONVERTIR EN FICHIER =====
       const blob = await new Promise<Blob>((resolve) => {
         canvas.toBlob((b) => resolve(b!), "image/png");
       });
 
       const file = new File([blob], `qr-${qrData.username}.png`, { type: "image/png" });
 
-      // 3. Partager (API Web Share)
+      // ===== PARTAGER =====
       if (navigator.share && navigator.canShare({ files: [file] })) {
         await navigator.share({
           title: `QR Code de ${qrData.username}`,
@@ -200,7 +306,6 @@ export default function QRCodePage() {
         setShared(true);
         setTimeout(() => setShared(false), 3000);
       } else {
-        // Fallback : téléchargement
         const link = document.createElement("a");
         link.href = canvas.toDataURL("image/png");
         link.download = `qr-${qrData.username}.png`;
@@ -209,7 +314,6 @@ export default function QRCodePage() {
       }
     } catch (error) {
       console.error("Erreur partage:", error);
-      // Fallback : copier le lien
       if (qrData.qrData) {
         await navigator.clipboard.writeText(qrData.qrData);
         setCopied(true);
@@ -254,7 +358,7 @@ export default function QRCodePage() {
   const isPremium = qrData.premiumActive;
 
   return (
-    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
+    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
 
       {/* ===== HEADER ===== */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
@@ -265,24 +369,16 @@ export default function QRCodePage() {
           </Link>
           <span className="text-sm font-bold text-white/90 flex items-center gap-2">
             <QrCode className="w-4 h-4 text-blue-400" />
-            Mon QR Code
+            QR Code
           </span>
           <div className="w-16" />
         </div>
       </header>
 
-      {/* ===== BANNIÈRE ===== */}
-      <div className="h-32 md:h-40 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
-        <div className="absolute inset-0 flex items-center justify-center opacity-5">
-          <div className="text-8xl font-black text-blue-500 select-none">QR</div>
-        </div>
-      </div>
-
-      <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
+      <main className="max-w-4xl mx-auto w-full px-4 md:px-8 flex flex-col items-center">
 
         {/* ===== CARTE PRINCIPALE ===== */}
-        <div ref={qrRef} className="w-full max-w-md bg-zinc-900/40 backdrop-blur-sm border border-zinc-800/60 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black/50">
+        <div ref={qrRef} className="w-full max-w-md bg-zinc-900/40 backdrop-blur-sm border border-zinc-800/60 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black/50 mt-6">
 
           {/* ===== EN-TÊTE AVEC AVATAR ===== */}
           <div className="flex items-center gap-4 mb-6 pb-4 border-b border-zinc-800/60">
@@ -306,6 +402,7 @@ export default function QRCodePage() {
                   />
                 </div>
               )}
+              {/* ✅ COURONNE SEULEMENT (pas de texte "PREMIUM") */}
               {isPremium && (
                 <div className="absolute -top-1 -right-1">
                   <Crown className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -314,14 +411,13 @@ export default function QRCodePage() {
             </div>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white truncate">@{qrData.username}</h2>
+              <h2 className="text-lg font-bold text-white truncate flex items-center gap-2">
+                @{qrData.username}
+                {/* ✅ Couronne à côté du nom (pas de texte) */}
                 {isPremium && (
-                  <span className="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500/20 to-amber-600/20 text-amber-400 text-[9px] font-bold border border-amber-500/30">
-                    PREMIUM
-                  </span>
+                  <Crown className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                 )}
-              </div>
+              </h2>
               <p className="text-xs text-zinc-400 flex items-center gap-2">
                 <User className="w-3 h-3" />
                 {qrData.isCertified ? "Créateur certifié" : "Membre INKDROP"}
@@ -332,13 +428,13 @@ export default function QRCodePage() {
             </div>
           </div>
 
-          {/* ===== QR CODE ===== */}
+          {/* ===== QR CODE (arrondi) ===== */}
           <div className="flex flex-col items-center">
-            <div className="relative bg-white rounded-2xl p-3 shadow-2xl shadow-blue-500/10 border border-zinc-800/40">
+            <div className="relative bg-white rounded-3xl p-4 shadow-2xl shadow-blue-500/10 border border-zinc-800/40 overflow-hidden">
               <img
                 src={qrData.qrImage}
                 alt={`QR Code de ${qrData.username}`}
-                className="w-48 h-48 md:w-56 md:h-56 object-contain"
+                className="w-48 h-48 md:w-56 md:h-56 object-contain rounded-2xl"
               />
               <div className="absolute -bottom-2 -right-2 bg-zinc-950 rounded-full p-1 border border-zinc-800">
                 <div
@@ -355,25 +451,41 @@ export default function QRCodePage() {
                 <Eye className="w-4 h-4 text-blue-400" />
                 Scanner pour découvrir le profil
               </p>
-              <p className="text-xs text-zinc-500 mt-1 flex items-center justify-center gap-2">
-                <span>Partagez ce QR code avec vos amis</span>
-                <Sparkles className="w-3 h-3 text-blue-400" />
-              </p>
             </div>
           </div>
 
+          {/* ===== 5 COULEURS POUR PREMIUM ===== */}
+          {isPremium && (
+            <div className="mt-6">
+              <p className="text-xs text-zinc-500 mb-3 text-center">Choisissez la couleur de votre QR</p>
+              <div className="flex justify-center gap-3">
+                {PREMIUM_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => changeQRColor(color)}
+                    disabled={updatingColor}
+                    className={`w-10 h-10 rounded-full transition-all hover:scale-110 ${
+                      selectedColor === color ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-950" : "ring-1 ring-zinc-700"
+                    }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ===== STATISTIQUES ===== */}
           <div className="grid grid-cols-2 gap-3 mt-6">
-            <div className="bg-zinc-900/60 rounded-2xl p-4 text-center border border-zinc-800/40 hover:border-blue-500/30 transition-all group">
+            <div className="bg-zinc-900/60 rounded-2xl p-4 text-center border border-zinc-800/40">
               <div className="flex items-center justify-center gap-2 mb-1">
-                <Users className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
+                <Users className="w-4 h-4 text-blue-400" />
                 <span className="text-2xl font-black text-white">{qrData.scanCount}</span>
               </div>
               <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Scans</p>
             </div>
-            <div className="bg-zinc-900/60 rounded-2xl p-4 text-center border border-zinc-800/40 hover:border-blue-500/30 transition-all group">
+            <div className="bg-zinc-900/60 rounded-2xl p-4 text-center border border-zinc-800/40">
               <div className="flex items-center justify-center gap-2 mb-1">
-                <Clock className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                <Clock className="w-4 h-4 text-purple-400" />
                 <span className="text-2xl font-black text-white">1</span>
               </div>
               <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Généré</p>
@@ -384,16 +496,15 @@ export default function QRCodePage() {
           <div className="flex flex-col gap-2.5 mt-6">
             <button
               onClick={downloadQR}
-              className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-white/5 text-white hover:bg-white/10 transition-all border border-white/10 hover:border-white/20 group"
+              className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-white/5 text-white hover:bg-white/10 transition-all border border-white/10"
             >
-              <Download className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
+              <Download className="w-4 h-4 text-blue-400" />
               <span className="text-sm font-medium">Télécharger le QR</span>
-              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-1 transition-transform ml-auto" />
             </button>
 
             <button
               onClick={handleShare}
-              className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white transition-all shadow-lg shadow-blue-600/20 group"
+              className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white transition-all shadow-lg shadow-blue-600/20"
             >
               {shared ? (
                 <>
@@ -402,16 +513,15 @@ export default function QRCodePage() {
                 </>
               ) : (
                 <>
-                  <Share2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <Share2 className="w-4 h-4" />
                   <span className="text-sm font-bold">Partager mon QR</span>
-                  <ChevronRight className="w-4 h-4 text-blue-300 group-hover:translate-x-1 transition-transform ml-auto" />
                 </>
               )}
             </button>
 
             <button
               onClick={copyLink}
-              className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-zinc-900/60 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all border border-zinc-800/40 group"
+              className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-zinc-900/60 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-all border border-zinc-800/40"
             >
               {copied ? (
                 <>
@@ -420,32 +530,20 @@ export default function QRCodePage() {
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <Copy className="w-4 h-4" />
                   <span className="text-sm font-medium">Copier le lien</span>
-                  <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-1 transition-transform ml-auto" />
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* ===== MESSAGE D'INFORMATION ===== */}
+        {/* ===== FOOTER ===== */}
         <div className="mt-6 max-w-md text-center">
           <p className="text-xs text-zinc-500 leading-relaxed">
             Votre QR code est unique et permanent. <br />
-            Partagez-le avec vos amis pour qu'ils puissent découvrir votre profil
-            et gagner des <span className="text-blue-400 font-medium">points</span>.
+            Partagez-le avec vos amis pour qu'ils puissent découvrir votre profil.
           </p>
-          {isPremium && (
-            <p className="text-xs text-purple-400/60 mt-2">
-               Premium : QR code personnalisé avec votre avatar
-            </p>
-          )}
-          {!isPremium && (
-            <p className="text-xs text-amber-400/60 mt-2">
-               Passez Premium pour un QR code avec votre avatar
-            </p>
-          )}
         </div>
       </main>
 
