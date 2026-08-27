@@ -17,7 +17,7 @@ import {
   ChevronRight
 } from "lucide-react";
 
-const API_URL = "https://ink-backend.vercel.app";
+const API_URL = "https://ink-backend.vercel.app/animes";
 
 type Anime = {
   id: string;
@@ -58,7 +58,7 @@ export default function InkStreamPage() {
         const params = new URLSearchParams();
         if (search) params.set("q", search);
 
-        const res = await fetch(`${API_URL}/inkstream/search?${params}`);
+        const res = await fetch(`${API_URL}/search?${params}`);
         const data = await res.json();
         setAnimes(data.data || []);
       } catch (error) {
