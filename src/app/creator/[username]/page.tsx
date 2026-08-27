@@ -69,17 +69,12 @@ export default function CreatorProfilePage() {
   const [activeTab, setActiveTab] = useState<"mangas" | "about">("mangas");
   const [userManasBalance, setUserManasBalance] = useState(0);
 
-  // ✅ ÉTATS POUR LA COLLABORATION
   const [collaborating, setCollaborating] = useState(false);
 
-  // ✅ ÉTATS POUR L'ENVOI DE MANAS
   const [showSendManas, setShowSendManas] = useState(false);
   const [sendManasAmount, setSendManasAmount] = useState("");
   const [sendingManas, setSendingManas] = useState(false);
 
-  // ============================================
-  // RÉCUPÉRER LE SOLDE DE L'UTILISATEUR
-  // ============================================
   useEffect(() => {
     const fetchUserBalance = async () => {
       const token = localStorage.getItem("token");
@@ -101,9 +96,6 @@ export default function CreatorProfilePage() {
     fetchUserBalance();
   }, []);
 
-  // ============================================
-  // RÉCUPÉRER LE PROFIL + STATUT FOLLOW
-  // ============================================
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -155,9 +147,6 @@ export default function CreatorProfilePage() {
     }
   }, [username]);
 
-  // ============================================
-  // S'ABONNER / SE DÉSABONNER
-  // ============================================
   const handleFollow = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -196,9 +185,7 @@ export default function CreatorProfilePage() {
     }
   };
 
-  // ============================================
-  // ✅ COLLABORER AVEC LE CRÉATEUR
-  // ============================================
+  // ✅ COLLABORER - SANS EMOJI
   const handleCollaborate = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -208,7 +195,7 @@ export default function CreatorProfilePage() {
 
     if (!profile) return;
 
-    if (!confirm(`Envoyer 250 MANAS en collaboration à ${profile.username} ?`)) {
+    if (!confirm(`Envoyer 250 MANAS en collaboration avec ${profile.username} ?`)) {
       return;
     }
 
@@ -234,7 +221,7 @@ export default function CreatorProfilePage() {
         throw new Error(data.message || "Erreur lors de la collaboration");
       }
 
-      alert(`✅ Collaboration réussie ! Vous avez envoyé 250 MANAS à ${profile.username}`);
+      alert(`Collaboration réussie : 250 MANAS envoyés à ${profile.username}.`);
       setUserManasBalance(data.balance);
       router.push("/profile");
     } catch (err: any) {
@@ -244,9 +231,7 @@ export default function CreatorProfilePage() {
     }
   };
 
-  // ============================================
-  // ✅ ENVOYER DES MANAS À UN AMI
-  // ============================================
+  // ✅ ENVOYER DES MANAS - SANS EMOJI
   const handleSendManas = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -289,7 +274,7 @@ export default function CreatorProfilePage() {
         throw new Error(data.message || "Erreur lors de l'envoi");
       }
 
-      alert(`✅ ${amount} MANAS envoyés à ${profile.username} !`);
+      alert(`Succès : ${amount} MANAS envoyés à ${profile.username}.`);
       setShowSendManas(false);
       setSendManasAmount("");
       setUserManasBalance(data.balance);
@@ -300,9 +285,6 @@ export default function CreatorProfilePage() {
     }
   };
 
-  // ============================================
-  // PARTAGER LE PROFIL
-  // ============================================
   const handleShare = () => {
     const shareUrl = `https://ink-drop-one.vercel.app/creator/${profile?.username}`;
     
@@ -314,7 +296,7 @@ export default function CreatorProfilePage() {
       }).catch(() => {});
     } else {
       navigator.clipboard.writeText(shareUrl);
-      alert("Lien copié !");
+      alert("Lien copié");
     }
   };
 
@@ -349,7 +331,6 @@ export default function CreatorProfilePage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
-      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <button
@@ -371,7 +352,6 @@ export default function CreatorProfilePage() {
         </div>
       </header>
 
-      {/* BANNIÈRE */}
       <div className="h-32 md:h-48 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
       </div>
@@ -405,7 +385,6 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
-        {/* NOM AVEC BADGE CERTIFIÉ */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
           
@@ -431,12 +410,10 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
-        {/* BIO */}
         <p className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal">
           {profile.bio || "Créateur sur INKDROP"}
         </p>
 
-        {/* INFOS */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-6">
           <span className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-blue-400" /> 
@@ -458,7 +435,6 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
-        {/* STATS SOCIALES */}
         <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
           <div className="text-center">
             <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
@@ -476,7 +452,6 @@ export default function CreatorProfilePage() {
           </div>
         </div>
 
-        {/* BOUTONS D'ACTION */}
         <div className="flex gap-2.5 w-full max-w-md md:max-w-lg mb-8">
           {isCurrentUser ? (
             <>
@@ -528,10 +503,10 @@ export default function CreatorProfilePage() {
           </button>
         </div>
 
-        {/* ✅ BOUTONS DE MANAS (COLLABORATION + ENVOI) */}
+        {/* ✅ BOUTONS MANAS + ACHAT MANAS */}
         {!isCurrentUser && !loading && (
           <div className="flex flex-wrap items-center justify-center gap-3 mb-6 w-full max-w-md">
-            {/* ✅ ENVOYER DES MANAS */}
+            {/* ENVOYER DES MANAS */}
             <button
               onClick={() => setShowSendManas(true)}
               className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
@@ -540,7 +515,7 @@ export default function CreatorProfilePage() {
               Envoyer des MANAS
             </button>
 
-            {/* ✅ COLLABORATION */}
+            {/* COLLABORATION */}
             {isCreator && (
               <button
                 onClick={handleCollaborate}
@@ -557,10 +532,20 @@ export default function CreatorProfilePage() {
                 )}
               </button>
             )}
+
+            {/* ✅ ACHETER DES MANAS (SI SOLDE INSUFFISANT) */}
+            {isCreator && userManasBalance < 250 && (
+              <Link
+                href="/payment?plan=manas"
+                className="px-4 py-2 rounded-full bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all shadow-lg shadow-amber-600/20 flex items-center gap-2"
+              >
+                <Coins className="w-4 h-4" />
+                Acheter des MANAS
+              </Link>
+            )}
           </div>
         )}
 
-        {/* BARRE D'ONGLETS */}
         <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
           <button
             onClick={() => setActiveTab("mangas")}
@@ -586,7 +571,6 @@ export default function CreatorProfilePage() {
           </button>
         </div>
 
-        {/* TAB 1 : MANGAS */}
         {activeTab === "mangas" && (
           <div className="w-full">
             {!profile.mangas || profile.mangas.length === 0 ? (
@@ -636,7 +620,6 @@ export default function CreatorProfilePage() {
           </div>
         )}
 
-        {/* TAB 2 : À PROPOS */}
         {activeTab === "about" && (
           <div className="w-full max-w-md mx-auto">
             <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 space-y-4">
@@ -684,7 +667,7 @@ export default function CreatorProfilePage() {
 
       <BottomNav />
 
-      {/* ===== MODAL ENVOYER DES MANAS ===== */}
+      {/* ===== MODAL ENVOYER DES MANAS (SANS EMOJI) ===== */}
       {showSendManas && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-6 max-w-sm w-full">
