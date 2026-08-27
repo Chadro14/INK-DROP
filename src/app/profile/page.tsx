@@ -41,7 +41,8 @@ import {
   DollarSign,
   TrendingUp,
   TrendingDown,
-  Wallet
+  Wallet,
+  QrCode
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -227,6 +228,9 @@ export default function ProfilePage() {
   const totalEarnings = profile?.earnings?.total || 0;
   const isCreator = profile?.role === 'CREATOR' || profile?.role === 'ADMIN';
 
+  // ============================================
+  // AFFICHAGE CHARGEMENT
+  // ============================================
   if (loading) {
     return <Loader message="Chargement de votre profil" />;
   }
@@ -268,6 +272,17 @@ export default function ProfilePage() {
             @{profile.username.toLowerCase()}
           </span>
           <div className="flex items-center gap-2 md:gap-3 text-zinc-400">
+            
+            {/* ✅ BOUTON QR CODE AJOUTÉ */}
+            <Link
+              href="/profile/qr-code"
+              className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all relative group"
+              title="Mon QR Code"
+            >
+              <QrCode className="w-5 h-5" />
+              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            </Link>
+
             <Link
               href="/notifications"
               className="relative p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all"
@@ -527,10 +542,10 @@ export default function ProfilePage() {
         {activeTab === "stats" && (
           <div className="w-full max-w-xl mx-auto space-y-3">
             
-            {/* ===== STATS PRINCIPALES (AVEC DISTINCTION CRÉATEUR / LECTEUR) ===== */}
+            {/* ===== STATS PRINCIPALES ===== */}
             <div className="grid grid-cols-3 gap-2.5">
               
-              {/* ✅ 1. Balance - UNIQUEMENT POUR CRÉATEUR */}
+              {/* BALANCE */}
               {isCreator ? (
                 <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
                   <DollarSign className="w-5 h-5 mx-auto text-emerald-400 mb-1" />
@@ -549,7 +564,7 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* ✅ 2. Revenus - UNIQUEMENT POUR CRÉATEUR */}
+              {/* REVENUS / LIKES */}
               {isCreator ? (
                 <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
                   <TrendingUp className="w-5 h-5 mx-auto text-blue-400 mb-1" />
@@ -568,7 +583,7 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* ✅ 3. Niveau - TOUT LE MONDE */}
+              {/* NIVEAU */}
               <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
                 <Award className="w-5 h-5 mx-auto text-purple-400 mb-1" />
                 <p className="text-base md:text-lg font-black text-white">{profile.steamLevel || 1}</p>
@@ -576,7 +591,7 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* ===== DÉTAIL DES REVENUS (UNIQUEMENT CRÉATEUR) ===== */}
+            {/* ===== DÉTAIL DES REVENUS ===== */}
             {isCreator && profile.earnings && (
               <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
                 <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">
@@ -614,7 +629,7 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* ===== BONUS QUOTIDIEN (TOUT LE MONDE) ===== */}
+            {/* ===== BONUS QUOTIDIEN ===== */}
             <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -654,7 +669,7 @@ export default function ProfilePage() {
         {activeTab === "menu" && (
           <div className="w-full max-w-xl mx-auto space-y-2.5">
             
-            {/* ===== BOUTON PREMIUM ===== */}
+            {/* PREMIUM */}
             <Link
               href="/premium"
               className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-950/40 to-amber-950/20 rounded-xl border border-amber-500/30 hover:border-amber-500/60 transition-all group"
@@ -682,7 +697,7 @@ export default function ProfilePage() {
               <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
             </Link>
 
-            {/* ===== CERTIFICATION ===== */}
+            {/* CERTIFICATION */}
             <Link
               href="/certification"
               className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
@@ -700,7 +715,7 @@ export default function ProfilePage() {
               <ChevronRight className="w-4 h-4 text-zinc-500" />
             </Link>
 
-            {/* ===== BADGE COLOR ===== */}
+            {/* BADGE COLOR */}
             {profile.isCertified && (
               <Link
                 href="/profile/badge-color"
@@ -718,7 +733,7 @@ export default function ProfilePage() {
               </Link>
             )}
 
-            {/* ===== FAVORIS ===== */}
+            {/* FAVORIS */}
             <Link
               href="/favorites"
               className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
@@ -733,7 +748,7 @@ export default function ProfilePage() {
               <ChevronRight className="w-4 h-4 text-zinc-500" />
             </Link>
 
-            {/* ===== HISTORIQUE MANAS ===== */}
+            {/* HISTORIQUE MANAS */}
             <Link
               href="/profile/manas-history"
               className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
@@ -746,7 +761,7 @@ export default function ProfilePage() {
               <ChevronRight className="w-4 h-4 text-zinc-500" />
             </Link>
 
-            {/* ===== ✅ RETRAIT D'ARGENT (CRÉATEUR UNIQUEMENT) ===== */}
+            {/* RETRAIT D'ARGENT */}
             {isCreator && (
               <Link
                 href="/creator/balance"
@@ -769,7 +784,7 @@ export default function ProfilePage() {
               </Link>
             )}
 
-            {/* ===== PARAMÈTRES ===== */}
+            {/* PARAMÈTRES */}
             <Link
               href="/profile/settings"
               className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
@@ -781,7 +796,7 @@ export default function ProfilePage() {
               <ChevronRight className="w-4 h-4 text-zinc-500" />
             </Link>
 
-            {/* ===== ADMIN ===== */}
+            {/* ADMIN */}
             {profile.role === 'ADMIN' && (
               <Link
                 href="/admin/certify"
@@ -795,7 +810,7 @@ export default function ProfilePage() {
               </Link>
             )}
 
-            {/* ===== DÉCONNEXION ===== */}
+            {/* DÉCONNEXION */}
             <button
               onClick={handleLogout}
               className="w-full flex items-center justify-between p-4 bg-rose-950/30 rounded-xl border border-rose-500/30 hover:bg-rose-950/50 transition-all"
