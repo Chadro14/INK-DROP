@@ -45,12 +45,16 @@ export default function WatchEpisodePage() {
   useEffect(() => {
     const fetchEpisode = async () => {
       const token = localStorage.getItem("token");
+      console.log("🔑 Token:", token);
+
       if (!token) {
+        console.log("❌ Pas de token, redirection vers login");
         router.push("/login");
         return;
       }
 
       try {
+        console.log(`📡 Appel API: ${API_URL}/${animeId}/watch/${episodeNumber}`);
         const res = await fetch(`${API_URL}/${animeId}/watch/${episodeNumber}`, {
           method: "POST",
           headers: {
@@ -59,22 +63,31 @@ export default function WatchEpisodePage() {
           },
         });
 
+        console.log("📊 Statut:", res.status);
+        const text = await res.text();
+        console.log("📝 Réponse brute:", text);
+
         if (res.status === 400) {
-          const data = await res.json();
-          if (data.message && data.message.includes("MANAS insuffisants")) {
-            setManasError(true);
-            setLoading(false);
-            return;
+          try {
+            const data = JSON.parse(text);
+            if (data.message && data.message.includes("MANAS insuffisants")) {
+              setManasError(true);
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            // Ignorer
           }
         }
 
         if (!res.ok) {
-          throw new Error("Erreur lors du chargement de l'épisode");
+          throw new Error(`Erreur ${res.status}: ${text}`);
         }
 
-        const data = await res.json();
+        const data = JSON.parse(text);
         setEpisodeData(data);
       } catch (err: any) {
+        console.error("❌ Erreur:", err.message);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -84,9 +97,7 @@ export default function WatchEpisodePage() {
     fetchEpisode();
   }, [animeId, episodeNumber, router]);
 
-  // ============================================
   // AFFICHAGE MANAS INSUFFISANTS
-  // ============================================
   if (manasError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-black px-4">
@@ -139,7 +150,6 @@ export default function WatchEpisodePage() {
   return (
     <div className="flex flex-col min-h-screen bg-black pb-20">
 
-      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-black/80 backdrop-blur-sm border-b border-white/10 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
           <Link href={`/inkstream/${animeId}`} className="text-white/60 hover:text-white transition-colors flex items-center gap-1">
@@ -153,7 +163,6 @@ export default function WatchEpisodePage() {
         </div>
       </header>
 
-      {/* LECTEUR VIDÉO */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-6">
         <div className="w-full max-w-4xl aspect-video bg-white/5 rounded-lg overflow-hidden relative flex items-center justify-center border border-white/10">
           {episodeData.episode.videoUrl ? (
