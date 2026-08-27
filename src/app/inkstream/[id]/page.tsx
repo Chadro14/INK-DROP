@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { ArrowLeft, Star, Film, Calendar, Tag, Play } from "lucide-react";
 
-const API_URL = "https://ink-backend.vercel.app";
+const API_URL = "https://ink-backend.vercel.app/animes";
 
 type AnimeDetail = {
   id: string;
@@ -38,7 +38,7 @@ export default function AnimeDetailPage() {
   useEffect(() => {
     const fetchAnime = async () => {
       try {
-        const res = await fetch(`${API_URL}/inkstream/${animeId}`);
+        const res = await fetch(`${API_URL}/${animeId}`);
         if (!res.ok) {
           throw new Error("Anime non trouvé");
         }
