@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -85,7 +86,21 @@ const MANAS_PACKS: ManasPack[] = [
   },
 ];
 
+// ============================================
+// COMPOSANT PRINCIPAL (AVEC SUSPENSE)
+// ============================================
 export default function ManasPaymentPage() {
+  return (
+    <Suspense fallback={<Loader message="Chargement..." />}>
+      <ManasPaymentContent />
+    </Suspense>
+  );
+}
+
+// ============================================
+// CONTENU DE LA PAGE
+// ============================================
+function ManasPaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -99,9 +114,6 @@ export default function ManasPaymentPage() {
 
   const redirectParam = searchParams.get("redirect");
 
-  // ============================================
-  // RÉCUPÉRER LE SOLDE DE L'UTILISATEUR
-  // ============================================
   useEffect(() => {
     const fetchBalance = async () => {
       const token = localStorage.getItem("token");
@@ -123,17 +135,11 @@ export default function ManasPaymentPage() {
     fetchBalance();
   }, []);
 
-  // ============================================
-  // SÉLECTIONNER UN PACK
-  // ============================================
   const handleSelectPack = (packId: string) => {
     setSelectedPack(packId);
     setError("");
   };
 
-  // ============================================
-  // PAYER AVEC PAWAPAY (MOBILE MONEY)
-  // ============================================
   const handlePayment = async () => {
     if (!selectedPack) {
       setError("Veuillez sélectionner un pack");
@@ -202,7 +208,6 @@ export default function ManasPaymentPage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
-      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <Link
@@ -220,7 +225,6 @@ export default function ManasPaymentPage() {
         </div>
       </header>
 
-      {/* BANNIÈRE */}
       <div className="h-32 md:h-40 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
         <div className="absolute inset-0 flex items-center justify-center opacity-5">
@@ -230,7 +234,6 @@ export default function ManasPaymentPage() {
 
       <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
 
-        {/* SOLDE ACTUEL */}
         <div className="w-full max-w-md bg-gradient-to-br from-zinc-900/80 to-zinc-950/80 backdrop-blur-sm border border-zinc-800/60 rounded-3xl p-6 md:p-8 shadow-2xl shadow-black/50 text-center mb-6">
           <p className="text-sm text-zinc-400 font-medium">Votre solde actuel</p>
           <p className="text-4xl md:text-5xl font-black text-white mt-2 flex items-center justify-center gap-3">
@@ -240,7 +243,6 @@ export default function ManasPaymentPage() {
           <p className="text-xs text-zinc-500 mt-1">1 MANAS = 0.01 USD</p>
         </div>
 
-        {/* PACKS */}
         <div className="w-full max-w-md space-y-3">
           <p className="text-sm text-zinc-400 font-medium text-center mb-2">
             Choisissez votre pack
@@ -288,7 +290,6 @@ export default function ManasPaymentPage() {
           ))}
         </div>
 
-        {/* NUMÉRO DE TÉLÉPHONE */}
         <div className="w-full max-w-md mt-6">
           <label className="text-sm font-medium text-zinc-400 block mb-2">
             Numéro de téléphone (Mobile Money)
@@ -316,7 +317,6 @@ export default function ManasPaymentPage() {
           </p>
         </div>
 
-        {/* ERREUR / SUCCÈS */}
         {error && (
           <div className="w-full max-w-md mt-4 p-3 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -331,7 +331,6 @@ export default function ManasPaymentPage() {
           </div>
         )}
 
-        {/* BOUTON PAYER */}
         <button
           onClick={handlePayment}
           disabled={processing || !selectedPack || !phoneNumber}
@@ -354,7 +353,6 @@ export default function ManasPaymentPage() {
           )}
         </button>
 
-        {/* MESSAGE INFORMATIF */}
         <div className="mt-6 max-w-md text-center">
           <p className="text-xs text-zinc-500 leading-relaxed">
             <Shield className="w-3 h-3 inline mr-1 text-blue-400" />
