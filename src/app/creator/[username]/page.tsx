@@ -335,7 +335,6 @@ export default function CreatorProfilePage() {
 
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
-
       {/* HEADER */}
       <motion.header 
         initial={{ y: -20, opacity: 0 }}
@@ -379,7 +378,6 @@ export default function CreatorProfilePage() {
       </motion.div>
 
       <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
-
         {/* AVATAR */}
         <motion.div 
           initial={{ scale: 0.8, opacity: 0 }}
@@ -801,7 +799,6 @@ export default function CreatorProfilePage() {
             </motion.div>
           )}
         </AnimatePresence>
-
       </main>
 
       <BottomNav />
@@ -880,4 +877,7 @@ export default function CreatorProfilePage() {
                   </button>
                 </div>
               </div>
-            </m
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePres
