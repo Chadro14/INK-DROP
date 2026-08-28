@@ -26,6 +26,7 @@ import {
   Loader2,
   AlertCircle,
   Send,
+  ShoppingCart,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -292,6 +293,11 @@ export default function CreatorProfilePage() {
     }
   };
 
+  // ✅ REDIRECTION VERS LA PAGE D'ACHAT DE MANAS
+  const handleBuyManas = () => {
+    router.push("/acheter-manas?redirect=/creator/" + username);
+  };
+
   if (loading) {
     return <Loader message="Chargement du profil" />;
   }
@@ -489,9 +495,11 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
-        {/* BOUTONS MANAS + COLLABORATION */}
+        {/* ✅ BOUTONS MANAS + COLLABORATION + ACHETER MANAS */}
         {!isCurrentUser && !loading && (
           <div className="flex flex-wrap items-center justify-center gap-2.5 mb-6 w-full max-w-md">
+            
+            {/* ENVOYER DES MANAS */}
             <button
               onClick={() => setShowSendManas(true)}
               className="px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center gap-2"
@@ -500,6 +508,16 @@ export default function CreatorProfilePage() {
               Envoyer des MANAS
             </button>
 
+            {/* ✅ ACHETER DES MANAS (NOUVEAU) */}
+            <button
+              onClick={handleBuyManas}
+              className="px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              Acheter des MANAS
+            </button>
+
+            {/* COLLABORER */}
             {isCreator && (
               <button
                 onClick={handleCollaborate}
@@ -521,9 +539,10 @@ export default function CreatorProfilePage() {
               </button>
             )}
 
+            {/* ACHETER DES MANAS (SI SOLDE INSUFFISANT POUR COLLABORER) */}
             {isCreator && userManasBalance < 250 && (
               <Link
-                href="/payment?plan=manas"
+                href="/acheter-manas?redirect=/creator/" + profile.username
                 className="px-4 py-2.5 rounded-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white text-xs font-bold transition-all shadow-lg shadow-amber-600/20 flex items-center gap-2"
               >
                 <Coins className="w-4 h-4" />
@@ -539,7 +558,7 @@ export default function CreatorProfilePage() {
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>Solde insuffisant pour collaborer (250 MANAS requis).</span>
             <Link
-              href="/payment?plan=manas"
+              href="/acheter-manas?redirect=/creator/" + profile.username
               className="ml-auto px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold transition-all flex items-center gap-1"
             >
               <Coins className="w-3 h-3" />
