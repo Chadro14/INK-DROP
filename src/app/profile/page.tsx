@@ -37,19 +37,9 @@ import {
   Wallet,
   QrCode,
   Ticket,
-  Menu,
-  X,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
-
-const COLORS = {
-  primary: "#3B82F6",
-  primaryDark: "#2563EB",
-  success: "#10B981",
-  warning: "#F59E0B",
-  danger: "#EF4444",
-};
 
 type UserProfile = {
   id: string;
@@ -96,7 +86,6 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"mangas" | "stats" | "menu">("mangas");
   const [ticketBalance, setTicketBalance] = useState<TicketBalance | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -231,18 +220,6 @@ export default function ProfilePage() {
 
   const planLabel = getPlanLabel(profile.premiumPlan);
 
-  // ✅ MENU EN LISTE (comme TikTok)
-  const menuItems = [
-    { icon: <Crown className="w-5 h-5" />, label: profile.premiumActive ? "Abonnement Premium actif" : "Devenir Premium", href: "/premium", premium: true },
-    { icon: <Award className="w-5 h-5" />, label: "Certification", href: "/certification" },
-    { icon: <Palette className="w-5 h-5" />, label: "Couleur du Badge", href: "/profile/badge-color", show: profile.isCertified },
-    { icon: <Bookmark className="w-5 h-5" />, label: "Mes favoris", href: "/favorites" },
-    { icon: <Coins className="w-5 h-5" />, label: "Historique MANAS", href: "/profile/manas-history" },
-    { icon: <DollarSign className="w-5 h-5" />, label: "Retirer de l'argent", href: "/creator/balance", show: isCreator },
-    { icon: <Settings className="w-5 h-5" />, label: "Paramètres", href: "/profile/settings" },
-    { icon: <Shield className="w-5 h-5" />, label: "Administration", href: "/admin/certify", show: profile.role === 'ADMIN' },
-  ];
-
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
 
@@ -272,48 +249,17 @@ export default function ProfilePage() {
                 </span>
               )}
             </Link>
-            <button
-              onClick={() => setShowMenu(!showMenu)}
-              className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-colors"
-            >
-              {showMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <button onClick={handleShare} className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all">
+              <Share2 className="w-5 h-5" />
+            </button>
+            <Link href="/profile/settings" className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all">
+              <Settings className="w-5 h-5" />
+            </Link>
+            <button onClick={handleLogout} className="p-2 rounded-full hover:bg-zinc-900 hover:text-red-400 transition-all">
+              <LogOut className="w-5 h-5" />
             </button>
           </div>
         </div>
-
-        {/* ✅ MENU DÉROULANT EN LISTE (comme TikTok) */}
-        {showMenu && (
-          <div className="absolute top-full left-0 right-0 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800/60 py-2 z-50 shadow-2xl">
-            <div className="max-w-4xl mx-auto px-4">
-              {menuItems.map((item, index) => {
-                if (item.show === false) return null;
-                return (
-                  <Link
-                    key={index}
-                    href={item.href}
-                    onClick={() => setShowMenu(false)}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-zinc-900 transition-colors text-zinc-400 hover:text-white"
-                  >
-                    <span className="text-blue-400">{item.icon}</span>
-                    <span className="text-sm font-medium flex-1">{item.label}</span>
-                    <ChevronRight className="w-4 h-4 opacity-30" />
-                  </Link>
-                );
-              })}
-              <button
-                onClick={() => {
-                  setShowMenu(false);
-                  handleLogout();
-                }}
-                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-zinc-900 transition-colors w-full text-rose-400 hover:text-rose-300"
-              >
-                <LogOut className="w-5 h-5" />
-                <span className="text-sm font-medium flex-1 text-left">Se déconnecter</span>
-                <ChevronRight className="w-4 h-4 opacity-30" />
-              </button>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* BANNIÈRE */}
@@ -405,7 +351,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ✅ PLUS DE BOUTONS SEPARES - UNIQUEMENT UN MENU EN LISTE */}
+        {/* ✅ PLUS DE BOUTONS SEPARES - UNIQUEMENT LE MENU EN LISTE */}
 
         {/* BARRE D'ONGLETS */}
         <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
@@ -600,122 +546,117 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* TAB 3 : MENU EN LISTE (UNIFORMISÉ) */}
+        {/* TAB 3 : MENU EN LISTE UNIFORMISÉ (COMME TIKTOK) */}
         {activeTab === "menu" && (
-          <div className="w-full max-w-xl mx-auto space-y-2">
+          <div className="w-full max-w-xl mx-auto bg-zinc-900/20 rounded-2xl border border-zinc-800/40 overflow-hidden">
+            {/* Premium */}
             <Link
               href="/premium"
-              className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
             >
-              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                <Crown className="w-5 h-5 text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors">
-                  {profile.premiumActive ? "Abonnement Premium actif" : "Devenir Premium"}
-                </p>
-                {profile.premiumActive && profile.premiumExpires && (
-                  <p className="text-[10px] text-zinc-500">
-                    Jusqu'au {new Date(profile.premiumExpires).toLocaleDateString()}
-                  </p>
-                )}
-                {!profile.premiumActive && (
-                  <p className="text-[10px] text-zinc-500">Accès illimité, sans pub</p>
-                )}
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
+              <Crown className="w-5 h-5 text-blue-400" />
+              <span className="text-sm font-medium text-white flex-1">
+                {profile.premiumActive ? "Abonnement Premium actif" : "Devenir Premium"}
+              </span>
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
             </Link>
 
+            {/* Certification */}
             <Link
               href="/certification"
-              className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
             >
               <Award className="w-5 h-5 text-blue-400" />
-              <span className="text-sm font-semibold text-white flex-1">Demande de Certification</span>
+              <span className="text-sm font-medium text-white flex-1">Certification</span>
               {profile.isCertified && (
                 <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[9px] font-bold border border-blue-500/20">
                   Certifié
                 </span>
               )}
-              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
             </Link>
 
+            {/* Couleur du Badge */}
             {profile.isCertified && (
               <Link
                 href="/profile/badge-color"
-                className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
               >
                 <Palette className="w-5 h-5 text-blue-400" />
-                <span className="text-sm font-semibold text-white flex-1">Couleur du Badge</span>
+                <span className="text-sm font-medium text-white flex-1">Couleur du Badge</span>
                 <div
                   className="w-5 h-5 rounded-full border border-zinc-700 shadow-inner"
                   style={{ backgroundColor: activeBadgeColor }}
                 />
-                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
+                <ChevronRight className="w-4 h-4 text-zinc-600" />
               </Link>
             )}
 
+            {/* Favoris */}
             <Link
               href="/favorites"
-              className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
             >
               <Bookmark className="w-5 h-5 text-blue-400" />
-              <span className="text-sm font-semibold text-white flex-1">Mes favoris</span>
+              <span className="text-sm font-medium text-white flex-1">Mes favoris</span>
               <span className="text-xs text-zinc-500">({profile._count?.favorites || 0})</span>
-              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
             </Link>
 
+            {/* Historique MANAS */}
             <Link
               href="/profile/manas-history"
-              className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
             >
               <Coins className="w-5 h-5 text-blue-400" />
-              <span className="text-sm font-semibold text-white flex-1">Historique MANAS</span>
+              <span className="text-sm font-medium text-white flex-1">Historique MANAS</span>
               <span className="text-xs text-zinc-500">({profile.manas || 0})</span>
-              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
             </Link>
 
+            {/* Retrait d'argent */}
             {isCreator && (
               <Link
                 href="/creator/balance"
-                className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
               >
                 <DollarSign className="w-5 h-5 text-blue-400" />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors">Retirer de l'argent</p>
-                  <p className="text-[10px] text-zinc-500">{profile.manas || 0} MANAS ≈ ${(profile.manas / 100).toFixed(2)}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
+                <span className="text-sm font-medium text-white flex-1">Retirer de l'argent</span>
+                <span className="text-xs text-zinc-500">≈ ${(profile.manas / 100).toFixed(2)}</span>
+                <ChevronRight className="w-4 h-4 text-zinc-600" />
               </Link>
             )}
 
+            {/* Paramètres */}
             <Link
               href="/profile/settings"
-              className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
             >
               <Settings className="w-5 h-5 text-blue-400" />
-              <span className="text-sm font-semibold text-white flex-1">Paramètres du compte</span>
-              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
+              <span className="text-sm font-medium text-white flex-1">Paramètres du compte</span>
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
             </Link>
 
+            {/* Administration */}
             {profile.role === 'ADMIN' && (
               <Link
                 href="/admin/certify"
-                className="flex items-center gap-3 p-4 bg-blue-950/20 rounded-xl border border-blue-500/20 hover:border-blue-500/50 transition-all group"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
               >
                 <Shield className="w-5 h-5 text-blue-400" />
-                <span className="text-sm font-semibold text-white flex-1">Panneau d'administration</span>
-                <ChevronRight className="w-4 h-4 text-blue-400 group-hover:translate-x-0.5 transition-transform" />
+                <span className="text-sm font-medium text-white flex-1">Administration</span>
+                <ChevronRight className="w-4 h-4 text-zinc-600" />
               </Link>
             )}
 
+            {/* Déconnexion */}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 p-4 bg-rose-950/20 rounded-xl border border-rose-500/20 hover:border-rose-500/50 transition-all w-full group"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors w-full text-rose-400"
             >
-              <LogOut className="w-5 h-5 text-rose-400" />
-              <span className="text-sm font-semibold text-rose-300 flex-1 text-left">Se déconnecter</span>
-              <ChevronRight className="w-4 h-4 text-rose-400/50 group-hover:translate-x-0.5 transition-transform" />
+              <LogOut className="w-5 h-5" />
+              <span className="text-sm font-medium flex-1 text-left">Se déconnecter</span>
+              <ChevronRight className="w-4 h-4 text-rose-400/50" />
             </button>
           </div>
         )}
