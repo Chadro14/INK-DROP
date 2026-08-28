@@ -29,24 +29,27 @@ import {
   Globe,
   Users,
   Crown,
-  Star,
-  Gift,
-  Clock,
-  Smartphone,
-  CreditCard,
   Bookmark,
   Bell,
   Coins as ManasIcon,
-  Loader2,
   DollarSign,
   TrendingUp,
-  TrendingDown,
   Wallet,
   QrCode,
   Ticket,
+  Menu,
+  X,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
+
+const COLORS = {
+  primary: "#3B82F6",
+  primaryDark: "#2563EB",
+  success: "#10B981",
+  warning: "#F59E0B",
+  danger: "#EF4444",
+};
 
 type UserProfile = {
   id: string;
@@ -91,8 +94,9 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"mangas" | "stats" | "menu">("mangas");
-
   const [ticketBalance, setTicketBalance] = useState<TicketBalance | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -172,8 +176,6 @@ export default function ProfilePage() {
     }
   };
 
-  const [unreadCount, setUnreadCount] = useState(0);
-
   const fetchUnreadCount = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -229,8 +231,20 @@ export default function ProfilePage() {
 
   const planLabel = getPlanLabel(profile.premiumPlan);
 
+  // ✅ MENU EN LISTE (comme TikTok)
+  const menuItems = [
+    { icon: <Crown className="w-5 h-5" />, label: profile.premiumActive ? "Abonnement Premium actif" : "Devenir Premium", href: "/premium", premium: true },
+    { icon: <Award className="w-5 h-5" />, label: "Certification", href: "/certification" },
+    { icon: <Palette className="w-5 h-5" />, label: "Couleur du Badge", href: "/profile/badge-color", show: profile.isCertified },
+    { icon: <Bookmark className="w-5 h-5" />, label: "Mes favoris", href: "/favorites" },
+    { icon: <Coins className="w-5 h-5" />, label: "Historique MANAS", href: "/profile/manas-history" },
+    { icon: <DollarSign className="w-5 h-5" />, label: "Retirer de l'argent", href: "/creator/balance", show: isCreator },
+    { icon: <Settings className="w-5 h-5" />, label: "Paramètres", href: "/profile/settings" },
+    { icon: <Shield className="w-5 h-5" />, label: "Administration", href: "/admin/certify", show: profile.role === 'ADMIN' },
+  ];
+
   return (
-    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
+    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
 
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
@@ -238,10 +252,10 @@ export default function ProfilePage() {
           <span className="text-base font-bold tracking-tight text-white/90">
             @{profile.username.toLowerCase()}
           </span>
-          <div className="flex items-center gap-2 md:gap-3 text-zinc-400">
+          <div className="flex items-center gap-2 text-zinc-400">
             <Link
               href="/profile/qr-code"
-              className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all relative group"
+              className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all relative"
               title="Mon QR Code"
             >
               <QrCode className="w-5 h-5" />
@@ -258,17 +272,48 @@ export default function ProfilePage() {
                 </span>
               )}
             </Link>
-            <button onClick={handleShare} className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all">
-              <Share2 className="w-5 h-5" />
-            </button>
-            <Link href="/profile/settings" className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all">
-              <Settings className="w-5 h-5" />
-            </Link>
-            <button onClick={handleLogout} className="p-2 rounded-full hover:bg-zinc-900 hover:text-red-400 transition-all">
-              <LogOut className="w-5 h-5" />
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-colors"
+            >
+              {showMenu ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
+
+        {/* ✅ MENU DÉROULANT EN LISTE (comme TikTok) */}
+        {showMenu && (
+          <div className="absolute top-full left-0 right-0 bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-800/60 py-2 z-50 shadow-2xl">
+            <div className="max-w-4xl mx-auto px-4">
+              {menuItems.map((item, index) => {
+                if (item.show === false) return null;
+                return (
+                  <Link
+                    key={index}
+                    href={item.href}
+                    onClick={() => setShowMenu(false)}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-zinc-900 transition-colors text-zinc-400 hover:text-white"
+                  >
+                    <span className="text-blue-400">{item.icon}</span>
+                    <span className="text-sm font-medium flex-1">{item.label}</span>
+                    <ChevronRight className="w-4 h-4 opacity-30" />
+                  </Link>
+                );
+              })}
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  handleLogout();
+                }}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-zinc-900 transition-colors w-full text-rose-400 hover:text-rose-300"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="text-sm font-medium flex-1 text-left">Se déconnecter</span>
+                <ChevronRight className="w-4 h-4 opacity-30" />
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* BANNIÈRE */}
@@ -360,32 +405,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* BOUTONS D'ACTION */}
-        <div className="flex gap-2.5 w-full max-w-md md:max-w-lg mb-8">
-          <Link
-            href="/profile/edit"
-            className="flex-1 py-2.5 rounded-full bg-white hover:bg-zinc-200 text-black text-xs md:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2"
-          >
-            <Edit className="w-4 h-4" />
-            <span className="hidden sm:inline">Modifier le profil</span>
-            <span className="sm:hidden">Modifier</span>
-          </Link>
-          <Link
-            href="/creator/upload"
-            className="px-5 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-bold transition-all shadow-md shadow-blue-600/20 flex items-center justify-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Publier</span>
-            <span className="sm:hidden">+</span>
-          </Link>
-          <button
-            onClick={handleShare}
-            className="p-2.5 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-800 transition-all flex items-center justify-center"
-            title="Partager"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
-        </div>
+        {/* ✅ PLUS DE BOUTONS SEPARES - UNIQUEMENT UN MENU EN LISTE */}
 
         {/* BARRE D'ONGLETS */}
         <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
@@ -541,11 +561,11 @@ export default function ProfilePage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-400">Payé</span>
-                    <span className="text-emerald-400">${profile.earnings.paid.toFixed(2)}</span>
+                    <span className="text-blue-400">${profile.earnings.paid.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-400">En attente</span>
-                    <span className="text-yellow-400">${profile.earnings.pending.toFixed(2)}</span>
+                    <span className="text-blue-400">${profile.earnings.pending.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -580,151 +600,122 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* TAB 3 : MENU */}
+        {/* TAB 3 : MENU EN LISTE (UNIFORMISÉ) */}
         {activeTab === "menu" && (
-          <div className="w-full max-w-xl mx-auto space-y-2.5">
+          <div className="w-full max-w-xl mx-auto space-y-2">
             <Link
               href="/premium"
-              className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-950/40 to-amber-950/20 rounded-xl border border-amber-500/30 hover:border-amber-500/60 transition-all group"
+              className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <Crown className="w-5 h-5 text-amber-400" />
-                </div>
-                <div className="text-left">
-                  <span className="text-sm font-semibold text-white group-hover:text-amber-400 transition-colors">
-                    {profile.premiumActive ? "Abonnement Premium actif" : "Devenir Premium"}
-                  </span>
-                  {profile.premiumActive && profile.premiumExpires && (
-                    <p className="text-[10px] text-zinc-500">
-                      Valable jusqu'au {new Date(profile.premiumExpires).toLocaleDateString()}
-                    </p>
-                  )}
-                  {!profile.premiumActive && (
-                    <p className="text-[10px] text-zinc-500">
-                      Accès illimité, sans pub, contenu exclusif
-                    </p>
-                  )}
-                </div>
+              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                <Crown className="w-5 h-5 text-blue-400" />
               </div>
-              <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors">
+                  {profile.premiumActive ? "Abonnement Premium actif" : "Devenir Premium"}
+                </p>
+                {profile.premiumActive && profile.premiumExpires && (
+                  <p className="text-[10px] text-zinc-500">
+                    Jusqu'au {new Date(profile.premiumExpires).toLocaleDateString()}
+                  </p>
+                )}
+                {!profile.premiumActive && (
+                  <p className="text-[10px] text-zinc-500">Accès illimité, sans pub</p>
+                )}
+              </div>
+              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
             </Link>
 
             <Link
               href="/certification"
-              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
+              className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
             >
-              <div className="flex items-center gap-3">
-                <Award className="w-5 h-5 text-blue-400" />
-                <span className="text-sm font-semibold text-white">Demande de Certification</span>
-                {profile.isCertified && (
-                  <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 flex items-center gap-1">
-                    <BadgeCheck className="w-3 h-3" />
-                    Certifié
-                  </span>
-                )}
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-500" />
+              <Award className="w-5 h-5 text-blue-400" />
+              <span className="text-sm font-semibold text-white flex-1">Demande de Certification</span>
+              {profile.isCertified && (
+                <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[9px] font-bold border border-blue-500/20">
+                  Certifié
+                </span>
+              )}
+              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
             </Link>
 
             {profile.isCertified && (
               <Link
                 href="/profile/badge-color"
-                className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
+                className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
               >
-                <div className="flex items-center gap-3">
-                  <Palette className="w-5 h-5 text-purple-400" />
-                  <span className="text-sm font-semibold text-white">Couleur du Badge</span>
-                  <div
-                    className="w-4.5 h-4.5 rounded-full border border-zinc-700 shadow-inner"
-                    style={{ backgroundColor: activeBadgeColor }}
-                  />
-                </div>
-                <ChevronRight className="w-4 h-4 text-zinc-500" />
+                <Palette className="w-5 h-5 text-blue-400" />
+                <span className="text-sm font-semibold text-white flex-1">Couleur du Badge</span>
+                <div
+                  className="w-5 h-5 rounded-full border border-zinc-700 shadow-inner"
+                  style={{ backgroundColor: activeBadgeColor }}
+                />
+                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             )}
 
             <Link
               href="/favorites"
-              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
+              className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
             >
-              <div className="flex items-center gap-3">
-                <Bookmark className="w-5 h-5 text-blue-400" />
-                <span className="text-sm font-semibold text-white">Mes favoris</span>
-                <span className="text-[10px] text-zinc-500">
-                  ({profile._count?.favorites || 0})
-                </span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-500" />
+              <Bookmark className="w-5 h-5 text-blue-400" />
+              <span className="text-sm font-semibold text-white flex-1">Mes favoris</span>
+              <span className="text-xs text-zinc-500">({profile._count?.favorites || 0})</span>
+              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
             </Link>
 
             <Link
               href="/profile/manas-history"
-              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
+              className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
             >
-              <div className="flex items-center gap-3">
-                <Coins className="w-5 h-5 text-blue-400" />
-                <span className="text-sm font-semibold text-white">Historique MANAS</span>
-                <span className="text-[10px] text-zinc-500">({profile.manas || 0})</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-500" />
+              <Coins className="w-5 h-5 text-blue-400" />
+              <span className="text-sm font-semibold text-white flex-1">Historique MANAS</span>
+              <span className="text-xs text-zinc-500">({profile.manas || 0})</span>
+              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
             </Link>
 
             {isCreator && (
               <Link
                 href="/creator/balance"
-                className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-950/40 to-emerald-950/20 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 transition-all group"
+                className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-emerald-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white group-hover:text-emerald-400 transition-colors">
-                      Retirer de l'argent
-                    </p>
-                    <p className="text-[10px] text-zinc-500">
-                      {profile.manas || 0} MANAS ≈ ${(profile.manas / 100).toFixed(2)}
-                    </p>
-                  </div>
+                <DollarSign className="w-5 h-5 text-blue-400" />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-white group-hover:text-blue-400 transition-colors">Retirer de l'argent</p>
+                  <p className="text-[10px] text-zinc-500">{profile.manas || 0} MANAS ≈ ${(profile.manas / 100).toFixed(2)}</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 transition-transform" />
+                <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             )}
 
             <Link
               href="/profile/settings"
-              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
+              className="flex items-center gap-3 p-4 bg-zinc-900/40 rounded-xl border border-zinc-800/60 hover:border-blue-500/30 transition-all group"
             >
-              <div className="flex items-center gap-3">
-                <Settings className="w-5 h-5 text-zinc-400" />
-                <span className="text-sm font-semibold text-white">Paramètres du compte</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-500" />
+              <Settings className="w-5 h-5 text-blue-400" />
+              <span className="text-sm font-semibold text-white flex-1">Paramètres du compte</span>
+              <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:translate-x-0.5 transition-transform" />
             </Link>
 
             {profile.role === 'ADMIN' && (
               <Link
                 href="/admin/certify"
-                className="flex items-center justify-between p-4 bg-blue-950/40 rounded-xl border border-blue-500/30 hover:border-blue-500/60 transition-all"
+                className="flex items-center gap-3 p-4 bg-blue-950/20 rounded-xl border border-blue-500/20 hover:border-blue-500/50 transition-all group"
               >
-                <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-blue-400" />
-                  <span className="text-sm font-semibold text-white">Panneau d'administration</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-blue-400" />
+                <Shield className="w-5 h-5 text-blue-400" />
+                <span className="text-sm font-semibold text-white flex-1">Panneau d'administration</span>
+                <ChevronRight className="w-4 h-4 text-blue-400 group-hover:translate-x-0.5 transition-transform" />
               </Link>
             )}
 
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-between p-4 bg-rose-950/30 rounded-xl border border-rose-500/30 hover:bg-rose-950/50 transition-all"
+              className="flex items-center gap-3 p-4 bg-rose-950/20 rounded-xl border border-rose-500/20 hover:border-rose-500/50 transition-all w-full group"
             >
-              <div className="flex items-center gap-3">
-                <LogOut className="w-5 h-5 text-rose-400" />
-                <span className="text-sm font-semibold text-rose-300">Se déconnecter</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-rose-400" />
+              <LogOut className="w-5 h-5 text-rose-400" />
+              <span className="text-sm font-semibold text-rose-300 flex-1 text-left">Se déconnecter</span>
+              <ChevronRight className="w-4 h-4 text-rose-400/50 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>
         )}
