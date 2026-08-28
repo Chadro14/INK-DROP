@@ -42,7 +42,8 @@ import {
   TrendingUp,
   TrendingDown,
   Wallet,
-  QrCode
+  QrCode,
+  Ticket, // ✅ AJOUTÉ
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -79,6 +80,12 @@ type UserProfile = {
   };
 };
 
+// ✅ NOUVEAU TYPE POUR LES TICKETS
+type TicketBalance = {
+  username: string;
+  tickets: number;
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -86,10 +93,9 @@ export default function ProfilePage() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"mangas" | "stats" | "menu">("mangas");
 
-  // ✅ ÉTATS POUR LE BONUS QUOTIDIEN
-  const [bonusLoading, setBonusLoading] = useState(false);
-  const [bonusMessage, setBonusMessage] = useState("");
-  const [bonusAnimation, setBonusAnimation] = useState(false);
+  // ✅ ÉTAT POUR LES TICKETS
+  const [ticketBalance, setTicketBalance] = useState<TicketBalance | null>(null);
+  const [ticketLoading, setTicketLoading] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -101,11 +107,14 @@ export default function ProfilePage() {
       }
 
       try {
-        const [profileRes, earningsRes] = await Promise.all([
+        const [profileRes, earningsRes, ticketRes] = await Promise.all([
           fetch(`${API_URL}/users/me`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetch(`${API_URL}/dashboard/earnings`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_URL}/tickets/balance`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -124,6 +133,12 @@ export default function ProfilePage() {
         let earningsData = null;
         if (earningsRes.ok) {
           earningsData = await earningsRes.json();
+        }
+
+        let ticketsData = null;
+        if (ticketRes.ok) {
+          ticketsData = await ticketRes.json();
+          setTicketBalance(ticketsData);
         }
 
         setProfile({
@@ -185,45 +200,6 @@ export default function ProfilePage() {
     fetchUnreadCount();
   }, []);
 
-  // ✅ FONCTION POUR RÉCLAMER LE BONUS QUOTIDIEN
-  const claimDailyBonus = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    setBonusLoading(true);
-    setBonusMessage("");
-
-    try {
-      const res = await fetch(`${API_URL}/manas/daily-bonus`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Erreur lors du bonus");
-      }
-
-      setBonusMessage("+1 MANAS ajouté à votre solde !");
-      setProfile((prev) => prev ? { ...prev, manas: data.balance } : null);
-      
-      setBonusAnimation(true);
-      setTimeout(() => setBonusAnimation(false), 3000);
-      
-    } catch (err: any) {
-      setBonusMessage(err.message || "Bonus déjà réclamé aujourd'hui, revenez dans 2 jours");
-    } finally {
-      setBonusLoading(false);
-    }
-  };
-
   // ✅ CALCUL DES REVENUS
   const totalEarnings = profile?.earnings?.total || 0;
   const isCreator = profile?.role === 'CREATOR' || profile?.role === 'ADMIN';
@@ -273,7 +249,7 @@ export default function ProfilePage() {
           </span>
           <div className="flex items-center gap-2 md:gap-3 text-zinc-400">
             
-            {/* ✅ BOUTON QR CODE AJOUTÉ */}
+            {/* QR CODE */}
             <Link
               href="/profile/qr-code"
               className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all relative group"
@@ -283,6 +259,7 @@ export default function ProfilePage() {
               <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
             </Link>
 
+            {/* NOTIFICATIONS */}
             <Link
               href="/notifications"
               className="relative p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all"
@@ -538,7 +515,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ===== TAB 2 : STATS & BALANCE ===== */}
+        {/* ===== TAB 2 : STATS & BALANCE (AVEC TICKETS) ===== */}
         {activeTab === "stats" && (
           <div className="w-full max-w-xl mx-auto space-y-3">
             
@@ -583,12 +560,22 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* NIVEAU */}
-              <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                <Award className="w-5 h-5 mx-auto text-purple-400 mb-1" />
-                <p className="text-base md:text-lg font-black text-white">{profile.steamLevel || 1}</p>
-                <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Niveau</p>
-              </div>
+              {/* ✅ TICKETS (remplace NIVEAU) */}
+              <Link
+                href="/profile/tickets"
+                className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center hover:border-blue-500/50 transition-all group"
+              >
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <Ticket className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />
+                  <span className="text-base md:text-lg font-black text-white">
+                    {ticketBalance?.tickets || 0}
+                  </span>
+                </div>
+                <p className="text-[10px] md:text-xs text-zinc-400 font-medium flex items-center justify-center gap-1">
+                  Tickets
+                  <ChevronRight className="w-3 h-3 text-zinc-600 group-hover:translate-x-1 transition-transform" />
+                </p>
+              </Link>
             </div>
 
             {/* ===== DÉTAIL DES REVENUS ===== */}
@@ -629,38 +616,31 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* ===== BONUS QUOTIDIEN ===== */}
+            {/* ===== TICKETS - COMMENT OBTENIR ===== */}
             <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <Gift className="w-5 h-5 text-emerald-400" />
+                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                    <Ticket className="w-5 h-5 text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-white">Bonus quotidien</p>
-                    <p className="text-xs text-zinc-500">+1 MANAS tous les 2 jours</p>
+                    <p className="text-sm font-semibold text-white">Mes Tickets</p>
+                    <p className="text-xs text-zinc-500">
+                      {ticketBalance?.tickets || 0} ticket{ticketBalance?.tickets !== 1 ? 's' : ''} disponible{ticketBalance?.tickets !== 1 ? 's' : ''}
+                    </p>
                   </div>
                 </div>
-                <button
-                  onClick={claimDailyBonus}
-                  disabled={bonusLoading}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                <Link
+                  href="/profile/tickets"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-1.5"
                 >
-                  {bonusLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Gift className="w-4 h-4" />
-                      Réclamer
-                    </>
-                  )}
-                </button>
+                  <Ticket className="w-3.5 h-3.5" />
+                  Voir
+                </Link>
               </div>
-              {bonusMessage && (
-                <p className={`text-xs mt-2 ${bonusMessage.includes('+1') ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {bonusMessage}
-                </p>
-              )}
+              <p className="text-[10px] text-zinc-500 mt-3">
+                🎟️ 1 ticket = 1 chapitre payant débloqué
+              </p>
             </div>
           </div>
         )}
@@ -787,61 +767,4 @@ export default function ProfilePage() {
             {/* PARAMÈTRES */}
             <Link
               href="/profile/settings"
-              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <Settings className="w-5 h-5 text-zinc-400" />
-                <span className="text-sm font-semibold text-white">Paramètres du compte</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-zinc-500" />
-            </Link>
-
-            {/* ADMIN */}
-            {profile.role === 'ADMIN' && (
-              <Link
-                href="/admin/certify"
-                className="flex items-center justify-between p-4 bg-blue-950/40 rounded-xl border border-blue-500/30 hover:border-blue-500/60 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-blue-400" />
-                  <span className="text-sm font-semibold text-white">Panneau d'administration</span>
-                </div>
-                <ChevronRight className="w-4 h-4 text-blue-400" />
-              </Link>
-            )}
-
-            {/* DÉCONNEXION */}
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-between p-4 bg-rose-950/30 rounded-xl border border-rose-500/30 hover:bg-rose-950/50 transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <LogOut className="w-5 h-5 text-rose-400" />
-                <span className="text-sm font-semibold text-rose-300">Se déconnecter</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-rose-400" />
-            </button>
-          </div>
-        )}
-
-      </main>
-
-      <BottomNav />
-
-      {/* ===== ANIMATION DU BONUS MANAS ===== */}
-      {bonusAnimation && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none animate-fade-in">
-          <div className="bg-gradient-to-br from-emerald-950/95 to-emerald-900/95 border-2 border-emerald-500 rounded-2xl p-8 text-center shadow-2xl shadow-emerald-500/40 backdrop-blur-sm animate-scale-up">
-            <div className="animate-bounce">
-              <Coins className="w-16 h-16 text-emerald-400 mx-auto mb-3" />
-            </div>
-            <p className="text-2xl font-bold text-white">+1 MANAS</p>
-            <p className="text-emerald-300 text-sm mt-1">Bonus quotidien reçu</p>
-            <div className="w-16 h-1 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full mx-auto mt-3 animate-pulse" />
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-}
+              className="flex items-center justify-between p-4 bg-zinc-900/60 rounded-xl border border-zinc-800/80 hover:
