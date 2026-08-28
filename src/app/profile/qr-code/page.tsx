@@ -42,7 +42,6 @@ type QRData = {
   userId: string;
   username: string;
   qrData: string;
-  qrImage?: string;
   scanCount: number;
   avatarUrl?: string | null;
   isCertified?: boolean;
@@ -110,9 +109,8 @@ async function buildQRCard(opts: {
   avatarUrl?: string | null;
   size: number;
   showLabel?: boolean;
-  styleId?: string;
 }): Promise<HTMLCanvasElement> {
-  const { text, colors, avatarUrl, size, showLabel = true, styleId = "default" } = opts;
+  const { text, colors, avatarUrl, size, showLabel = true } = opts;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
@@ -120,16 +118,16 @@ async function buildQRCard(opts: {
 
   const radius = size * 0.08;
 
-  // 1. Fond avec dégradé (style TikTok)
+  // 1. Fond avec dégradé
   roundRectPath(ctx, 0, 0, size, size, radius);
   const grad = ctx.createLinearGradient(0, 0, size, size);
   grad.addColorStop(0, colors[0]);
-  grad.addColorStop(0.5, colors.length > 2 ? colors[1] : this.mixColors(colors[0], colors[1], 0.5));
-  grad.addColorStop(1, colors[colors.length - 1] || colors[1]);
+  grad.addColorStop(0.5, colors[1]);
+  grad.addColorStop(1, colors[1]);
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // 2. Effet de brillance (overlay comme TikTok)
+  // 2. Effet de brillance
   const glowGrad = ctx.createRadialGradient(
     size * 0.2, size * 0.2, 0,
     size * 0.2, size * 0.2, size * 0.9
@@ -140,7 +138,7 @@ async function buildQRCard(opts: {
   ctx.fillStyle = glowGrad;
   ctx.fillRect(0, 0, size, size);
 
-  // 3. QR Code (fond transparent)
+  // 3. QR Code
   const qrSize = size * 0.72;
   const qrDataUrl = await QRCode.toDataURL(text, {
     errorCorrectionLevel: "H",
@@ -152,7 +150,7 @@ async function buildQRCard(opts: {
   const qrX = (size - qrSize) / 2;
   const qrY = (size - qrSize) / 2 - size * 0.02;
 
-  // Halo blanc derrière le QR pour contraste
+  // Halo blanc derrière le QR
   roundRectPath(
     ctx,
     qrX - size * 0.025,
@@ -174,7 +172,6 @@ async function buildQRCard(opts: {
       const cx = size / 2;
       const cy = size / 2 - size * 0.02;
 
-      // Cercle blanc derrière l'avatar
       ctx.save();
       ctx.beginPath();
       ctx.arc(cx, cy, avSize / 2 + size * 0.015, 0, Math.PI * 2);
@@ -182,7 +179,6 @@ async function buildQRCard(opts: {
       ctx.fill();
       ctx.closePath();
 
-      // Avatar circulaire
       ctx.beginPath();
       ctx.arc(cx, cy, avSize / 2, 0, Math.PI * 2);
       ctx.closePath();
@@ -194,7 +190,7 @@ async function buildQRCard(opts: {
     }
   }
 
-  // 5. Label "Scannez-moi" en bas (comme TikTok)
+  // 5. Label "Scannez-moi"
   if (showLabel) {
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.font = `600 ${size * 0.04}px Arial`;
@@ -204,24 +200,6 @@ async function buildQRCard(opts: {
   }
 
   return canvas;
-}
-
-// ============================================
-// UTILITAIRE : Mélanger deux couleurs
-// ============================================
-function mixColors(color1: string, color2: string, ratio: number): string {
-  const hex1 = color1.replace("#", "");
-  const hex2 = color2.replace("#", "");
-  const r1 = parseInt(hex1.substring(0, 2), 16);
-  const g1 = parseInt(hex1.substring(2, 4), 16);
-  const b1 = parseInt(hex1.substring(4, 6), 16);
-  const r2 = parseInt(hex2.substring(0, 2), 16);
-  const g2 = parseInt(hex2.substring(2, 4), 16);
-  const b2 = parseInt(hex2.substring(4, 6), 16);
-  const r = Math.round(r1 + (r2 - r1) * ratio);
-  const g = Math.round(g1 + (g2 - g1) * ratio);
-  const b = Math.round(b1 + (b2 - b1) * ratio);
-  return `#${[r, g, b].map(c => c.toString(16).padStart(2, '0')).join('')}`;
 }
 
 export default function QRCodePage() {
@@ -238,6 +216,28 @@ export default function QRCodePage() {
 
   const activeBadgeColor = qrData?.badgeColor || qrData?.qrColor || "#3B82F6";
   const isPremium = qrData?.premiumActive || false;
+
+  // ============================================
+  // FONCTION DE GÉNÉRATION DU QR
+  // ============================================
+  const generateQR = async () => {
+    if (!qrData?.qrData || !previewCanvasRef.current) return;
+    
+    try {
+      const card = await buildQRCard({
+        text: qrData.qrData,
+        colors: selectedStyle.gradient,
+        avatarUrl: qrData.avatarUrl,
+        size: 300,
+        showLabel: true,
+      });
+      const ctx = previewCanvasRef.current.getContext("2d");
+      ctx?.clearRect(0, 0, 300, 300);
+      ctx?.drawImage(card, 0, 0);
+    } catch (e) {
+      console.error("Erreur génération QR:", e);
+    }
+  };
 
   // ============================================
   // CHARGEMENT INITIAL
@@ -292,34 +292,17 @@ export default function QRCodePage() {
   }, [router]);
 
   // ============================================
-  // APERÇU EN DIRECT
+  // APERÇU EN DIRECT - AVEC FORCER LE RENDU
   // ============================================
   useEffect(() => {
     if (!qrData?.qrData || !previewCanvasRef.current) return;
-    let cancelled = false;
+    
+    // ✅ FORCER LE RENDU APRÈS UN PETIT DÉLAI
+    const timeout = setTimeout(() => {
+      generateQR();
+    }, 100);
 
-    (async () => {
-      try {
-        const card = await buildQRCard({
-          text: qrData.qrData,
-          colors: selectedStyle.gradient,
-          avatarUrl: qrData.avatarUrl,
-          size: 300,
-          showLabel: true,
-          styleId: selectedStyle.id,
-        });
-        if (cancelled || !previewCanvasRef.current) return;
-        const ctx = previewCanvasRef.current.getContext("2d");
-        ctx?.clearRect(0, 0, 300, 300);
-        ctx?.drawImage(card, 0, 0);
-      } catch (e) {
-        console.error("Erreur génération QR:", e);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => clearTimeout(timeout);
   }, [qrData?.qrData, qrData?.avatarUrl, selectedStyle]);
 
   // ============================================
@@ -332,6 +315,8 @@ export default function QRCodePage() {
     }
     setSelectedStyle(style);
     setShowStyles(false);
+    // ✅ REGÉNÉRER LE QR APRÈS CHANGEMENT DE STYLE
+    setTimeout(() => generateQR(), 50);
   };
 
   // ============================================
@@ -348,14 +333,12 @@ export default function QRCodePage() {
       canvas.height = H;
       const ctx = canvas.getContext("2d")!;
 
-      // Fond sombre
       const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
       bgGrad.addColorStop(0, "#0a0a12");
       bgGrad.addColorStop(1, "#050508");
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, W, H);
 
-      // QR Card
       const cardSize = 520;
       const card = await buildQRCard({
         text: qrData.qrData,
@@ -363,7 +346,6 @@ export default function QRCodePage() {
         avatarUrl: qrData.avatarUrl,
         size: cardSize,
         showLabel: true,
-        styleId: selectedStyle.id,
       });
       const cardX = (W - cardSize) / 2;
       const cardY = 80;
@@ -374,13 +356,11 @@ export default function QRCodePage() {
       ctx.drawImage(card, cardX, cardY);
       ctx.restore();
 
-      // Nom d'utilisateur
       ctx.fillStyle = "#ffffff";
       ctx.font = "700 36px Arial";
       ctx.textAlign = "center";
       ctx.fillText(`@${qrData.username}`, W / 2, cardY + cardSize + 55);
 
-      // Badge
       ctx.fillStyle = qrData.isCertified ? "#8B5CF6" : "#6B7280";
       ctx.font = "18px Arial";
       ctx.fillText(
@@ -389,7 +369,6 @@ export default function QRCodePage() {
         cardY + cardSize + 90
       );
 
-      // Footer
       ctx.fillStyle = selectedStyle.gradient[0];
       ctx.font = "700 18px Arial";
       ctx.fillText("INKDROP", W / 2, H - 40);
@@ -427,7 +406,6 @@ export default function QRCodePage() {
         avatarUrl: qrData.avatarUrl,
         size: 900,
         showLabel: true,
-        styleId: selectedStyle.id,
       });
       const link = document.createElement("a");
       link.download = `qr-${qrData.username}.png`;
@@ -496,7 +474,6 @@ export default function QRCodePage() {
             : 'bg-zinc-900/40 border-zinc-800/60'
         }`}>
 
-          {/* ✨ Effet brillant Premium */}
           {isPremium && (
             <>
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
@@ -576,7 +553,7 @@ export default function QRCodePage() {
             </div>
           </div>
 
-          {/* ===== BOUTON "CHANGER LE STYLE" (comme TikTok) ===== */}
+          {/* ===== BOUTON "CHANGER LE STYLE" ===== */}
           <div className="mt-6 relative z-10">
             <button
               onClick={() => {
@@ -689,7 +666,7 @@ export default function QRCodePage() {
           </div>
         </div>
 
-        {/* ===== MESSAGE D'INFORMATION ===== */}
+        {/* ===== MESSAGE ===== */}
         <div className="mt-6 max-w-md text-center">
           <p className="text-xs text-zinc-500 leading-relaxed">
             Votre QR code est unique et permanent. <br />
@@ -703,7 +680,7 @@ export default function QRCodePage() {
           )}
           {!isPremium && (
             <p className="text-xs text-amber-400/60 mt-2">
-               Passez Premium pour personnaliser votre QR
+              👑 Passez Premium pour personnaliser votre QR
             </p>
           )}
         </div>
