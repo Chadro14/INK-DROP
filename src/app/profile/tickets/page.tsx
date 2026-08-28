@@ -20,6 +20,7 @@ import {
   Minus,
   Zap,
   Star,
+  Crown,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -50,7 +51,7 @@ type TicketEvent = {
 const TICKET_TYPE_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   EVENT: { label: "Événement", icon: <Sparkles className="w-3.5 h-3.5" />, color: "text-purple-400" },
   REFERRAL: { label: "Parrainage", icon: <Users className="w-3.5 h-3.5" />, color: "text-blue-400" },
-  DAILY_REWARD: { label: "Récompense", icon: <Star className="w-3.5 h-3.5" />, color: "text-emerald-400" },
+  DAILY_REWARD: { label: "Récompense 48h", icon: <Star className="w-3.5 h-3.5" />, color: "text-emerald-400" },
   GIFT: { label: "Cadeau", icon: <Gift className="w-3.5 h-3.5" />, color: "text-amber-400" },
   USED: { label: "Utilisé", icon: <Check className="w-3.5 h-3.5" />, color: "text-rose-400" },
 };
@@ -63,6 +64,28 @@ export default function TicketsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [claiming, setClaiming] = useState(false);
+  const [dailyRewardClaimed, setDailyRewardClaimed] = useState(false);
+  const [dailyRewardLoading, setDailyRewardLoading] = useState(false);
+  const [rewardMessage, setRewardMessage] = useState("");
+
+  // Vérifier si la récompense a été réclamée aujourd'hui
+  const checkDailyReward = () => {
+    const lastClaim = localStorage.getItem("dailyTicketClaim");
+    if (lastClaim) {
+      const lastDate = new Date(lastClaim);
+      const now = new Date();
+      const diffHours = (now.getTime() - lastDate.getTime()) / (1000 * 60 * 60);
+      if (diffHours < 48) {
+        setDailyRewardClaimed(true);
+        const remainingHours = Math.floor(48 - diffHours);
+        setRewardMessage(`Prochain ticket dans ${remainingHours}h`);
+      }
+    }
+  };
+
+  useEffect(() => {
+    checkDailyReward();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -108,6 +131,62 @@ export default function TicketsPage() {
 
     fetchData();
   }, [router]);
+
+  // ============================================
+  // RÉCLAMER LE TICKET QUOTIDIEN
+  // ============================================
+  const claimDailyTicket = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setDailyRewardLoading(true);
+    setRewardMessage("");
+
+    try {
+      const res = await fetch(`${API_URL}/tickets/daily-reward`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Erreur lors de la réclamation");
+      }
+
+      setDailyRewardClaimed(true);
+      setRewardMessage("Ticket gratuit reçu !");
+      localStorage.setItem("dailyTicketClaim", new Date().toISOString());
+
+      // Mettre à jour le solde
+      const balanceRes = await fetch(`${API_URL}/tickets/balance`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (balanceRes.ok) {
+        const newBalance = await balanceRes.json();
+        setBalance(newBalance);
+      }
+
+      // Rafraîchir l'historique
+      const historyRes = await fetch(`${API_URL}/tickets/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (historyRes.ok) {
+        const data = await historyRes.json();
+        setTransactions(data.transactions || []);
+      }
+
+      alert("Ticket gratuit reçu !");
+    } catch (err: any) {
+      setRewardMessage(err.message);
+      alert(err.message);
+    } finally {
+      setDailyRewardLoading(false);
+    }
+  };
 
   const claimEventTicket = async (eventId: string) => {
     const token = localStorage.getItem("token");
@@ -197,6 +276,60 @@ export default function TicketsPage() {
           </p>
         </div>
 
+        {/* ===== RÉCOMPENSE QUOTIDIENNE (1 TICKET TOUS LES 2 JOURS) ===== */}
+        <div className="w-full max-w-md mt-6">
+          <div className="bg-gradient-to-r from-emerald-950/30 to-emerald-950/10 border border-emerald-500/30 rounded-2xl p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                  <Star className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white flex items-center gap-2">
+                    Ticket gratuit
+                    <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[9px] font-bold border border-emerald-500/20">
+                      48h
+                    </span>
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    {dailyRewardClaimed 
+                      ? "Prochain ticket dans 48h" 
+                      : "1 ticket gratuit tous les 2 jours"}
+                  </p>
+                  {rewardMessage && (
+                    <p className={`text-[10px] mt-1 ${dailyRewardClaimed ? 'text-zinc-400' : 'text-emerald-400'}`}>
+                      {rewardMessage}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={claimDailyTicket}
+                disabled={dailyRewardClaimed || dailyRewardLoading}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  dailyRewardClaimed
+                    ? "bg-zinc-800 text-zinc-400 cursor-not-allowed border border-zinc-700"
+                    : "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-600/20"
+                }`}
+              >
+                {dailyRewardLoading ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : dailyRewardClaimed ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    Réclamé
+                  </>
+                ) : (
+                  <>
+                    <Ticket className="w-3.5 h-3.5" />
+                    Réclamer
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* ===== COMMENT OBTENIR ===== */}
         <div className="w-full max-w-md mt-6">
           <h3 className="text-sm font-semibold text-zinc-400 flex items-center gap-2 mb-3">
@@ -204,6 +337,15 @@ export default function TicketsPage() {
             Comment obtenir des tickets ?
           </h3>
           <div className="space-y-2.5">
+            <div className="flex items-center gap-3 p-3 bg-zinc-900/40 rounded-xl border border-zinc-800/40">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                <Star className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-white">Récompense 48h</p>
+                <p className="text-xs text-zinc-500">1 ticket gratuit tous les 2 jours</p>
+              </div>
+            </div>
             <div className="flex items-center gap-3 p-3 bg-zinc-900/40 rounded-xl border border-zinc-800/40">
               <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
                 <Sparkles className="w-4 h-4 text-purple-400" />
