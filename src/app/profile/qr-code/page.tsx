@@ -23,17 +23,19 @@ import {
   Sparkles,
   Palette,
   Zap,
+  RefreshCw,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-// ✅ COULEURS PREMIUM (COMME TELEGRAM)
-const PREMIUM_COLORS = [
-  { name: "Bleu", color: "#3B82F6" },
-  { name: "Violet", color: "#8B5CF6" },
-  { name: "Rose", color: "#EC4899" },
-  { name: "Doré", color: "#F59E0B" },
-  { name: "Orange", color: "#FF6B35" },
+// ✅ STYLES DISPONIBLES (comme TikTok)
+const STYLES = [
+  { id: "default", name: "Défaut", gradient: ["#3B82F6", "#8B5CF6"] },
+  { id: "sunset", name: "Coucher", gradient: ["#FF6B35", "#F03E5B"] },
+  { id: "ocean", name: "Océan", gradient: ["#00D4FF", "#6B46FF"] },
+  { id: "forest", name: "Forêt", gradient: ["#10B981", "#047857"] },
+  { id: "fire", name: "Feu", gradient: ["#FF6B35", "#FFE66D"] },
+  { id: "galaxy", name: "Galaxie", gradient: ["#7C4DFF", "#E040FB"] },
 ];
 
 type QRData = {
@@ -51,7 +53,7 @@ type QRData = {
 };
 
 // ============================================
-// UTILITAIRES CANVAS / COULEUR
+// UTILITAIRES CANVAS
 // ============================================
 function adjustColor(hex: string, amount: number): string {
   const c = hex.replace("#", "");
@@ -100,16 +102,17 @@ function loadImage(src: string, cors = false): Promise<HTMLImageElement> {
 }
 
 // ============================================
-// GÉNÈRE LA CARTE QR (STYLE TELEGRAM)
+// GÉNÈRE LA CARTE QR (STYLE TIKTOK)
 // ============================================
 async function buildQRCard(opts: {
   text: string;
-  color: string;
+  colors: string[];
   avatarUrl?: string | null;
   size: number;
   showLabel?: boolean;
+  styleId?: string;
 }): Promise<HTMLCanvasElement> {
-  const { text, color, avatarUrl, size, showLabel = true } = opts;
+  const { text, colors, avatarUrl, size, showLabel = true, styleId = "default" } = opts;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
@@ -117,18 +120,22 @@ async function buildQRCard(opts: {
 
   const radius = size * 0.08;
 
-  // 1. Fond dégradé (comme Telegram)
+  // 1. Fond avec dégradé (style TikTok)
   roundRectPath(ctx, 0, 0, size, size, radius);
   const grad = ctx.createLinearGradient(0, 0, size, size);
-  grad.addColorStop(0, lighten(color, 30));
-  grad.addColorStop(0.5, color);
-  grad.addColorStop(1, darken(color, 20));
+  grad.addColorStop(0, colors[0]);
+  grad.addColorStop(0.5, colors.length > 2 ? colors[1] : this.mixColors(colors[0], colors[1], 0.5));
+  grad.addColorStop(1, colors[colors.length - 1] || colors[1]);
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // 2. Effet de brillance (overlay)
-  const glowGrad = ctx.createRadialGradient(size * 0.3, size * 0.3, 0, size * 0.3, size * 0.3, size * 0.8);
-  glowGrad.addColorStop(0, "rgba(255,255,255,0.08)");
+  // 2. Effet de brillance (overlay comme TikTok)
+  const glowGrad = ctx.createRadialGradient(
+    size * 0.2, size * 0.2, 0,
+    size * 0.2, size * 0.2, size * 0.9
+  );
+  glowGrad.addColorStop(0, "rgba(255,255,255,0.12)");
+  glowGrad.addColorStop(0.5, "rgba(255,255,255,0.04)");
   glowGrad.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = glowGrad;
   ctx.fillRect(0, 0, size, size);
@@ -159,7 +166,7 @@ async function buildQRCard(opts: {
 
   ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-  // 4. Avatar au centre (pour TOUS)
+  // 4. Avatar au centre (POUR TOUS)
   if (avatarUrl) {
     try {
       const avatarImg = await loadImage(avatarUrl, true);
@@ -187,7 +194,7 @@ async function buildQRCard(opts: {
     }
   }
 
-  // 5. Label "Scannez-moi" en bas
+  // 5. Label "Scannez-moi" en bas (comme TikTok)
   if (showLabel) {
     ctx.fillStyle = "rgba(255,255,255,0.85)";
     ctx.font = `600 ${size * 0.04}px Arial`;
@@ -199,6 +206,24 @@ async function buildQRCard(opts: {
   return canvas;
 }
 
+// ============================================
+// UTILITAIRE : Mélanger deux couleurs
+// ============================================
+function mixColors(color1: string, color2: string, ratio: number): string {
+  const hex1 = color1.replace("#", "");
+  const hex2 = color2.replace("#", "");
+  const r1 = parseInt(hex1.substring(0, 2), 16);
+  const g1 = parseInt(hex1.substring(2, 4), 16);
+  const b1 = parseInt(hex1.substring(4, 6), 16);
+  const r2 = parseInt(hex2.substring(0, 2), 16);
+  const g2 = parseInt(hex2.substring(2, 4), 16);
+  const b2 = parseInt(hex2.substring(4, 6), 16);
+  const r = Math.round(r1 + (r2 - r1) * ratio);
+  const g = Math.round(g1 + (g2 - g1) * ratio);
+  const b = Math.round(b1 + (b2 - b1) * ratio);
+  return `#${[r, g, b].map(c => c.toString(16).padStart(2, '0')).join('')}`;
+}
+
 export default function QRCodePage() {
   const router = useRouter();
   const [qrData, setQrData] = useState<QRData | null>(null);
@@ -206,9 +231,9 @@ export default function QRCodePage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
-  const [selectedColor, setSelectedColor] = useState("#3B82F6");
-  const [updatingColor, setUpdatingColor] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [selectedStyle, setSelectedStyle] = useState(STYLES[0]);
+  const [updating, setUpdating] = useState(false);
+  const [showStyles, setShowStyles] = useState(false);
   const previewCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const activeBadgeColor = qrData?.badgeColor || qrData?.qrColor || "#3B82F6";
@@ -255,7 +280,6 @@ export default function QRCodePage() {
           qrColor,
           badgeColor,
         });
-        setSelectedColor(qrColor);
       } catch (err: any) {
         console.error("❌ Erreur fetchQR:", err);
         setError(err.message);
@@ -278,10 +302,11 @@ export default function QRCodePage() {
       try {
         const card = await buildQRCard({
           text: qrData.qrData,
-          color: selectedColor,
+          colors: selectedStyle.gradient,
           avatarUrl: qrData.avatarUrl,
           size: 300,
           showLabel: true,
+          styleId: selectedStyle.id,
         });
         if (cancelled || !previewCanvasRef.current) return;
         const ctx = previewCanvasRef.current.getContext("2d");
@@ -295,40 +320,18 @@ export default function QRCodePage() {
     return () => {
       cancelled = true;
     };
-  }, [qrData?.qrData, qrData?.avatarUrl, selectedColor]);
+  }, [qrData?.qrData, qrData?.avatarUrl, selectedStyle]);
 
   // ============================================
-  // CHANGER LA COULEUR
+  // CHANGER LE STYLE
   // ============================================
-  const changeQRColor = async (color: string) => {
-    if (!qrData?.premiumActive || updatingColor) return;
-
-    setSelectedColor(color);
-    setUpdatingColor(true);
-    const token = localStorage.getItem("token");
-
-    try {
-      const res = await fetch(`${API_URL}/qr/color`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ color }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || "Erreur lors de la mise à jour");
-      }
-
-      setQrData((prev) => (prev ? { ...prev, qrColor: color, badgeColor: color } : null));
-      setShowColorPicker(false);
-    } catch (err) {
-      console.error("Erreur changement de couleur:", err);
-    } finally {
-      setUpdatingColor(false);
+  const changeStyle = async (style: typeof STYLES[0]) => {
+    if (!isPremium) {
+      alert("Cette fonctionnalité est réservée aux utilisateurs Premium");
+      return;
     }
+    setSelectedStyle(style);
+    setShowStyles(false);
   };
 
   // ============================================
@@ -356,16 +359,17 @@ export default function QRCodePage() {
       const cardSize = 520;
       const card = await buildQRCard({
         text: qrData.qrData,
-        color: selectedColor,
+        colors: selectedStyle.gradient,
         avatarUrl: qrData.avatarUrl,
         size: cardSize,
         showLabel: true,
+        styleId: selectedStyle.id,
       });
       const cardX = (W - cardSize) / 2;
       const cardY = 80;
 
       ctx.save();
-      ctx.shadowColor = `${selectedColor}66`;
+      ctx.shadowColor = `${selectedStyle.gradient[0]}66`;
       ctx.shadowBlur = 60;
       ctx.drawImage(card, cardX, cardY);
       ctx.restore();
@@ -386,7 +390,7 @@ export default function QRCodePage() {
       );
 
       // Footer
-      ctx.fillStyle = selectedColor;
+      ctx.fillStyle = selectedStyle.gradient[0];
       ctx.font = "700 18px Arial";
       ctx.fillText("INKDROP", W / 2, H - 40);
 
@@ -419,10 +423,11 @@ export default function QRCodePage() {
     try {
       const card = await buildQRCard({
         text: qrData.qrData,
-        color: selectedColor,
+        colors: selectedStyle.gradient,
         avatarUrl: qrData.avatarUrl,
         size: 900,
         showLabel: true,
+        styleId: selectedStyle.id,
       });
       const link = document.createElement("a");
       link.download = `qr-${qrData.username}.png`;
@@ -551,7 +556,7 @@ export default function QRCodePage() {
           <div className="flex flex-col items-center relative z-10">
             <div
               style={{
-                filter: `drop-shadow(0 25px 45px ${selectedColor}30)`,
+                filter: `drop-shadow(0 25px 45px ${selectedStyle.gradient[0]}30)`,
               }}
             >
               <canvas ref={previewCanvasRef} width={300} height={300} className="block rounded-2xl" />
@@ -571,65 +576,54 @@ export default function QRCodePage() {
             </div>
           </div>
 
-          {/* ===== COULEURS PREMIUM ===== */}
-          {isPremium && (
-            <div className="mt-6 relative z-10">
-              <button
-                onClick={() => setShowColorPicker(!showColorPicker)}
-                className="flex items-center justify-between w-full px-4 py-3 rounded-xl bg-zinc-900/60 border border-zinc-800/40 hover:border-blue-500/30 transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <Palette className="w-4 h-4 text-purple-400" />
-                  <span className="text-sm font-medium text-white">Couleur du QR</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-6 h-6 rounded-full border-2 border-zinc-700 shadow-inner"
-                    style={{ backgroundColor: selectedColor }}
-                  />
-                  <span className="text-xs text-zinc-500">
-                    {PREMIUM_COLORS.find(c => c.color === selectedColor)?.name || "Personnalisé"}
-                  </span>
-                </div>
-              </button>
+          {/* ===== BOUTON "CHANGER LE STYLE" (comme TikTok) ===== */}
+          <div className="mt-6 relative z-10">
+            <button
+              onClick={() => {
+                if (!isPremium) {
+                  alert("Cette fonctionnalité est réservée aux utilisateurs Premium");
+                  return;
+                }
+                setShowStyles(!showStyles);
+              }}
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-zinc-900/60 border border-zinc-800/40 hover:border-blue-500/30 transition-all group"
+            >
+              <Palette className="w-4 h-4 text-purple-400 group-hover:rotate-12 transition-transform" />
+              <span className="text-sm font-medium text-white">
+                {isPremium ? `Style actuel : ${selectedStyle.name}` : "🔒 Style réservé aux Premium"}
+              </span>
+              <RefreshCw className={`w-4 h-4 text-zinc-500 transition-transform ${showStyles ? 'rotate-180' : ''}`} />
+            </button>
 
-              {showColorPicker && (
-                <div className="mt-3 p-4 bg-zinc-900/80 rounded-xl border border-zinc-800/40">
-                  <p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-3 text-center">
-                    ✨ Choisissez votre couleur
-                  </p>
-                  <div className="grid grid-cols-5 gap-3">
-                    {PREMIUM_COLORS.map(({ name, color }) => (
-                      <button
-                        key={color}
-                        onClick={() => changeQRColor(color)}
-                        disabled={updatingColor}
-                        className={`flex flex-col items-center gap-1.5 transition-all hover:scale-110 ${
-                          selectedColor === color ? "ring-2 ring-white ring-offset-2 ring-offset-zinc-950 rounded-full" : ""
-                        }`}
-                      >
-                        <div
-                          className="w-10 h-10 rounded-full shadow-lg"
-                          style={{ backgroundColor: color }}
-                        />
-                        <span className="text-[8px] text-zinc-400">{name}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-3 flex items-center justify-center gap-3 pt-3 border-t border-zinc-800/40">
-                    <input
-                      type="color"
-                      value={selectedColor}
-                      onChange={(e) => changeQRColor(e.target.value)}
-                      className="w-8 h-8 rounded-full cursor-pointer border-0 p-0 bg-transparent"
-                      disabled={updatingColor}
-                    />
-                    <span className="text-xs text-zinc-500">Couleur personnalisée</span>
-                  </div>
+            {showStyles && isPremium && (
+              <div className="mt-3 p-3 bg-zinc-900/80 rounded-xl border border-zinc-800/40">
+                <p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-3 text-center">
+                  ✨ Choisissez un style
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {STYLES.map((style) => (
+                    <button
+                      key={style.id}
+                      onClick={() => changeStyle(style)}
+                      className={`flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all ${
+                        selectedStyle.id === style.id
+                          ? "bg-white/10 ring-2 ring-white ring-offset-2 ring-offset-zinc-950"
+                          : "hover:bg-white/5"
+                      }`}
+                    >
+                      <div
+                        className="w-12 h-8 rounded-lg"
+                        style={{
+                          background: `linear-gradient(135deg, ${style.gradient[0]}, ${style.gradient[1]})`,
+                        }}
+                      />
+                      <span className="text-[9px] text-zinc-400">{style.name}</span>
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
 
           {/* ===== STATISTIQUES ===== */}
           <div className="grid grid-cols-2 gap-3 mt-6 relative z-10">
@@ -704,12 +698,12 @@ export default function QRCodePage() {
           {isPremium && (
             <p className="text-xs text-purple-400/60 mt-2 flex items-center justify-center gap-1">
               <Sparkles className="w-3 h-3" />
-              Premium : QR code personnalisé
+              Premium : {STYLES.length} styles de QR disponibles
             </p>
           )}
           {!isPremium && (
             <p className="text-xs text-amber-400/60 mt-2">
-              👑 Passez Premium pour personnaliser votre QR
+               Passez Premium pour personnaliser votre QR
             </p>
           )}
         </div>
