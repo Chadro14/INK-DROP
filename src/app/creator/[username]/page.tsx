@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Loader } from "@/components/ui/loader";
 import { 
@@ -54,21 +53,6 @@ type CreatorProfile = {
   isFollowing?: boolean;
 };
 
-// Animation variants
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.4, ease: "easeOut" }
-};
-
-const staggerContainer = {
-  animate: {
-    transition: {
-      staggerChildren: 0.08
-    }
-  }
-};
-
 export default function CreatorProfilePage() {
   const params = useParams();
   const router = useRouter();
@@ -86,7 +70,6 @@ export default function CreatorProfilePage() {
   const [showSendManas, setShowSendManas] = useState(false);
   const [sendManasAmount, setSendManasAmount] = useState("");
   const [sendingManas, setSendingManas] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     const fetchUserBalance = async () => {
@@ -335,13 +318,9 @@ export default function CreatorProfilePage() {
 
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
+
       {/* HEADER */}
-      <motion.header 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3"
-      >
+      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <button
             onClick={() => router.back()}
@@ -360,34 +339,23 @@ export default function CreatorProfilePage() {
             <Share2 className="w-4 h-4" />
           </button>
         </div>
-      </motion.header>
+      </header>
 
       {/* BANNIÈRE */}
-      <motion.div 
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="h-32 md:h-48 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden"
-      >
+      <div className="h-32 md:h-48 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
         <div className="absolute inset-0 flex items-center justify-center opacity-5">
           <span className="text-8xl font-black text-blue-500 select-none">
             {profile.username.charAt(0).toUpperCase()}
           </span>
         </div>
-      </motion.div>
+      </div>
 
       <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
+
         {/* AVATAR */}
-        <motion.div 
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.4, type: "spring", bounce: 0.3 }}
-          className="relative mb-3 group"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          <div className={`w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 overflow-hidden border-4 border-zinc-950 shadow-2xl ring-2 ring-blue-500/30 shrink-0 transition-transform duration-300 ${isHovered ? 'scale-105' : ''}`}>
+        <div className="relative mb-3 group">
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 overflow-hidden border-4 border-zinc-950 shadow-2xl ring-2 ring-blue-500/30 shrink-0">
             {profile.avatarUrl ? (
               <img 
                 src={profile.avatarUrl} 
@@ -401,62 +369,35 @@ export default function CreatorProfilePage() {
             )}
           </div>
           {profile.isCertified && (
-            <motion.div 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.3, type: "spring" }}
-              className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg"
-            >
+            <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
               <BadgeCheck
                 className="w-6 h-6 md:w-7 md:h-7"
                 fill={activeBadgeColor}
                 color="black"
                 strokeWidth={1.5}
               />
-            </motion.div>
+            </div>
           )}
-        </motion.div>
+        </div>
 
         {/* NOM & BADGES */}
-        <motion.div 
-          variants={fadeInUp}
-          initial="initial"
-          animate="animate"
-          className="flex items-center gap-2 mb-1 flex-wrap justify-center"
-        >
+        <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
           {profile.premiumActive && (
-            <motion.span 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1"
-            >
+            <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
               <Crown className="w-3 h-3 fill-current" />
               Premium
-            </motion.span>
+            </span>
           )}
-        </motion.div>
+        </div>
 
         {/* BIO */}
-        <motion.p 
-          variants={fadeInUp}
-          initial="initial"
-          animate="animate"
-          transition={{ delay: 0.1 }}
-          className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal"
-        >
+        <p className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal">
           {profile.bio || "Créateur sur INKDROP"}
-        </motion.p>
+        </p>
 
         {/* INFOS */}
-        <motion.div 
-          variants={fadeInUp}
-          initial="initial"
-          animate="animate"
-          transition={{ delay: 0.15 }}
-          className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-6"
-        >
+        <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-6">
           <span className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-blue-400" /> 
             Membre depuis {new Date(profile.createdAt).toLocaleDateString()}
@@ -475,60 +416,28 @@ export default function CreatorProfilePage() {
               </span>
             </>
           )}
-        </motion.div>
+        </div>
 
         {/* STATS SOCIALES */}
-        <motion.div 
-          variants={fadeInUp}
-          initial="initial"
-          animate="animate"
-          transition={{ delay: 0.2 }}
-          className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg"
-        >
+        <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
           <div className="text-center">
-            <motion.p 
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.3, type: "spring" }}
-              className="text-lg md:text-xl font-black text-white"
-            >
-              {profile._count?.following || 0}
-            </motion.p>
+            <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
             <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Abonnements</p>
           </div>
           <div className="h-7 w-[1px] bg-zinc-800" />
           <div className="text-center">
-            <motion.p 
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.35, type: "spring" }}
-              className="text-lg md:text-xl font-black text-white"
-            >
-              {profile._count?.followers || 0}
-            </motion.p>
+            <p className="text-lg md:text-xl font-black text-white">{profile._count?.followers || 0}</p>
             <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Abonnés</p>
           </div>
           <div className="h-7 w-[1px] bg-zinc-800" />
           <div className="text-center">
-            <motion.p 
-              initial={{ scale: 0.5 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.4, type: "spring" }}
-              className="text-lg md:text-xl font-black text-blue-400"
-            >
-              {profile._count?.mangas || 0}
-            </motion.p>
+            <p className="text-lg md:text-xl font-black text-blue-400">{profile._count?.mangas || 0}</p>
             <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Mangas</p>
           </div>
-        </motion.div>
+        </div>
 
         {/* BOUTONS D'ACTION */}
-        <motion.div 
-          variants={staggerContainer}
-          initial="initial"
-          animate="animate"
-          className="flex flex-wrap items-center justify-center gap-2.5 w-full max-w-md md:max-w-lg mb-6"
-        >
+        <div className="flex flex-wrap items-center justify-center gap-2.5 w-full max-w-md md:max-w-lg mb-6">
           {isCurrentUser ? (
             <>
               <Link
@@ -578,16 +487,11 @@ export default function CreatorProfilePage() {
               </button>
             </>
           )}
-        </motion.div>
+        </div>
 
         {/* BOUTONS MANAS + COLLABORATION */}
         {!isCurrentUser && !loading && (
-          <motion.div 
-            variants={staggerContainer}
-            initial="initial"
-            animate="animate"
-            className="flex flex-wrap items-center justify-center gap-2.5 mb-6 w-full max-w-md"
-          >
+          <div className="flex flex-wrap items-center justify-center gap-2.5 mb-6 w-full max-w-md">
             <button
               onClick={() => setShowSendManas(true)}
               className="px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center gap-2"
@@ -626,16 +530,12 @@ export default function CreatorProfilePage() {
                 Acheter des MANAS
               </Link>
             )}
-          </motion.div>
+          </div>
         )}
 
         {/* MESSAGE SOLDE INSUFFISANT */}
         {isCreator && userManasBalance < 250 && !isCurrentUser && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 p-2.5 bg-amber-950/30 border border-amber-500/30 rounded-xl text-amber-300 text-xs mb-4 max-w-md w-full"
-          >
+          <div className="flex items-center gap-2 p-2.5 bg-amber-950/30 border border-amber-500/30 rounded-xl text-amber-300 text-xs mb-4 max-w-md w-full">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>Solde insuffisant pour collaborer (250 MANAS requis).</span>
             <Link
@@ -645,17 +545,11 @@ export default function CreatorProfilePage() {
               <Coins className="w-3 h-3" />
               Acheter
             </Link>
-          </motion.div>
+          </div>
         )}
 
         {/* BARRE D'ONGLETS */}
-        <motion.div 
-          variants={fadeInUp}
-          initial="initial"
-          animate="animate"
-          transition={{ delay: 0.25 }}
-          className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6"
-        >
+        <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
           <button
             onClick={() => setActiveTab("mangas")}
             className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
@@ -678,206 +572,169 @@ export default function CreatorProfilePage() {
             <User className="w-4 h-4" />
             <span>À propos</span>
           </button>
-        </motion.div>
+        </div>
 
-        {/* TAB CONTENT */}
-        <AnimatePresence mode="wait">
-          {activeTab === "mangas" && (
-            <motion.div
-              key="mangas"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full"
-            >
-              {!profile.mangas || profile.mangas.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center bg-zinc-900/30 rounded-2xl border border-zinc-800/40 max-w-md mx-auto my-2">
-                  <BookOpen className="w-10 h-10 text-zinc-700" />
-                  <p className="text-zinc-400 mt-3 text-sm font-medium">Aucun manga publié</p>
-                  {isCurrentUser && (
-                    <Link
-                      href="/creator/upload"
-                      className="mt-4 px-5 py-2 rounded-full bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-all shadow shadow-blue-600/20"
-                    >
-                      Publier ton premier projet
-                    </Link>
-                  )}
-                </div>
-              ) : (
-                <motion.div 
-                  variants={staggerContainer}
-                  initial="initial"
-                  animate="animate"
-                  className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3"
-                >
-                  {profile.mangas.map((manga: any, index: number) => (
-                    <motion.div
-                      key={manga.id}
-                      variants={fadeInUp}
-                      transition={{ delay: index * 0.05 }}
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      <Link
-                        href={`/manga/${manga.id}`}
-                        className="group relative aspect-[2/3] bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800/60 hover:border-blue-500/50 transition-all duration-200 block"
-                      >
-                        {manga.coverUrl || manga.imageUrl ? (
-                          <img 
-                            src={manga.coverUrl || manga.imageUrl} 
-                            alt={manga.title} 
-                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <BookOpen className="w-8 h-8 text-zinc-700" />
-                          </div>
-                        )}
-                        <div className="absolute bottom-0 left-0 right-0 p-1.5 md:p-2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end justify-between">
-                          <span className="flex items-center gap-1 text-white text-[10px] md:text-xs font-bold drop-shadow">
-                            <Eye className="w-3 h-3 text-sky-400" /> {manga.viewsCount || 0}
-                          </span>
-                          <span className="flex items-center gap-1 text-white text-[10px] md:text-xs font-bold drop-shadow">
-                            <Heart className="w-3 h-3 text-rose-500 fill-rose-500" /> {manga.likesCount || 0}
-                          </span>
-                        </div>
-                      </Link>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-
-          {activeTab === "about" && (
-            <motion.div
-              key="about"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-              className="w-full max-w-md mx-auto"
-            >
-              <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 space-y-4">
-                <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                  <User className="w-4 h-4 text-blue-400" />
-                  <span className="text-zinc-300 text-sm">@{profile.username}</span>
-                </div>
-                {profile.bio && (
-                  <div className="flex items-start gap-3 py-2 border-b border-zinc-800/40">
-                    <BookOpen className="w-4 h-4 text-blue-400 mt-0.5" />
-                    <span className="text-zinc-300 text-sm">{profile.bio}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                  <Calendar className="w-4 h-4 text-blue-400" />
-                  <span className="text-zinc-300 text-sm">Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
-                </div>
-                <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                  <Globe className="w-4 h-4 text-blue-400" />
-                  <span className="text-zinc-300 text-sm">{profile.role === 'CREATOR' ? 'Créateur' : 'Membre'}</span>
-                </div>
-                {profile.isCertified && (
-                  <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                    <BadgeCheck className="w-4 h-4" fill={activeBadgeColor} color="black" strokeWidth={1.5} />
-                    <span className="text-zinc-300 text-sm">Compte certifié</span>
-                  </div>
-                )}
-                {profile.premiumActive && (
-                  <div className="flex items-center gap-3 py-2">
-                    <Crown className="w-4 h-4 text-amber-400" />
-                    <span className="text-zinc-300 text-sm">Abonnement Premium actif</span>
-                  </div>
-                )}
-                {isCreator && (
-                  <div className="flex items-center gap-3 py-2 border-t border-zinc-800/40 pt-3">
-                    <Coins className="w-4 h-4 text-blue-400" />
-                    <span className="text-zinc-300 text-sm">{profile.manas || 0} MANAS</span>
-                  </div>
+        {/* TAB 1 : MANGAS */}
+        {activeTab === "mangas" && (
+          <div className="w-full">
+            {!profile.mangas || profile.mangas.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center bg-zinc-900/30 rounded-2xl border border-zinc-800/40 max-w-md mx-auto my-2">
+                <BookOpen className="w-10 h-10 text-zinc-700" />
+                <p className="text-zinc-400 mt-3 text-sm font-medium">Aucun manga publié</p>
+                {isCurrentUser && (
+                  <Link
+                    href="/creator/upload"
+                    className="mt-4 px-5 py-2 rounded-full bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-all shadow shadow-blue-600/20"
+                  >
+                    Publier ton premier projet
+                  </Link>
                 )}
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
+                {profile.mangas.map((manga: any) => (
+                  <Link
+                    key={manga.id}
+                    href={`/manga/${manga.id}`}
+                    className="group relative aspect-[2/3] bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800/60 hover:scale-[1.02] hover:border-blue-500/50 transition-all duration-200"
+                  >
+                    {manga.coverUrl || manga.imageUrl ? (
+                      <img 
+                        src={manga.coverUrl || manga.imageUrl} 
+                        alt={manga.title} 
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <BookOpen className="w-8 h-8 text-zinc-700" />
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 p-1.5 md:p-2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end justify-between">
+                      <span className="flex items-center gap-1 text-white text-[10px] md:text-xs font-bold drop-shadow">
+                        <Eye className="w-3 h-3 text-sky-400" /> {manga.viewsCount || 0}
+                      </span>
+                      <span className="flex items-center gap-1 text-white text-[10px] md:text-xs font-bold drop-shadow">
+                        <Heart className="w-3 h-3 text-rose-500 fill-rose-500" /> {manga.likesCount || 0}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2 : À PROPOS */}
+        {activeTab === "about" && (
+          <div className="w-full max-w-md mx-auto">
+            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
+                <User className="w-4 h-4 text-blue-400" />
+                <span className="text-zinc-300 text-sm">@{profile.username}</span>
+              </div>
+              {profile.bio && (
+                <div className="flex items-start gap-3 py-2 border-b border-zinc-800/40">
+                  <BookOpen className="w-4 h-4 text-blue-400 mt-0.5" />
+                  <span className="text-zinc-300 text-sm">{profile.bio}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
+                <Calendar className="w-4 h-4 text-blue-400" />
+                <span className="text-zinc-300 text-sm">Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
+              </div>
+              <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
+                <Globe className="w-4 h-4 text-blue-400" />
+                <span className="text-zinc-300 text-sm">{profile.role === 'CREATOR' ? 'Créateur' : 'Membre'}</span>
+              </div>
+              {profile.isCertified && (
+                <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
+                  <BadgeCheck className="w-4 h-4" fill={activeBadgeColor} color="black" strokeWidth={1.5} />
+                  <span className="text-zinc-300 text-sm">Compte certifié</span>
+                </div>
+              )}
+              {profile.premiumActive && (
+                <div className="flex items-center gap-3 py-2">
+                  <Crown className="w-4 h-4 text-amber-400" />
+                  <span className="text-zinc-300 text-sm">Abonnement Premium actif</span>
+                </div>
+              )}
+              {isCreator && (
+                <div className="flex items-center gap-3 py-2 border-t border-zinc-800/40 pt-3">
+                  <Coins className="w-4 h-4 text-blue-400" />
+                  <span className="text-zinc-300 text-sm">{profile.manas || 0} MANAS</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
 
       <BottomNav />
 
       {/* MODAL ENVOYER DES MANAS */}
-      <AnimatePresence>
-        {showSendManas && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowSendManas(false)}
-          >
-            <motion.div 
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              className="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-6 max-w-sm w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                <Send className="w-5 h-5 text-emerald-400" />
-                Envoyer des MANAS
-              </h3>
-              <p className="text-sm text-zinc-400 mb-4">
-                À <span className="text-white font-bold">{profile.username}</span>
-              </p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-zinc-400 block mb-1">
-                    Montant en MANAS
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={sendManasAmount}
-                    onChange={(e) => setSendManasAmount(e.target.value)}
-                    placeholder="10"
-                    className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:border-emerald-500 outline-none transition-all"
-                  />
-                  <p className="text-[10px] text-zinc-500 mt-1">
-                    Votre solde : {userManasBalance} MANAS
-                  </p>
-                </div>
-
-                {error && (
-                  <p className="text-xs text-rose-400">{error}</p>
-                )}
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleSendManas}
-                    disabled={sendingManas || parseInt(sendManasAmount) < 1}
-                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {sendingManas ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4" />
-                        Envoyer
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowSendManas(false);
-                      setSendManasAmount("");
-                      setError("");
-                    }}
-                    className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold transition-all"
-                  >
-                    Annuler
-                  </button>
-                </div>
+      {showSendManas && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+              <Send className="w-5 h-5 text-emerald-400" />
+              Envoyer des MANAS
+            </h3>
+            <p className="text-sm text-zinc-400 mb-4">
+              À <span className="text-white font-bold">{profile.username}</span>
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                  Montant en MANAS
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={sendManasAmount}
+                  onChange={(e) => setSendManasAmount(e.target.value)}
+                  placeholder="10"
+                  className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:border-emerald-500 outline-none transition-all"
+                />
+                <p className="text-[10px] text-zinc-500 mt-1">
+                  Votre solde : {userManasBalance} MANAS
+                </p>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePres
+
+              {error && (
+                <p className="text-xs text-rose-400">{error}</p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSendManas}
+                  disabled={sendingManas || parseInt(sendManasAmount) < 1}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {sendingManas ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Envoyer
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSendManas(false);
+                    setSendManasAmount("");
+                    setError("");
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold transition-all"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
