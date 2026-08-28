@@ -46,6 +46,8 @@ export default function PremiumPage() {
   const [premiumExpires, setPremiumExpires] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string>("READER");
   const [userManas, setUserManas] = useState(0);
+  const [userTickets, setUserTickets] = useState(0);
+  const [hasUnlimitedTickets, setHasUnlimitedTickets] = useState(false);
 
   const plans: Plan[] = [
     {
@@ -64,7 +66,7 @@ export default function PremiumPage() {
         "Badge Premium basique",
         "Commentaires prioritaires",
         "1 appareil",
-        "✅ Tickets illimités",
+        "Tickets illimités",
       ],
     },
     {
@@ -89,7 +91,7 @@ export default function PremiumPage() {
         "Statistiques avancées",
         "Planification de publication",
         "Upload en masse",
-        "✅ Tickets illimités",
+        "Tickets illimités",
       ],
     },
     {
@@ -120,7 +122,7 @@ export default function PremiumPage() {
         "Badge Certifié",
         "Traduction XELIRA en temps réel",
         "Rencontres virtuelles avec les créateurs",
-        "✅ Tickets illimités",
+        "Tickets illimités",
       ],
     },
   ];
@@ -178,8 +180,11 @@ export default function PremiumPage() {
     if (!token) return;
 
     try {
-      const [manasRes] = await Promise.all([
+      const [manasRes, ticketRes] = await Promise.all([
         fetch(`${API_URL}/manas/balance`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/tickets/balance`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -187,6 +192,12 @@ export default function PremiumPage() {
       if (manasRes.ok) {
         const data = await manasRes.json();
         setUserManas(data.balance);
+      }
+
+      if (ticketRes.ok) {
+        const data = await ticketRes.json();
+        setUserTickets(data.tickets);
+        setHasUnlimitedTickets(data.hasUnlimitedTickets || false);
       }
     } catch (error) {
       console.error("Erreur chargement balances:", error);
@@ -251,18 +262,23 @@ export default function PremiumPage() {
         </div>
       </div>
 
-      {/* SOLDE MANAS */}
+      {/* SOLDE MANAS & TICKETS */}
       <div className="max-w-6xl mx-auto w-full px-4 pt-4">
-        <div className="flex items-center justify-center gap-6 text-sm text-zinc-400 bg-zinc-900/30 rounded-2xl py-3 px-6 border border-zinc-800/40">
+        <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-zinc-400 bg-zinc-900/30 rounded-2xl py-3 px-6 border border-zinc-800/40">
           <span className="flex items-center gap-2">
             <Coins className="w-4 h-4 text-blue-400" />
             MANAS : <span className="text-white font-bold">{userManas}</span>
           </span>
+          <span className="w-px h-6 bg-zinc-800" />
+          <span className="flex items-center gap-2">
+            <Ticket className="w-4 h-4 text-purple-400" />
+            Tickets : <span className="text-white font-bold">{hasUnlimitedTickets ? '♾️ Illimité' : userTickets}</span>
+          </span>
           {isCreator && (
             <>
               <span className="w-px h-6 bg-zinc-800" />
-              <span className="flex items-center gap-2 text-emerald-400">
-                <span className="text-xs">💳 Vous pouvez retirer vos MANAS</span>
+              <span className="flex items-center gap-2 text-emerald-400 text-xs">
+                💳 Vous pouvez retirer vos MANAS
               </span>
             </>
           )}
@@ -385,7 +401,6 @@ export default function PremiumPage() {
                   {isCurrentPlan ? "✅ Gérer mon abonnement" : (isAuthenticated ? "S'abonner" : "Se connecter")}
                 </button>
 
-                {/* Message pour les créateurs */}
                 {isCreator && !isCurrentPlan && (
                   <p className="text-[10px] text-zinc-500 text-center mt-2">
                     👑 En tant que créateur, vous pouvez aussi bénéficier de ces avantages
