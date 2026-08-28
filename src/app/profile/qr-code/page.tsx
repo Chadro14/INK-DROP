@@ -360,25 +360,21 @@ export default function QRCodePage() {
       );
       const file = new File([blob], `qr-${qrData.username}.png`, { type: "image/png" });
 
-      // ✅ Partager via Web Share API ou fallback
-      let sharedSuccess = false;
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           title: `QR Code de ${qrData.username}`,
           text: `Scanne le QR Code de ${qrData.username} sur INKDROP`,
           files: [file],
         });
-        sharedSuccess = true;
+        // ✅ Correction 2 : setShared après partage réussi
+        setShared(true);
+        setTimeout(() => setShared(false), 3000);
       } else {
         const link = document.createElement("a");
         link.href = canvas.toDataURL("image/png");
         link.download = `qr-${qrData.username}.png`;
         link.click();
-        sharedSuccess = true; // on considère que le téléchargement est un succès
-      }
-
-      // ✅ Mettre à jour l'état "Partagé !" après succès
-      if (sharedSuccess) {
+        // ✅ Correction 2 : setShared après fallback
         setShared(true);
         setTimeout(() => setShared(false), 3000);
       }
@@ -418,6 +414,7 @@ export default function QRCodePage() {
   };
 
   if (loading) {
+    // ✅ Correction 1 : label → message
     return <Loader message="Génération de votre QR code" />;
   }
 
@@ -509,7 +506,7 @@ export default function QRCodePage() {
             </div>
           </div>
 
-          {/* ===== QR CODE ===== */}
+          {/* ===== QR CODE — carte en dégradé, plus grande, sans fond blanc ===== */}
           <div className="flex flex-col items-center">
             <div
               style={{
