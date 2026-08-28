@@ -24,11 +24,15 @@ import {
   Palette,
   Zap,
   RefreshCw,
+  Star,
+  Shield,
+  Lock,
+  Sparkle,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-// ✅ STYLES DISPONIBLES (comme TikTok)
+// ✅ STYLES DISPONIBLES
 const STYLES = [
   { id: "default", name: "Défaut", gradient: ["#3B82F6", "#8B5CF6"] },
   { id: "sunset", name: "Coucher", gradient: ["#FF6B35", "#F03E5B"] },
@@ -66,8 +70,6 @@ function adjustColor(hex: string, amount: number): string {
   b = Math.max(Math.min(255, b), 0);
   return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
-const lighten = (hex: string, amt: number) => adjustColor(hex, amt);
-const darken = (hex: string, amt: number) => adjustColor(hex, -amt);
 
 function roundRectPath(
   ctx: CanvasRenderingContext2D,
@@ -95,13 +97,13 @@ function loadImage(src: string, cors = false): Promise<HTMLImageElement> {
     const img = new Image();
     if (cors) img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Échec chargement image"));
+    img.onerror = () => reject(new Error("Failed to load image"));
     img.src = src;
   });
 }
 
 // ============================================
-// GÉNÈRE LA CARTE QR (STYLE TIKTOK)
+// GÉNÈRE LA CARTE QR (STYLE PREMIUM)
 // ============================================
 async function buildQRCard(opts: {
   text: string;
@@ -164,7 +166,7 @@ async function buildQRCard(opts: {
 
   ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
-  // 4. Avatar au centre (POUR TOUS)
+  // 4. Avatar au centre (pour tous)
   if (avatarUrl) {
     try {
       const avatarImg = await loadImage(avatarUrl, true);
@@ -190,13 +192,13 @@ async function buildQRCard(opts: {
     }
   }
 
-  // 5. Label "Scannez-moi"
+  // 5. Label "SCANNEZ-MOI" en bas
   if (showLabel) {
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.font = `600 ${size * 0.04}px Arial`;
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = `700 ${size * 0.04}px Arial, sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
-    ctx.fillText("✦ SCANNEZ-MOI ✦", size / 2, size - size * 0.045);
+    ctx.fillText("SCANNEZ-MOI", size / 2, size - size * 0.04);
   }
 
   return canvas;
@@ -281,7 +283,7 @@ export default function QRCodePage() {
           badgeColor,
         });
       } catch (err: any) {
-        console.error("❌ Erreur fetchQR:", err);
+        console.error("Erreur fetchQR:", err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -292,12 +294,11 @@ export default function QRCodePage() {
   }, [router]);
 
   // ============================================
-  // APERÇU EN DIRECT - AVEC FORCER LE RENDU
+  // APERÇU EN DIRECT
   // ============================================
   useEffect(() => {
     if (!qrData?.qrData || !previewCanvasRef.current) return;
     
-    // ✅ FORCER LE RENDU APRÈS UN PETIT DÉLAI
     const timeout = setTimeout(() => {
       generateQR();
     }, 100);
@@ -315,7 +316,6 @@ export default function QRCodePage() {
     }
     setSelectedStyle(style);
     setShowStyles(false);
-    // ✅ REGÉNÉRER LE QR APRÈS CHANGEMENT DE STYLE
     setTimeout(() => generateQR(), 50);
   };
 
@@ -364,7 +364,7 @@ export default function QRCodePage() {
       ctx.fillStyle = qrData.isCertified ? "#8B5CF6" : "#6B7280";
       ctx.font = "18px Arial";
       ctx.fillText(
-        qrData.isCertified ? "✦ Créateur certifié" : "Membre INKDROP",
+        qrData.isCertified ? "Créateur certifié" : "Membre INKDROP",
         W / 2,
         cardY + cardSize + 90
       );
@@ -457,10 +457,10 @@ export default function QRCodePage() {
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
             <span className="text-sm font-medium">Retour</span>
           </Link>
-          <span className="text-sm font-bold text-white/90 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-blue-400" />
-            QR Code
-          </span>
+          <div className="flex items-center gap-2">
+            <QrCode className="w-4 h-4 text-blue-400" />
+            <span className="text-sm font-bold text-white/90">QR Code</span>
+          </div>
           <div className="w-16" />
         </div>
       </header>
@@ -493,7 +493,7 @@ export default function QRCodePage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-2xl font-black text-blue-400 bg-gradient-to-br from-zinc-800 to-zinc-900">
+                  <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-blue-400 bg-gradient-to-br from-zinc-800 to-zinc-900">
                     {qrData.username?.charAt(0).toUpperCase() || "?"}
                   </div>
                 )}
@@ -532,11 +532,12 @@ export default function QRCodePage() {
           {/* ===== QR CODE ===== */}
           <div className="flex flex-col items-center relative z-10">
             <div
+              className="rounded-2xl overflow-hidden shadow-2xl"
               style={{
-                filter: `drop-shadow(0 25px 45px ${selectedStyle.gradient[0]}30)`,
+                boxShadow: `0 25px 60px ${selectedStyle.gradient[0]}40`,
               }}
             >
-              <canvas ref={previewCanvasRef} width={300} height={300} className="block rounded-2xl" />
+              <canvas ref={previewCanvasRef} width={300} height={300} className="block" />
             </div>
 
             <div className="mt-4 text-center">
@@ -546,7 +547,7 @@ export default function QRCodePage() {
               </p>
               {isPremium && (
                 <p className="text-xs text-purple-400/60 mt-1 flex items-center justify-center gap-1">
-                  <Sparkles className="w-3 h-3" />
+                  <Sparkle className="w-3 h-3" />
                   QR Code Premium
                 </p>
               )}
@@ -567,15 +568,17 @@ export default function QRCodePage() {
             >
               <Palette className="w-4 h-4 text-purple-400 group-hover:rotate-12 transition-transform" />
               <span className="text-sm font-medium text-white">
-                {isPremium ? `Style actuel : ${selectedStyle.name}` : "🔒 Style réservé aux Premium"}
+                {isPremium ? `Style : ${selectedStyle.name}` : "Style réservé aux Premium"}
               </span>
+              {!isPremium && <Lock className="w-4 h-4 text-zinc-500" />}
               <RefreshCw className={`w-4 h-4 text-zinc-500 transition-transform ${showStyles ? 'rotate-180' : ''}`} />
             </button>
 
             {showStyles && isPremium && (
               <div className="mt-3 p-3 bg-zinc-900/80 rounded-xl border border-zinc-800/40">
-                <p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-3 text-center">
-                  ✨ Choisissez un style
+                <p className="text-[10px] text-zinc-400 uppercase tracking-wider mb-3 text-center flex items-center justify-center gap-2">
+                  <Palette className="w-3 h-3" />
+                  Choisissez votre style
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   {STYLES.map((style) => (
@@ -607,14 +610,14 @@ export default function QRCodePage() {
             <div className="bg-zinc-900/60 rounded-2xl p-4 text-center border border-zinc-800/40 hover:border-blue-500/30 transition-all group">
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Users className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
-                <span className="text-2xl font-black text-white">{qrData.scanCount}</span>
+                <span className="text-2xl font-bold text-white">{qrData.scanCount}</span>
               </div>
               <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Scans</p>
             </div>
             <div className="bg-zinc-900/60 rounded-2xl p-4 text-center border border-zinc-800/40 hover:border-blue-500/30 transition-all group">
               <div className="flex items-center justify-center gap-2 mb-1">
                 <Clock className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
-                <span className="text-2xl font-black text-white">1</span>
+                <span className="text-2xl font-bold text-white">1</span>
               </div>
               <p className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">Généré</p>
             </div>
@@ -637,7 +640,7 @@ export default function QRCodePage() {
               {shared ? (
                 <>
                   <Check className="w-4 h-4" />
-                  <span className="text-sm font-bold">Partagé !</span>
+                  <span className="text-sm font-bold">Partagé</span>
                 </>
               ) : (
                 <>
@@ -654,7 +657,7 @@ export default function QRCodePage() {
               {copied ? (
                 <>
                   <Check className="w-4 h-4 text-emerald-400" />
-                  <span className="text-sm font-medium text-emerald-400">Lien copié !</span>
+                  <span className="text-sm font-medium text-emerald-400">Lien copié</span>
                 </>
               ) : (
                 <>
@@ -669,18 +672,19 @@ export default function QRCodePage() {
         {/* ===== MESSAGE ===== */}
         <div className="mt-6 max-w-md text-center">
           <p className="text-xs text-zinc-500 leading-relaxed">
-            Votre QR code est unique et permanent. <br />
-            Partagez-le avec vos amis pour qu'ils puissent découvrir votre profil.
+            Votre QR code est unique et permanent. Partagez-le avec vos amis
+            pour qu'ils puissent découvrir votre profil.
           </p>
           {isPremium && (
             <p className="text-xs text-purple-400/60 mt-2 flex items-center justify-center gap-1">
               <Sparkles className="w-3 h-3" />
-              Premium : {STYLES.length} styles de QR disponibles
+              Premium : {STYLES.length} styles disponibles
             </p>
           )}
           {!isPremium && (
-            <p className="text-xs text-amber-400/60 mt-2">
-              👑 Passez Premium pour personnaliser votre QR
+            <p className="text-xs text-amber-400/60 mt-2 flex items-center justify-center gap-1">
+              <Crown className="w-3 h-3" />
+              Passez Premium pour personnaliser votre QR
             </p>
           )}
         </div>
