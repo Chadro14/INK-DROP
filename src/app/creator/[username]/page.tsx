@@ -26,10 +26,7 @@ import {
   Sparkles,
   Loader2,
   AlertCircle,
-  Users,
-  MessageCircle,
-  Gift,
-  Zap,
+  Send,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -193,8 +190,6 @@ export default function CreatorProfilePage() {
             followers: newStatus ? prev._count.followers + 1 : prev._count.followers - 1,
           },
         } : null);
-      } else {
-        console.error("Erreur follow:", data);
       }
     } catch (error) {
       console.error("Erreur follow:", error);
@@ -322,11 +317,7 @@ export default function CreatorProfilePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4">
         <div className="w-16 h-16 rounded-full bg-rose-950/30 flex items-center justify-center mb-4">
-          <svg className="w-8 h-8 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
+          <AlertCircle className="w-8 h-8 text-rose-400" />
         </div>
         <p className="text-zinc-400 text-center">{error || "Utilisateur non trouvé"}</p>
         <Link
@@ -533,7 +524,7 @@ export default function CreatorProfilePage() {
           </div>
         </motion.div>
 
-        {/* ===== BOUTONS D'ACTION (RÉORGANISÉS) ===== */}
+        {/* BOUTONS D'ACTION */}
         <motion.div 
           variants={staggerContainer}
           initial="initial"
@@ -541,7 +532,6 @@ export default function CreatorProfilePage() {
           className="flex flex-wrap items-center justify-center gap-2.5 w-full max-w-md md:max-w-lg mb-6"
         >
           {isCurrentUser ? (
-            // BOUTONS POUR SON PROPRE PROFIL
             <>
               <Link
                 href="/profile/edit"
@@ -559,7 +549,6 @@ export default function CreatorProfilePage() {
               </Link>
             </>
           ) : (
-            // BOUTONS POUR LE PROFIL D'UN AUTRE
             <>
               <button
                 onClick={handleFollow}
@@ -593,7 +582,7 @@ export default function CreatorProfilePage() {
           )}
         </motion.div>
 
-        {/* ===== BOUTONS MANAS + COLLABORATION + ACHAT (RÉORGANISÉS) ===== */}
+        {/* BOUTONS MANAS + COLLABORATION */}
         {!isCurrentUser && !loading && (
           <motion.div 
             variants={staggerContainer}
@@ -601,16 +590,14 @@ export default function CreatorProfilePage() {
             animate="animate"
             className="flex flex-wrap items-center justify-center gap-2.5 mb-6 w-full max-w-md"
           >
-            {/* ENVOYER DES MANAS */}
             <button
               onClick={() => setShowSendManas(true)}
-              className="px-4 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
+              className="px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center gap-2"
             >
-              <Coins className="w-4 h-4" />
+              <Send className="w-4 h-4" />
               Envoyer des MANAS
             </button>
 
-            {/* COLLABORER */}
             {isCreator && (
               <button
                 onClick={handleCollaborate}
@@ -632,7 +619,6 @@ export default function CreatorProfilePage() {
               </button>
             )}
 
-            {/* ACHETER DES MANAS */}
             {isCreator && userManasBalance < 250 && (
               <Link
                 href="/payment?plan=manas"
@@ -838,7 +824,7 @@ export default function CreatorProfilePage() {
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-                <Coins className="w-5 h-5 text-blue-400" />
+                <Send className="w-5 h-5 text-emerald-400" />
                 Envoyer des MANAS
               </h3>
               <p className="text-sm text-zinc-400 mb-4">
@@ -856,7 +842,7 @@ export default function CreatorProfilePage() {
                     value={sendManasAmount}
                     onChange={(e) => setSendManasAmount(e.target.value)}
                     placeholder="10"
-                    className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all"
+                    className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:border-emerald-500 outline-none transition-all"
                   />
                   <p className="text-[10px] text-zinc-500 mt-1">
                     Votre solde : {userManasBalance} MANAS
@@ -871,4 +857,27 @@ export default function CreatorProfilePage() {
                   <button
                     onClick={handleSendManas}
                     disabled={sendingManas || parseInt(sendManasAmount) < 1}
-                    className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {sendingManas ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        Envoyer
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowSendManas(false);
+                      setSendManasAmount("");
+                      setError("");
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold transition-all"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </m
