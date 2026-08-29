@@ -14,7 +14,6 @@ import {
   Eye, 
   Mail, 
   Calendar, 
-  Plus, 
   Share2, 
   Award, 
   Zap, 
@@ -25,23 +24,17 @@ import {
   Palette,
   Grid,
   Sparkles,
-  User,
   Globe,
-  Users,
   Crown,
   Bookmark,
   Bell,
-  Coins as ManasIcon,
   DollarSign,
   TrendingUp,
-  Wallet,
   QrCode,
   Ticket,
   Rocket,
-  Star,
   Briefcase,
-  CheckCircle2,
-  AlertCircle,
+  Star,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -207,6 +200,22 @@ export default function ProfilePage() {
   const isAdmin = profile?.role === 'ADMIN';
   const isSuspended = profile?.role === 'SUSPENDED';
 
+  // ✅ ICONE MANAS - Pièce d'or avec M
+  const ManaCoin = ({ className = "w-5 h-5" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" fill="url(#manaGradient)" stroke="#FBBF24" strokeWidth="1.5"/>
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="#D97706" strokeWidth="0.5" opacity="0.5"/>
+      <text x="12" y="17" textAnchor="middle" fontSize="12" fontWeight="800" fill="#78350F" fontFamily="Arial, sans-serif">M</text>
+      <defs>
+        <linearGradient id="manaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FCD34D"/>
+          <stop offset="50%" stopColor="#FBBF24"/>
+          <stop offset="100%" stopColor="#F59E0B"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+
   if (loading) {
     return <Loader message="Chargement de votre profil" />;
   }
@@ -214,7 +223,6 @@ export default function ProfilePage() {
   if (error || !profile) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-white px-4">
-        <AlertCircle className="w-12 h-12 text-rose-400 mb-4" />
         <p className="text-zinc-400 text-center">{error || "Profil non trouvé"}</p>
         <button
           onClick={() => router.push("/login")}
@@ -263,15 +271,13 @@ export default function ProfilePage() {
   // BOUTON DE DEMANDE DE COMPTE CRÉATEUR
   // ============================================
   const renderCreatorButton = () => {
-    // Si l'utilisateur est ADMIN, on n'affiche rien
     if (isAdmin) return null;
 
-    // Si l'utilisateur est déjà créateur
     if (isCreator) {
       return (
         <Link
           href="/creator/dashboard"
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold transition-all shadow-lg shadow-emerald-900/30 flex items-center gap-2"
+          className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2"
         >
           <Briefcase className="w-4 h-4" />
           Tableau de bord créateur
@@ -279,22 +285,23 @@ export default function ProfilePage() {
       );
     }
 
-    // Si une demande est en attente
     if (hasPendingRequest) {
       return (
-        <div className="px-4 py-2.5 rounded-xl bg-amber-600/20 border border-amber-500/30 text-amber-400 text-sm font-medium flex items-center gap-2">
-          <Clock className="w-4 h-4 animate-pulse" />
+        <div className="w-full px-4 py-2.5 rounded-xl bg-amber-600/20 border border-amber-500/30 text-amber-400 text-sm font-medium flex items-center justify-center gap-2 cursor-default">
+          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25"/>
+            <path d="M12 2C6.477 2 2 6.477 2 12" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
+          </svg>
           Demande en attente
         </div>
       );
     }
 
-    // Si une demande a été rejetée
     if (hasRejectedRequest) {
       return (
         <Link
           href="/creator-request"
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white text-sm font-bold transition-all shadow-lg shadow-rose-900/30 flex items-center gap-2"
+          className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white text-sm font-bold transition-all shadow-lg shadow-rose-900/30 flex items-center justify-center gap-2"
         >
           <Rocket className="w-4 h-4" />
           Nouvelle demande
@@ -302,11 +309,10 @@ export default function ProfilePage() {
       );
     }
 
-    // Sinon, afficher le bouton "Devenir créateur"
     return (
       <Link
         href="/creator-request"
-        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all shadow-lg shadow-blue-900/30 flex items-center gap-2 group"
+        className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2 group"
       >
         <Rocket className="w-4 h-4 group-hover:scale-110 transition-transform" />
         <span>Devenir créateur</span>
@@ -318,18 +324,11 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
-      {/* HEADER */}
+      {/* ===== HEADER - Allégé ===== */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <span className="text-base font-bold tracking-tight text-white/90 flex items-center gap-2">
+          <span className="text-base font-bold tracking-tight text-white/90">
             @{profile.username.toLowerCase()}
-            {profile.isCertified && (
-              <BadgeCheck
-                className="w-4 h-4"
-                fill={activeBadgeColor}
-                color="black"
-              />
-            )}
           </span>
           <div className="flex items-center gap-1 text-zinc-400">
             <Link
@@ -354,17 +353,11 @@ export default function ProfilePage() {
             <button onClick={handleShare} className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all">
               <Share2 className="w-5 h-5" />
             </button>
-            <Link href="/profile/settings" className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all">
-              <Settings className="w-5 h-5" />
-            </Link>
-            <button onClick={handleLogout} className="p-2 rounded-full hover:bg-zinc-900 hover:text-rose-400 transition-all">
-              <LogOut className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </header>
 
-      {/* BANNIÈRE */}
+      {/* ===== BANNIÈRE ===== */}
       <div className="h-32 md:h-48 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
         {isCreator && (
@@ -383,7 +376,7 @@ export default function ProfilePage() {
 
       <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
 
-        {/* AVATAR */}
+        {/* ===== AVATAR ===== */}
         <div className="relative mb-3 group">
           <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 overflow-hidden border-4 border-zinc-950 shadow-2xl ring-2 ring-blue-500/30 shrink-0">
             {profile.avatarUrl ? (
@@ -416,7 +409,7 @@ export default function ProfilePage() {
           </Link>
         </div>
 
-        {/* NOM & BADGES */}
+        {/* ===== NOM (sans badge dans le nom) ===== */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
           {profile.premiumActive && (
@@ -425,20 +418,14 @@ export default function ProfilePage() {
               {planLabel}
             </span>
           )}
-          {profile.isCertified && (
-            <span className="px-2.5 py-0.5 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-400 text-[10px] md:text-xs font-bold flex items-center gap-1">
-              <BadgeCheck className="w-3 h-3" />
-              Certifié
-            </span>
-          )}
         </div>
 
-        {/* BIO */}
+        {/* ===== BIO ===== */}
         <p className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal">
-          {profile.bio || "Membre INKDROP • Créateur de contenu"}
+          {profile.bio || "Membre INKDROP"}
         </p>
 
-        {/* INFOS */}
+        {/* ===== INFOS ===== */}
         <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-4">
           <span className="flex items-center gap-1.5">
             <Mail className="w-3.5 h-3.5 text-blue-400" /> 
@@ -456,12 +443,7 @@ export default function ProfilePage() {
           </span>
         </div>
 
-        {/* BOUTON DE DEMANDE CRÉATEUR - BIEN EN EVIDENCE */}
-        <div className="w-full max-w-md mb-4 flex justify-center">
-          {renderCreatorButton()}
-        </div>
-
-        {/* STATS SOCIALES + SOLDE MANAS */}
+        {/* ===== STATS SOCIALES + MANAS ===== */}
         <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
           <div className="text-center">
             <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
@@ -474,15 +456,22 @@ export default function ProfilePage() {
           </div>
           <div className="h-7 w-[1px] bg-zinc-800" />
           <div className="text-center">
-            <p className="text-lg md:text-xl font-black text-blue-400 flex items-center justify-center gap-1">
-              <ManasIcon className="w-5 h-5" />
+            <p className="text-lg md:text-xl font-black text-amber-400 flex items-center justify-center gap-1.5">
+              <ManaCoin className="w-6 h-6" />
               {profile.manas || 0}
             </p>
             <p className="text-[11px] md:text-xs text-zinc-400 font-medium">MANAS</p>
           </div>
         </div>
 
-        {/* BARRE D'ONGLETS */}
+        {/* ===== BOUTON CRÉATEUR (dans la zone avantage) ===== */}
+        {!isAdmin && (
+          <div className="w-full max-w-md mb-4">
+            {renderCreatorButton()}
+          </div>
+        )}
+
+        {/* ===== BARRE D'ONGLETS ===== */}
         <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
           <button
             onClick={() => setActiveTab("mangas")}
@@ -519,7 +508,7 @@ export default function ProfilePage() {
           </button>
         </div>
 
-        {/* TAB 1 : MANGAS */}
+        {/* ===== TAB 1 : MANGAS ===== */}
         {activeTab === "mangas" && (
           <div className="w-full">
             {!profile.mangas || profile.mangas.length === 0 ? (
@@ -571,13 +560,13 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* TAB 2 : STATS & BALANCE */}
+        {/* ===== TAB 2 : STATS & BALANCE ===== */}
         {activeTab === "stats" && (
           <div className="w-full max-w-xl mx-auto space-y-3">
             <div className="grid grid-cols-3 gap-2.5">
               {isCreator ? (
                 <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                  <DollarSign className="w-5 h-5 mx-auto text-blue-400 mb-1" />
+                  <DollarSign className="w-5 h-5 mx-auto text-emerald-400 mb-1" />
                   <p className="text-base md:text-lg font-black text-white">
                     ${(profile.manas / 100).toFixed(2)}
                   </p>
@@ -585,7 +574,7 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                  <ManasIcon className="w-5 h-5 mx-auto text-blue-400 mb-1" />
+                  <ManaCoin className="w-6 h-6 mx-auto mb-1" />
                   <p className="text-base md:text-lg font-black text-white">
                     {profile.manas}
                   </p>
@@ -603,7 +592,7 @@ export default function ProfilePage() {
                 </div>
               ) : (
                 <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                  <Heart className="w-5 h-5 mx-auto text-blue-400 mb-1" />
+                  <Heart className="w-5 h-5 mx-auto text-rose-400 mb-1" />
                   <p className="text-base md:text-lg font-black text-white">
                     {profile._count?.likes || 0}
                   </p>
@@ -616,7 +605,7 @@ export default function ProfilePage() {
                 className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center hover:border-blue-500/50 transition-all group"
               >
                 <div className="flex items-center justify-center gap-2 mb-1">
-                  <Ticket className="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" />
+                  <Ticket className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
                   <span className="text-base md:text-lg font-black text-white">
                     {ticketBalance?.tickets || 0}
                   </span>
@@ -654,8 +643,8 @@ export default function ProfilePage() {
             <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-                    <Ticket className="w-5 h-5 text-blue-400" />
+                  <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                    <Ticket className="w-5 h-5 text-purple-400" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-white">Mes Tickets</p>
@@ -666,21 +655,21 @@ export default function ProfilePage() {
                 </div>
                 <Link
                   href="/profile/tickets"
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-lg shadow-purple-600/20 flex items-center gap-1.5"
                 >
                   <Ticket className="w-3.5 h-3.5" />
                   Voir
                 </Link>
               </div>
               <p className="text-[10px] text-zinc-500 mt-3">
-                <Ticket className="w-3 h-3 inline mr-1 text-blue-400" />
+                <Ticket className="w-3 h-3 inline mr-1 text-purple-400" />
                 1 ticket = 1 chapitre payant débloqué
               </p>
             </div>
           </div>
         )}
 
-        {/* TAB 3 : MENU EN LISTE UNIFORMISÉ */}
+        {/* ===== TAB 3 : AVANTAGES (menu complet) ===== */}
         {activeTab === "menu" && (
           <div className="w-full max-w-xl mx-auto bg-zinc-900/20 rounded-2xl border border-zinc-800/40 overflow-hidden">
             {/* Premium */}
@@ -748,73 +737,11 @@ export default function ProfilePage() {
               href="/profile/manas-history"
               className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
             >
-              <Coins className="w-5 h-5 text-amber-400" />
+              <ManaCoin className="w-5 h-5" />
               <span className="text-sm font-medium text-white flex-1">Historique MANAS</span>
               <span className="text-xs text-zinc-500">({profile.manas || 0})</span>
               <ChevronRight className="w-4 h-4 text-zinc-600" />
             </Link>
 
             {/* Retrait d'argent */}
-            {isCreator && (
-              <Link
-                href="/creator/balance"
-                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
-              >
-                <DollarSign className="w-5 h-5 text-emerald-400" />
-                <span className="text-sm font-medium text-white flex-1">Retirer de l'argent</span>
-                <span className="text-xs text-zinc-500">≈ ${(profile.manas / 100).toFixed(2)}</span>
-                <ChevronRight className="w-4 h-4 text-zinc-600" />
-              </Link>
-            )}
-
-            {/* Administration */}
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
-              >
-                <Shield className="w-5 h-5 text-rose-400" />
-                <span className="text-sm font-medium text-white flex-1">Administration</span>
-                <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[9px] font-bold border border-rose-500/20">
-                  Admin
-                </span>
-                <ChevronRight className="w-4 h-4 text-zinc-600" />
-              </Link>
-            )}
-
-            {/* Paramètres */}
-            <Link
-              href="/profile/settings"
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
-            >
-              <Settings className="w-5 h-5 text-zinc-400" />
-              <span className="text-sm font-medium text-white flex-1">Paramètres du compte</span>
-              <ChevronRight className="w-4 h-4 text-zinc-600" />
-            </Link>
-
-            {/* Déconnexion */}
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors w-full text-rose-400 border-t border-zinc-800/30"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="text-sm font-medium flex-1 text-left">Se déconnecter</span>
-              <ChevronRight className="w-4 h-4 text-rose-400/50" />
-            </button>
-          </div>
-        )}
-      </main>
-
-      <BottomNav />
-    </div>
-  );
-}
-
-// Composant Clock pour le statut "En attente"
-function Clock({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
-}
+            {isCreator &&
