@@ -1,5 +1,6 @@
 "use client";
 
+// 🔧 CORRECTION MINEURE - Test de build (ajout commentaire)
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -398,7 +399,7 @@ export default function ChapterReader() {
   // AFFICHAGE
   // ============================================
   if (loading) {
-    return <Loader message="Chargement du chapitre" />;
+    return <Loader message="Chargement en cours..." />; // ✅ Texte modifié
   }
 
   if (error || !chapter) {
