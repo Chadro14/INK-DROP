@@ -494,11 +494,9 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
-        {/* ✅ BOUTONS MANAS - UNIQUEMENT UN BOUTON ACHETER DES MANAS */}
+        {/* BOUTONS MANAS */}
         {!isCurrentUser && !loading && (
           <div className="flex flex-wrap items-center justify-center gap-2.5 mb-6 w-full max-w-md">
-            
-            {/* ENVOYER DES MANAS */}
             <button
               onClick={() => setShowSendManas(true)}
               className="px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center gap-2"
@@ -507,7 +505,6 @@ export default function CreatorProfilePage() {
               Envoyer des MANAS
             </button>
 
-            {/* ✅ ACHETER DES MANAS (UNIQUE) */}
             <button
               onClick={handleBuyManas}
               className="px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
@@ -516,7 +513,6 @@ export default function CreatorProfilePage() {
               Acheter des MANAS
             </button>
 
-            {/* COLLABORER */}
             {isCreator && (
               <button
                 onClick={handleCollaborate}
