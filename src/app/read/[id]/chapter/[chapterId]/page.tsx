@@ -22,7 +22,9 @@ import {
   FileText,
   Image as ImageIcon,
   Coins,
-  Loader2
+  Loader2,
+  Ticket,
+  ShoppingCart,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -72,8 +74,10 @@ export default function ChapterReader() {
   const [isLiked, setIsLiked] = useState(false);
   const [manasEarned, setManasEarned] = useState(false);
   
-  // États pour MANAS
+  // États pour MANAS, TICKETS et PREMIUM
   const [manasBalance, setManasBalance] = useState(0);
+  const [ticketBalance, setTicketBalance] = useState(0);
+  const [hasUnlimitedTickets, setHasUnlimitedTickets] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
@@ -83,22 +87,34 @@ export default function ChapterReader() {
   const chapterNumber = parseInt(chapterId);
 
   // ============================================
-  // RÉCUPÉRER LE SOLDE MANAS
+  // RÉCUPÉRER LES SOLDE MANAS ET TICKETS
   // ============================================
-  const fetchManasBalance = async () => {
+  const fetchBalances = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
     try {
-      const res = await fetch(`${API_URL}/manas/balance`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
+      const [manasRes, ticketRes] = await Promise.all([
+        fetch(`${API_URL}/manas/balance`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/tickets/balance`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      if (manasRes.ok) {
+        const data = await manasRes.json();
         setManasBalance(data.balance);
       }
+
+      if (ticketRes.ok) {
+        const data = await ticketRes.json();
+        setTicketBalance(data.tickets);
+        setHasUnlimitedTickets(data.hasUnlimitedTickets || false);
+      }
     } catch (error) {
-      console.error("❌ Erreur récupération solde MANAS:", error);
+      console.error("❌ Erreur récupération balances:", error);
     }
   };
 
@@ -154,7 +170,52 @@ export default function ChapterReader() {
   };
 
   // ============================================
-  // PAYER AVEC MANAS
+  // ✅ PAYER AVEC UN TICKET
+  // ============================================
+  const handlePayWithTicket = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    setProcessing(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/tickets/use/${chapter?.id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Erreur lors de l'utilisation du ticket");
+      }
+
+      setHasAccess(true);
+      if (data.remainingTickets !== 'illimité') {
+        setTicketBalance(data.remainingTickets);
+      }
+      setSuccess(true);
+      setPaymentMessage("Chapitre débloqué avec un ticket !");
+      setTimeout(() => setSuccess(false), 3000);
+
+      // ✅ Gagner 1 MANAS pour la lecture
+      earnManasForReading();
+    } catch (err: any) {
+      setError(err.message || "Erreur lors du paiement");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // ============================================
+  // ✅ PAYER AVEC MANAS
   // ============================================
   const handlePayWithManas = async () => {
     const token = localStorage.getItem("token");
@@ -191,6 +252,9 @@ export default function ChapterReader() {
       setSuccess(true);
       setPaymentMessage("Chapitre débloqué avec 50 MANAS !");
       setTimeout(() => setSuccess(false), 3000);
+
+      // ✅ Gagner 1 MANAS pour la lecture
+      earnManasForReading();
     } catch (err: any) {
       setError(err.message || "Erreur lors du paiement");
     } finally {
@@ -232,7 +296,7 @@ export default function ChapterReader() {
           }
           
           await checkIfLiked();
-          await fetchManasBalance();
+          await fetchBalances();
           
         } else if (data.isFree) {
           setHasAccess(true);
@@ -364,7 +428,7 @@ export default function ChapterReader() {
   }
 
   // ============================================
-  // PAS D'ACCÈS → ACHAT
+  // PAS D'ACCÈS → ACHAT AVEC TICKETS, MANAS OU PREMIUM
   // ============================================
   if (!hasAccess) {
     return (
@@ -408,43 +472,77 @@ export default function ChapterReader() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 text-sm text-zinc-500 mb-4">
-            <span>Solde MANAS :</span>
-            <span className="text-blue-400 font-bold">{manasBalance} MANAS</span>
+          {/* Solde */}
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-zinc-500 mb-4">
+            <span>MANAS : <span className="text-blue-400 font-bold">{manasBalance}</span></span>
+            <span className="w-px h-4 bg-zinc-700" />
+            <span>Tickets : <span className="text-purple-400 font-bold">{hasUnlimitedTickets ? '♾️ Illimité' : ticketBalance}</span></span>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+            {/* ✅ BOUTON TICKET */}
             <button
-              onClick={handlePayWithManas}
-              disabled={processing || manasBalance < 50}
-              className="px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              onClick={handlePayWithTicket}
+              disabled={processing || (!hasUnlimitedTickets && ticketBalance < 1)}
+              className={`flex-1 px-6 py-2.5 rounded-full font-bold transition-all flex items-center justify-center gap-2 ${
+                (hasUnlimitedTickets || ticketBalance > 0)
+                  ? "bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white shadow-lg shadow-purple-600/20"
+                  : "bg-zinc-800 text-zinc-400 cursor-not-allowed"
+              }`}
             >
               {processing ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Traitement...
-                </>
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <>
-                  <Coins className="w-4 h-4" />
-                  Payer 50 MANAS
+                  <Ticket className="w-4 h-4" />
+                  {hasUnlimitedTickets ? "Tickets illimités" : ticketBalance > 0 ? "Utiliser un ticket" : "Aucun ticket"}
                 </>
               )}
             </button>
 
+            {/* ✅ BOUTON MANAS */}
             <button
-              onClick={handleBuy}
-              className="px-6 py-2.5 rounded-full bg-amber-600 hover:bg-amber-500 text-white font-bold transition-all"
+              onClick={handlePayWithManas}
+              disabled={processing || manasBalance < 50}
+              className={`flex-1 px-6 py-2.5 rounded-full font-bold transition-all flex items-center justify-center gap-2 ${
+                manasBalance >= 50
+                  ? "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-600/20"
+                  : "bg-zinc-800 text-zinc-400 cursor-not-allowed"
+              }`}
             >
-              Payer avec Mobile Money
+              {processing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <>
+                  <Coins className="w-4 h-4" />
+                  {manasBalance >= 50 ? "Payer 50 MANAS" : `MANAS insuffisants (${manasBalance}/50)`}
+                </>
+              )}
             </button>
           </div>
 
-          {manasBalance < 50 && (
-            <p className="text-xs text-rose-400 mt-3">
-              ⚠️ Solde insuffisant. Vous avez {manasBalance} MANAS, il vous en faut 50.
-            </p>
-          )}
+          {/* ✅ LIENS D'ACHAT SI SOLDE INSUFFISANT */}
+          <div className="flex flex-col items-center gap-1 mt-3">
+            {manasBalance < 50 && (
+              <Link
+                href="/acheter-manas?redirect=/read/" + mangaId + "/chapter/" + chapterNumber
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1.5"
+              >
+                <ShoppingCart className="w-4 h-4" />
+                Acheter des MANAS
+              </Link>
+            )}
+            
+            {!hasUnlimitedTickets && ticketBalance < 1 && (
+              <Link
+                href="/profile/tickets"
+                className="text-sm text-purple-400 hover:text-purple-300 transition-colors flex items-center gap-1.5"
+              >
+                <Ticket className="w-4 h-4" />
+                Obtenir des tickets
+              </Link>
+            )}
+          </div>
 
           <div className="mt-6 flex items-center gap-2 text-xs text-zinc-500">
             <Crown className="w-4 h-4 text-amber-400" />
