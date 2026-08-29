@@ -744,4 +744,57 @@ export default function ProfilePage() {
             </Link>
 
             {/* Retrait d'argent */}
-            {isCreator &&
+            {isCreator && (
+              <Link
+                href="/creator/balance"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+              >
+                <DollarSign className="w-5 h-5 text-emerald-400" />
+                <span className="text-sm font-medium text-white flex-1">Retirer de l'argent</span>
+                <span className="text-xs text-zinc-500">≈ ${(profile.manas / 100).toFixed(2)}</span>
+                <ChevronRight className="w-4 h-4 text-zinc-600" />
+              </Link>
+            )}
+
+            {/* Administration */}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+              >
+                <Shield className="w-5 h-5 text-rose-400" />
+                <span className="text-sm font-medium text-white flex-1">Administration</span>
+                <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[9px] font-bold border border-rose-500/20">
+                  Admin
+                </span>
+                <ChevronRight className="w-4 h-4 text-zinc-600" />
+              </Link>
+            )}
+
+            {/* Paramètres */}
+            <Link
+              href="/profile/settings"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+            >
+              <Settings className="w-5 h-5 text-zinc-400" />
+              <span className="text-sm font-medium text-white flex-1">Paramètres du compte</span>
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
+            </Link>
+
+            {/* Déconnexion */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors w-full text-rose-400 border-t border-zinc-800/30"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="text-sm font-medium flex-1 text-left">Se déconnecter</span>
+              <ChevronRight className="w-4 h-4 text-rose-400/50" />
+            </button>
+          </div>
+        )}
+      </main>
+
+      <BottomNav />
+    </div>
+  );
+}
