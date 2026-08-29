@@ -816,10 +816,10 @@ export default function ProfilePage() {
               </Link>
             )}
 
-            {/* ✅ Administration - LIEN CORRIGÉ */}
+            {/* ✅ Administration - LIEN CORRIGÉ VERS /admin/certify */}
             {isAdmin && (
               <Link
-                href="/admin"
+                href="/admin/certify"
                 className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
               >
                 <Shield className="w-5 h-5 text-rose-400" />
