@@ -293,7 +293,6 @@ export default function CreatorProfilePage() {
     }
   };
 
-  // ✅ REDIRECTION VERS LA PAGE D'ACHAT DE MANAS
   const handleBuyManas = () => {
     router.push("/acheter-manas?redirect=/creator/" + username);
   };
@@ -495,7 +494,7 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
-        {/* ✅ BOUTONS MANAS + COLLABORATION + ACHETER MANAS */}
+        {/* ✅ BOUTONS MANAS - UNIQUEMENT UN BOUTON ACHETER DES MANAS */}
         {!isCurrentUser && !loading && (
           <div className="flex flex-wrap items-center justify-center gap-2.5 mb-6 w-full max-w-md">
             
@@ -508,7 +507,7 @@ export default function CreatorProfilePage() {
               Envoyer des MANAS
             </button>
 
-            {/* ✅ ACHETER DES MANAS (NOUVEAU) */}
+            {/* ✅ ACHETER DES MANAS (UNIQUE) */}
             <button
               onClick={handleBuyManas}
               className="px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-xs font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
@@ -537,17 +536,6 @@ export default function CreatorProfilePage() {
                   </>
                 )}
               </button>
-            )}
-
-            {/* ACHETER DES MANAS (SI SOLDE INSUFFISANT POUR COLLABORER) */}
-            {isCreator && userManasBalance < 250 && (
-              <Link
-                href="/acheter-manas?redirect=/creator/" + profile.username
-                className="px-4 py-2.5 rounded-full bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white text-xs font-bold transition-all shadow-lg shadow-amber-600/20 flex items-center gap-2"
-              >
-                <Coins className="w-4 h-4" />
-                Acheter des MANAS
-              </Link>
             )}
           </div>
         )}
