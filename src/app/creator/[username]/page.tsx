@@ -297,6 +297,39 @@ export default function CreatorProfilePage() {
     router.push("/acheter-manas?redirect=/creator/" + username);
   };
 
+  // ✅ ICÔNE GALAXY - Premium
+  const GalaxyIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <defs>
+        <radialGradient id="galaxyGrad" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#C084FC"/>
+          <stop offset="50%" stopColor="#7C3AED"/>
+          <stop offset="100%" stopColor="#4F46E5"/>
+        </radialGradient>
+        <radialGradient id="galaxyGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#C084FC" stopOpacity="0.8"/>
+          <stop offset="100%" stopColor="#4F46E5" stopOpacity="0"/>
+        </radialGradient>
+      </defs>
+      {/* Noyau de la galaxie */}
+      <circle cx="12" cy="12" r="4" fill="url(#galaxyGrad)" stroke="#A78BFA" strokeWidth="1.5"/>
+      {/* Bras de la galaxie (spirale) */}
+      <path d="M12 4C8 4 4 8 4 12C4 16 8 20 12 20C16 20 20 16 20 12" 
+        stroke="url(#galaxyGrad)" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+      <path d="M12 4C16 4 20 8 20 12C20 16 16 20 12 20C8 20 4 16 4 12" 
+        stroke="url(#galaxyGrad)" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+      {/* Étoiles (petits points) */}
+      <circle cx="6" cy="8" r="1" fill="#C084FC" opacity="0.7"/>
+      <circle cx="18" cy="16" r="1" fill="#A78BFA" opacity="0.7"/>
+      <circle cx="8" cy="18" r="0.8" fill="#8B5CF6" opacity="0.6"/>
+      <circle cx="16" cy="6" r="0.8" fill="#7C3AED" opacity="0.6"/>
+      <circle cx="5" cy="14" r="0.6" fill="#C084FC" opacity="0.5"/>
+      <circle cx="19" cy="10" r="0.6" fill="#A78BFA" opacity="0.5"/>
+      {/* Glow extérieur */}
+      <circle cx="12" cy="12" r="10" fill="url(#galaxyGlow)" opacity="0.3"/>
+    </svg>
+  );
+
   if (loading) {
     return <Loader message="Chargement du profil" />;
   }
@@ -382,12 +415,18 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
+        {/* ===== NOM + GALAXY ICON ===== */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
+          
           {profile.premiumActive && (
-            <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
-              <Crown className="w-3 h-3 fill-current" />
-              Premium
+            <span className="relative">
+              <span className="absolute inset-0 rounded-full blur-2xl bg-violet-500/40 animate-pulse" />
+              <span className="absolute inset-0">
+                <span className="absolute -top-1 -right-1 w-1 h-1 bg-violet-300 rounded-full animate-ping" style={{ animationDuration: '1.2s' }} />
+                <span className="absolute -bottom-1 -left-1 w-0.5 h-0.5 bg-violet-300 rounded-full animate-ping" style={{ animationDuration: '0.8s', animationDelay: '0.4s' }} />
+              </span>
+              <GalaxyIcon className="w-6 h-6 relative z-10" />
             </span>
           )}
         </div>
@@ -527,7 +566,6 @@ export default function CreatorProfilePage() {
           </div>
         )}
 
-        {/* ✅ MESSAGE SOLDE INSUFFISANT - SANS BOUTON ACHETER */}
         {isCreator && userManasBalance < 250 && !isCurrentUser && (
           <div className="flex items-center gap-2 p-2.5 bg-amber-950/30 border border-amber-500/30 rounded-xl text-amber-300 text-xs mb-4 max-w-md w-full">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -638,7 +676,7 @@ export default function CreatorProfilePage() {
               )}
               {profile.premiumActive && (
                 <div className="flex items-center gap-3 py-2">
-                  <Crown className="w-4 h-4 text-amber-400" />
+                  <GalaxyIcon className="w-5 h-5" />
                   <span className="text-zinc-300 text-sm">Abonnement Premium actif</span>
                 </div>
               )}
