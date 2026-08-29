@@ -35,6 +35,7 @@ import {
   Rocket,
   Briefcase,
   Star,
+  User,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -48,6 +49,7 @@ type UserProfile = {
   role: string;
   isCertified: boolean;
   premiumActive: boolean;
+  isPro?: boolean;
   premiumExpires: string | null;
   premiumPlan?: string | null;
   createdAt: string;
@@ -216,6 +218,21 @@ export default function ProfilePage() {
     </svg>
   );
 
+  // ✅ ÉTOILE PRO (argent)
+  const ProStar = ({ className = "w-3.5 h-3.5" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>
+  );
+
+  // ✅ COURONNE PREMIUM (or)
+  const CrownIcon = ({ className = "w-3.5 h-3.5" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M5 16H19V20H5V16Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>
+  );
+
   if (loading) {
     return <Loader message="Chargement de votre profil" />;
   }
@@ -255,17 +272,6 @@ export default function ProfilePage() {
   }
 
   const activeBadgeColor = profile.badgeColor || profile.avatarColor || "#3B82F6";
-
-  const getPlanLabel = (plan?: string | null) => {
-    if (!plan) return "Premium";
-    const map: Record<string, string> = {
-      MONTHLY: "Premium",
-      YEARLY: "Premium Annuel",
-    };
-    return map[plan] || "Premium";
-  };
-
-  const planLabel = getPlanLabel(profile.premiumPlan);
 
   // ============================================
   // BOUTON DE DEMANDE DE COMPTE CRÉATEUR
@@ -321,10 +327,52 @@ export default function ProfilePage() {
     );
   };
 
+  // ============================================
+  // BADGE PREMIUM/PRO AVEC BRILLANCE
+  // ============================================
+  const renderPremiumBadge = () => {
+    // Premium - Or avec brillance intense
+    if (profile.premiumActive) {
+      return (
+        <span className="relative px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-[0_0_25px_rgba(251,191,36,0.5)] border border-amber-400/40">
+          <span className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-400/20 via-yellow-300/20 to-amber-400/20 blur-sm animate-pulse" />
+          <span className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-400/10 to-transparent blur-md" />
+          <span className="absolute inset-0">
+            <span className="absolute top-0 left-1/4 w-1 h-1 bg-yellow-300 rounded-full animate-ping" style={{ animationDuration: '1.2s' }} />
+            <span className="absolute bottom-0 right-1/4 w-0.5 h-0.5 bg-yellow-300 rounded-full animate-ping" style={{ animationDuration: '0.8s', animationDelay: '0.4s' }} />
+            <span className="absolute top-1/2 left-1/3 w-0.5 h-0.5 bg-yellow-300 rounded-full animate-ping" style={{ animationDuration: '1.5s', animationDelay: '0.8s' }} />
+          </span>
+          <CrownIcon className="w-3.5 h-3.5 fill-current relative z-10" />
+          <span className="relative z-10">Premium</span>
+        </span>
+      );
+    }
+
+    // Pro - Argent avec lueur douce
+    if (profile.isPro) {
+      return (
+        <span className="relative px-2.5 py-0.5 rounded-full bg-gradient-to-r from-gray-400 to-gray-300 text-white text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-[0_0_20px_rgba(156,163,175,0.3)] border border-gray-300/30">
+          <span className="absolute inset-0 rounded-full bg-gradient-to-r from-gray-300/20 via-white/20 to-gray-300/20 blur-sm animate-pulse" />
+          <span className="absolute inset-0 rounded-full bg-gradient-to-r from-white/10 to-transparent blur-sm" />
+          <ProStar className="w-3.5 h-3.5 fill-current relative z-10 text-gray-200" />
+          <span className="relative z-10">Pro</span>
+        </span>
+      );
+    }
+
+    // Standard - Pas de badge, juste un petit indicateur discret
+    return (
+      <span className="px-2 py-0.5 rounded-full bg-zinc-800/50 text-zinc-500 text-[10px] font-medium border border-zinc-700/30 flex items-center gap-1">
+        <User className="w-3 h-3" />
+        Membre
+      </span>
+    );
+  };
+
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
-      {/* ===== HEADER - Allégé ===== */}
+      {/* ===== HEADER ===== */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <span className="text-base font-bold tracking-tight text-white/90">
@@ -372,6 +420,12 @@ export default function ProfilePage() {
             Premium
           </div>
         )}
+        {profile.isPro && !profile.premiumActive && (
+          <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-gray-600/20 border border-gray-400/30 text-gray-300 text-[10px] font-bold flex items-center gap-1.5">
+            <Star className="w-3 h-3 fill-gray-300" />
+            Pro
+          </div>
+        )}
       </div>
 
       <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
@@ -409,15 +463,10 @@ export default function ProfilePage() {
           </Link>
         </div>
 
-        {/* ===== NOM (sans badge dans le nom) ===== */}
+        {/* ===== NOM + BADGE PREMIUM/PRO ===== */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
-          {profile.premiumActive && (
-            <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] md:text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1">
-              <Crown className="w-3 h-3 fill-current" />
-              {planLabel}
-            </span>
-          )}
+          {renderPremiumBadge()}
         </div>
 
         {/* ===== BIO ===== */}
@@ -464,7 +513,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ===== BOUTON CRÉATEUR (dans la zone avantage) ===== */}
+        {/* ===== BOUTON CRÉATEUR ===== */}
         {!isAdmin && (
           <div className="w-full max-w-md mb-4">
             {renderCreatorButton()}
@@ -669,7 +718,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ===== TAB 3 : AVANTAGES (menu complet) ===== */}
+        {/* ===== TAB 3 : AVANTAGES ===== */}
         {activeTab === "menu" && (
           <div className="w-full max-w-xl mx-auto bg-zinc-900/20 rounded-2xl border border-zinc-800/40 overflow-hidden">
             {/* Premium */}
@@ -677,13 +726,28 @@ export default function ProfilePage() {
               href="/premium"
               className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
             >
-              <Crown className="w-5 h-5 text-amber-400" />
+              {profile.premiumActive ? (
+                <Crown className="w-5 h-5 text-amber-400" />
+              ) : profile.isPro ? (
+                <Star className="w-5 h-5 text-gray-300" />
+              ) : (
+                <User className="w-5 h-5 text-zinc-500" />
+              )}
               <span className="text-sm font-medium text-white flex-1">
-                {profile.premiumActive ? "Abonnement Premium actif" : "Devenir Premium"}
+                {profile.premiumActive ? "Abonnement Premium actif" : 
+                 profile.isPro ? "Abonnement Pro actif" : 
+                 "Devenir Premium"}
               </span>
               {profile.premiumActive && (
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-bold border border-emerald-500/20">
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[9px] font-bold border border-emerald-500/20 flex items-center gap-1">
+                  <Crown className="w-3 h-3" />
                   Actif
+                </span>
+              )}
+              {profile.isPro && !profile.premiumActive && (
+                <span className="px-2 py-0.5 rounded-full bg-gray-500/10 text-gray-300 text-[9px] font-bold border border-gray-400/20 flex items-center gap-1">
+                  <Star className="w-3 h-3" />
+                  Pro
                 </span>
               )}
               <ChevronRight className="w-4 h-4 text-zinc-600" />
