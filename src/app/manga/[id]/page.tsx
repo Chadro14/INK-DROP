@@ -25,6 +25,12 @@ const IconShare = () => (
   </svg>
 );
 
+const IconBookmark = ({ filled = false }) => (
+  <svg className="w-5 h-5" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+    <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
+  </svg>
+);
+
 const IconBook = ({ className = "w-16 h-16 text-zinc-700" }) => (
   <svg className={className} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
@@ -105,6 +111,13 @@ const IconLoader = ({ className = "w-8 h-8" }) => (
   </svg>
 );
 
+const IconUser = () => (
+  <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+
 // ============================================
 // TYPES
 // ============================================
@@ -165,12 +178,14 @@ export default function MangaPage() {
   const [error, setError] = useState("");
   const [isLiked, setIsLiked] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [isAuthor, setIsAuthor] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
   const [subCount, setSubCount] = useState(0);
   const [isLiking, setIsLiking] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // ============================================
   // CHARGEMENT DES DONNÉES
@@ -201,7 +216,6 @@ export default function MangaPage() {
             });
             if (me.ok) {
               const meData = await me.json();
-              // ✅ UNIQUEMENT l'ID de l'auteur (sans le || role === "ADMIN")
               const isAuthorCheck = d.author?.id === meData.id;
               setIsAuthor(isAuthorCheck);
             } else {
@@ -211,16 +225,10 @@ export default function MangaPage() {
             console.error("Erreur vérification auteur:", err);
             setIsAuthor(false);
           }
-        } else {
-          setIsAuthor(false);
+
+          await Promise.all([checkLike(token), checkSub(token), checkSave(token)]);
         }
 
-        // ✅ Vérifier le like et l'abonnement (si connecté)
-        if (token) {
-          await Promise.all([checkLike(token), checkSub(token)]);
-        }
-
-        // ✅ Incrémenter les vues
         await incrementView();
 
       } catch (err: any) {
@@ -260,6 +268,18 @@ export default function MangaPage() {
     } catch (e) { /* ignore */ }
   };
 
+  const checkSave = async (token: string) => {
+    try {
+      const res = await fetch(`${API_URL}/favorites/check/${mangaId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsSaved(data.isFavorite);
+      }
+    } catch (e) { /* ignore */ }
+  };
+
   const incrementView = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -271,7 +291,7 @@ export default function MangaPage() {
   };
 
   // ============================================
-  // ACTIONS AVEC FEEDBACK INSTANTANÉ
+  // ACTIONS
   // ============================================
 
   const handleLike = useCallback(async () => {
@@ -328,12 +348,60 @@ export default function MangaPage() {
     }
   }, [isSubscribed, mangaId, router]);
 
-  const handleShare = useCallback(() => {
+  // ✅ ENREGISTRER (FAVORIS)
+  const handleSave = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token) { router.push("/login"); return; }
+    if (isSaving) return;
+
+    setIsSaving(true);
+    const newState = !isSaved;
+    setIsSaved(newState);
+
+    try {
+      const res = await fetch(`${API_URL}/favorites/toggle/${mangaId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        setIsSaved(!newState);
+      }
+    } catch {
+      setIsSaved(!newState);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [isSaved, mangaId, router]);
+
+  // ✅ PARTAGER (corrigé)
+  const handleShare = useCallback(async () => {
     const url = `https://ink-drop-one.vercel.app/manga/${mangaId}`;
+    const title = manga?.title || "Manga";
+    const text = `Découvre "${title}" sur INKDROP !`;
+
     if (navigator.share) {
-      navigator.share({ title: manga?.title || "Manga", url }).catch(() => {});
+      try {
+        await navigator.share({ title, text, url });
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          await navigator.clipboard.writeText(url);
+          alert("Lien copié !");
+        }
+      }
     } else {
-      navigator.clipboard.writeText(url).then(() => alert("Lien copié !")).catch(() => {});
+      try {
+        await navigator.clipboard.writeText(url);
+        alert("Lien copié !");
+      } catch {
+        // Fallback
+        const textarea = document.createElement("textarea");
+        textarea.value = url;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        alert("Lien copié !");
+      }
     }
   }, [mangaId, manga]);
 
@@ -369,9 +437,25 @@ export default function MangaPage() {
             <span className="text-sm font-medium hidden sm:inline">Retour</span>
           </button>
           <span className="text-base font-bold tracking-tight text-white/90 truncate max-w-[150px]">{manga.title}</span>
-          <button onClick={handleShare} className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors">
-            <IconShare />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`p-2 rounded-full hover:bg-zinc-900 transition-colors ${
+                isSaved ? "text-blue-400" : "text-zinc-400 hover:text-white"
+              } disabled:opacity-50`}
+              title="Enregistrer"
+            >
+              <IconBookmark filled={isSaved} />
+            </button>
+            <button
+              onClick={handleShare}
+              className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors"
+              title="Partager"
+            >
+              <IconShare />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -394,14 +478,38 @@ export default function MangaPage() {
 
         {/* INFO MANGA */}
         <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 md:p-6 backdrop-blur-md shadow-lg space-y-4">
+
+          {/* ✅ PROFIL DE L'AUTEUR EN HAUT */}
+          <div className="flex items-center gap-3 pb-3 border-b border-zinc-800/40">
+            <Link href={`/creator/${manga.author.username}`} className="flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-full bg-zinc-800 overflow-hidden border border-zinc-700/50">
+                {manga.author.avatarUrl ? (
+                  <img
+                    src={manga.author.avatarUrl}
+                    alt={manga.author.username}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-sm font-bold text-blue-400 bg-zinc-800">
+                    {manga.author.username?.charAt(0).toUpperCase() || "?"}
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                  @{manga.author.username}
+                  {manga.author.isCertified && <IconBadgeCheck color={manga.author.badgeColor || "#3B82F6"} />}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {manga.author.role === "CREATOR" ? "Créateur" : "Membre"}
+                </p>
+              </div>
+            </Link>
+          </div>
+
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-white">{manga.title}</h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <Link href={`/creator/${manga.author.username}`} className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1.5">
-                @{manga.author.username}
-                {manga.author.isCertified && <IconBadgeCheck color={manga.author.badgeColor || "#3B82F6"} />}
-              </Link>
-              <span className="w-1 h-1 rounded-full bg-zinc-700" />
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                 manga.status === "ONGOING" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
                 manga.status === "COMPLETED" ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" :
@@ -434,12 +542,9 @@ export default function MangaPage() {
             </div>
           )}
 
-          {/* ============================================ */}
-          {/* ✅ ACTIONS - OPTION B : Seul l'auteur voit les boutons */}
-          {/* ============================================ */}
+          {/* ACTIONS */}
           <div className="flex flex-wrap items-center gap-2 pt-2">
             {isAuthor ? (
-              // ✅ Seul l'auteur (et admin sur ses propres mangas) voit ces boutons
               <>
                 <Link
                   href={`/creator/upload/chapter/${manga.id}`}
@@ -455,7 +560,6 @@ export default function MangaPage() {
                 </Link>
               </>
             ) : (
-              // ✅ Les autres utilisateurs (y compris admin sur les mangas des autres) voient "S'abonner" et "Like"
               <>
                 <button
                   onClick={handleSubscribe}
