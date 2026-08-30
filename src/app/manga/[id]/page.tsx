@@ -193,7 +193,7 @@ export default function MangaPage() {
         setViewCount(d.viewsCount || 0);
         setSubCount(d.subscribersCount || 0);
 
-        // ✅ VÉRIFICATION DE L'AUTEUR
+        // ✅ VÉRIFICATION DE L'AUTEUR (strict - Option B)
         if (token) {
           try {
             const me = await fetch(`${API_URL}/auth/me`, {
@@ -201,8 +201,8 @@ export default function MangaPage() {
             });
             if (me.ok) {
               const meData = await me.json();
-              // ✅ Comparaison stricte avec l'ID de l'auteur du manga
-              const isAuthorCheck = d.author?.id === meData.id || meData.role === "ADMIN";
+              // ✅ UNIQUEMENT l'ID de l'auteur (sans le || role === "ADMIN")
+              const isAuthorCheck = d.author?.id === meData.id;
               setIsAuthor(isAuthorCheck);
             } else {
               setIsAuthor(false);
@@ -435,11 +435,11 @@ export default function MangaPage() {
           )}
 
           {/* ============================================ */}
-          {/* ✅ ACTIONS - CORRECTION ICI */}
+          {/* ✅ ACTIONS - OPTION B : Seul l'auteur voit les boutons */}
           {/* ============================================ */}
           <div className="flex flex-wrap items-center gap-2 pt-2">
             {isAuthor ? (
-              // ✅ Seul l'auteur voit ces boutons
+              // ✅ Seul l'auteur (et admin sur ses propres mangas) voit ces boutons
               <>
                 <Link
                   href={`/creator/upload/chapter/${manga.id}`}
@@ -455,7 +455,7 @@ export default function MangaPage() {
                 </Link>
               </>
             ) : (
-              // ✅ Les autres utilisateurs voient "S'abonner" et "Like"
+              // ✅ Les autres utilisateurs (y compris admin sur les mangas des autres) voient "S'abonner" et "Like"
               <>
                 <button
                   onClick={handleSubscribe}
