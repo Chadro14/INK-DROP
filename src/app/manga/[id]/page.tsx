@@ -25,8 +25,8 @@ const IconShare = () => (
   </svg>
 );
 
-const IconBook = () => (
-  <svg className="w-16 h-16 text-zinc-700" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+const IconBook = ({ className = "w-16 h-16 text-zinc-700" }) => (
+  <svg className={className} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
     <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/>
   </svg>
@@ -193,18 +193,36 @@ export default function MangaPage() {
         setViewCount(d.viewsCount || 0);
         setSubCount(d.subscribersCount || 0);
 
+        // ✅ VÉRIFICATION DE L'AUTEUR
         if (token) {
-          const me = await fetch(`${API_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (me.ok) {
-            const meData = await me.json();
-            setIsAuthor(d.author.id === meData.id || meData.role === "ADMIN");
+          try {
+            const me = await fetch(`${API_URL}/auth/me`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (me.ok) {
+              const meData = await me.json();
+              // ✅ Comparaison stricte avec l'ID de l'auteur du manga
+              const isAuthorCheck = d.author?.id === meData.id || meData.role === "ADMIN";
+              setIsAuthor(isAuthorCheck);
+            } else {
+              setIsAuthor(false);
+            }
+          } catch (err) {
+            console.error("Erreur vérification auteur:", err);
+            setIsAuthor(false);
           }
+        } else {
+          setIsAuthor(false);
+        }
+
+        // ✅ Vérifier le like et l'abonnement (si connecté)
+        if (token) {
           await Promise.all([checkLike(token), checkSub(token)]);
         }
 
+        // ✅ Incrémenter les vues
         await incrementView();
+
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -416,18 +434,28 @@ export default function MangaPage() {
             </div>
           )}
 
-          {/* ACTIONS */}
+          {/* ============================================ */}
+          {/* ✅ ACTIONS - CORRECTION ICI */}
+          {/* ============================================ */}
           <div className="flex flex-wrap items-center gap-2 pt-2">
             {isAuthor ? (
+              // ✅ Seul l'auteur voit ces boutons
               <>
-                <Link href={`/creator/upload/chapter/${manga.id}`} className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2">
+                <Link
+                  href={`/creator/upload/chapter/${manga.id}`}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
+                >
                   <IconPlus /> Ajouter un chapitre
                 </Link>
-                <Link href={`/creator/manga/${manga.id}/edit`} className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold transition-all border border-zinc-700/50 flex items-center gap-2">
+                <Link
+                  href={`/creator/manga/${manga.id}/edit`}
+                  className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-bold transition-all border border-zinc-700/50 flex items-center gap-2"
+                >
                   <IconEdit /> Modifier
                 </Link>
               </>
             ) : (
+              // ✅ Les autres utilisateurs voient "S'abonner" et "Like"
               <>
                 <button
                   onClick={handleSubscribe}
