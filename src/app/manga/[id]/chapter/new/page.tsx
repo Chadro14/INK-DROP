@@ -19,7 +19,7 @@ export default function ChapterNewRedirectPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-      <Loader message="Redirection vers la création du chapitre..." />
+      <Loader label="Redirection vers la création du chapitre..." />
     </div>
   );
 }
