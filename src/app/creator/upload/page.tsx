@@ -70,6 +70,7 @@ export default function UploadMangaPage() {
     }
 
     try {
+      // ✅ 1. Créer le manga
       const mangaRes = await fetch(`${API_URL}/mangas`, {
         method: "POST",
         headers: {
@@ -90,35 +91,64 @@ export default function UploadMangaPage() {
         throw new Error(mangaData.message || "Erreur lors de la création du manga");
       }
 
-      const mangaId = mangaData.data?.id || mangaData.id;
+      // ✅ 2. Récupérer l'ID du manga (quel que soit le format de la réponse)
+      let mangaId: string | null = null;
+      
+      if (mangaData.data?.id) {
+        mangaId = mangaData.data.id;
+      } else if (mangaData.id) {
+        mangaId = mangaData.id;
+      } else if (mangaData.data?.data?.id) {
+        mangaId = mangaData.data.data.id;
+      }
 
-      if (coverFile && mangaId) {
-        const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/cover/upload-url`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+      if (!mangaId) {
+        console.error("❌ ID du manga non trouvé dans la réponse:", mangaData);
+        throw new Error("Impossible de récupérer l'ID du manga créé");
+      }
 
-        if (!urlRes.ok) {
-          console.warn("⚠️ Upload de couverture échoué, mais manga créé");
-        } else {
-          const { key, path, token: uploadToken } = await urlRes.json();
+      // ✅ 3. Upload de la couverture (si présente)
+      if (coverFile) {
+        try {
+          const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/cover/upload-url`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
-          const { error: uploadError } = await supabase.storage
-            .from("chapters")
-            .uploadToSignedUrl(path, uploadToken, coverFile);
+          if (!urlRes.ok) {
+            console.warn("⚠️ Upload de couverture échoué, mais manga créé");
+          } else {
+            const uploadData = await urlRes.json();
+            
+            // Extraire les données d'upload
+            const uploadInfo = uploadData.data || uploadData;
+            const key = uploadInfo.key;
+            const path = uploadInfo.path || key;
+            const uploadToken = uploadInfo.token || uploadInfo.uploadToken;
 
-          if (!uploadError) {
-            await fetch(`${API_URL}/mangas/${mangaId}/cover/finalize`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({ key }),
-            });
+            if (key && path && uploadToken) {
+              const { error: uploadError } = await supabase.storage
+                .from("chapters")
+                .uploadToSignedUrl(path, uploadToken, coverFile);
+
+              if (!uploadError) {
+                // Finaliser la couverture
+                await fetch(`${API_URL}/mangas/${mangaId}/cover/finalize`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({ key }),
+                });
+              }
+            }
           }
+        } catch (coverError) {
+          console.warn("⚠️ Erreur lors de l'upload de la couverture:", coverError);
+          // Ne pas bloquer la création du manga
         }
       }
 
@@ -126,8 +156,10 @@ export default function UploadMangaPage() {
       setTimeout(() => {
         router.push(`/manga/${mangaId}`);
       }, 1500);
+
     } catch (err: any) {
-      setError(err.message);
+      console.error("❌ Erreur:", err);
+      setError(err.message || "Une erreur est survenue");
     } finally {
       setLoading(false);
     }
@@ -150,14 +182,14 @@ export default function UploadMangaPage() {
       <main className="flex-1 px-4 md:px-8 py-6 max-w-xl mx-auto w-full space-y-6">
 
         {success && (
-          <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-sm flex items-center justify-center gap-2 shadow-lg">
+          <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-sm flex items-center justify-center gap-2 shadow-lg animate-in slide-in-from-top duration-300">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>Manga créé avec succès ! Redirection...</span>
           </div>
         )}
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-sm flex items-center gap-2 shadow-lg">
+          <div className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-sm flex items-center gap-2 shadow-lg animate-in slide-in-from-top duration-300">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
             <span>{error}</span>
           </div>
@@ -167,6 +199,7 @@ export default function UploadMangaPage() {
 
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 md:p-6 backdrop-blur-md shadow-lg space-y-5">
             
+            {/* Titre */}
             <div>
               <label className="block text-zinc-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">
                 Titre du Manga *
@@ -181,6 +214,7 @@ export default function UploadMangaPage() {
               />
             </div>
 
+            {/* Description */}
             <div>
               <label className="block text-zinc-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">
                 Synopsis / Description
@@ -194,6 +228,7 @@ export default function UploadMangaPage() {
               />
             </div>
 
+            {/* Genres */}
             <div>
               <label className="block text-zinc-300 text-xs font-semibold mb-2.5 uppercase tracking-wider">
                 Genres
@@ -219,6 +254,7 @@ export default function UploadMangaPage() {
               </div>
             </div>
 
+            {/* Statut */}
             <div>
               <label className="block text-zinc-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">
                 Statut de parution
@@ -236,6 +272,7 @@ export default function UploadMangaPage() {
               </select>
             </div>
 
+            {/* Couverture */}
             <div>
               <label className="block text-zinc-300 text-xs font-semibold mb-1.5 uppercase tracking-wider">
                 Image de Couverture
@@ -293,7 +330,10 @@ export default function UploadMangaPage() {
             className="w-full py-3.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all shadow-lg shadow-blue-900/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.01] active:scale-[0.99]"
           >
             {loading ? (
-              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+              <>
+                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+                <span>Publication en cours...</span>
+              </>
             ) : (
               <>
                 <Upload className="w-4 h-4" />
