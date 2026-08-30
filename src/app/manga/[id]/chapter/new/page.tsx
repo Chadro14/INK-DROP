@@ -15,7 +15,6 @@ import {
   Plus,
   X,
   Lock,
-  Coins,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -37,40 +36,54 @@ export default function ChapterUploadPage() {
   const [success, setSuccess] = useState(false);
 
   // ✅ ÉTATS POUR LE CHAPITRE PAYANT
-  const [totalChapters, setTotalChapters] = useState(0);
   const [isPaidChapter, setIsPaidChapter] = useState(false);
-  const [canBePaid, setCanBePaid] = useState(false);
   const [paidPages, setPaidPages] = useState<number[]>([]);
 
-  // ✅ RÉCUPÉRER LE NOMBRE TOTAL DE CHAPITRES
+  // ✅ ÉTATS POUR LA POSITION DU MANGA
+  const [mangaPosition, setMangaPosition] = useState<number | null>(null);
+  const [canHavePaidChapters, setCanHavePaidChapters] = useState(false);
+  const [positionMessage, setPositionMessage] = useState("");
+  const [loadingPosition, setLoadingPosition] = useState(true);
+
+  // ✅ RÉCUPÉRER LA POSITION DU MANGA
   useEffect(() => {
-    const fetchTotalChapters = async () => {
+    const fetchMangaInfo = async () => {
+      if (!mangaId) return;
+      
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setLoadingPosition(false);
+        return;
+      }
+
       try {
-        const res = await fetch(`${API_URL}/mangas/${mangaId}/chapters`);
-        if (res.ok) {
-          const data = await res.json();
-          setTotalChapters(data.length || 0);
+        const posRes = await fetch(`${API_URL}/mangas/${mangaId}/position`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (posRes.ok) {
+          const posData = await posRes.json();
+          setMangaPosition(posData.data.position);
+          setCanHavePaidChapters(posData.data.canHavePaidChapters);
+          setPositionMessage(posData.data.message);
+        } else {
+          setMangaPosition(1);
+          setCanHavePaidChapters(true);
+          setPositionMessage("Position non disponible - Utilisation de la logique par défaut");
         }
       } catch (error) {
-        console.error("Erreur récupération chapitres:", error);
+        console.error("Erreur récupération position:", error);
+        setMangaPosition(1);
+        setCanHavePaidChapters(true);
+      } finally {
+        setLoadingPosition(false);
       }
     };
 
     if (mangaId) {
-      fetchTotalChapters();
+      fetchMangaInfo();
     }
   }, [mangaId]);
-
-  // ✅ VÉRIFIER SI LE CHAPITRE PEUT ÊTRE PAYANT
-  useEffect(() => {
-    const num = parseInt(number);
-    if (!isNaN(num) && totalChapters >= 10 && num === totalChapters) {
-      setCanBePaid(true);
-    } else {
-      setCanBePaid(false);
-      setIsPaidChapter(false);
-    }
-  }, [number, totalChapters]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -83,7 +96,6 @@ export default function ChapterUploadPage() {
     setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ✅ TOGGLE POUR MARQUER UNE PAGE COMME PAYANTE
   const togglePagePaid = (index: number) => {
     setPaidPages((prev) =>
       prev.includes(index)
@@ -133,6 +145,12 @@ export default function ChapterUploadPage() {
           ? "Veuillez sélectionner un fichier PDF."
           : "Veuillez sélectionner au moins une image."
       );
+      return;
+    }
+
+    // ✅ VÉRIFICATION : Si le manga est en position paire, le chapitre doit être gratuit
+    if (isPaidChapter && !canHavePaidChapters) {
+      setError("Ce manga est en position paire. Les chapitres doivent être gratuits.");
       return;
     }
 
@@ -213,7 +231,6 @@ export default function ChapterUploadPage() {
 
       setProgress("Enregistrement du chapitre en base de données...");
 
-      // ✅ CONSTRUCTION DU BODY AVEC FREE PAGE INDEXES
       const finalizeBody: any = {
         number: chapterNum,
         title: title.trim() || undefined,
@@ -222,8 +239,8 @@ export default function ChapterUploadPage() {
         isDraft: false,
       };
 
-      // ✅ AJOUTER LES PAGES PAYANTES SI LE CHAPITRE EST PAYANT
-      if (isPaidChapter && mode === "images" && paidPages.length > 0) {
+      // ✅ AJOUTER LES PAGES PAYANTES SI LE CHAPITRE EST PAYANT ET POSITION IMPAIRE
+      if (isPaidChapter && canHavePaidChapters && mode === "images" && paidPages.length > 0) {
         finalizeBody.freePageIndexes = JSON.stringify(
           keys.map((_, index) => !paidPages.includes(index))
         );
@@ -264,10 +281,6 @@ export default function ChapterUploadPage() {
     }
   };
 
-  // ✅ VÉRIFIER SI LE CHAPITRE EST LE DERNIER (ET >= 10)
-  const chapterNum = parseInt(number);
-  const isLastChapter = !isNaN(chapterNum) && totalChapters >= 10 && chapterNum === totalChapters;
-
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
 
@@ -295,6 +308,28 @@ export default function ChapterUploadPage() {
       <main className="max-w-2xl mx-auto w-full px-4 md:px-8 -mt-10 flex flex-col gap-6">
 
         <form onSubmit={handleSubmit} className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 md:p-7 backdrop-blur-md shadow-xl space-y-6">
+
+          {/* ✅ AFFICHAGE DE LA POSITION DU MANGA */}
+          {!loadingPosition && mangaPosition !== null && (
+            <div className={`p-3 rounded-xl border ${
+              canHavePaidChapters 
+                ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300" 
+                : "bg-amber-950/30 border-amber-500/30 text-amber-300"
+            }`}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-bold">Position du manga :</span>
+                <span className="text-sm font-black text-white">N°{mangaPosition}</span>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                  canHavePaidChapters 
+                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                    : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                }`}>
+                  {canHavePaidChapters ? "✅ Payant autorisé" : "❌ Gratuit obligatoire"}
+                </span>
+              </div>
+              <p className="text-xs mt-1 opacity-80">{positionMessage}</p>
+            </div>
+          )}
 
           <div className="space-y-2">
             <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center gap-2">
@@ -343,14 +378,11 @@ export default function ChapterUploadPage() {
                 required
                 className="w-full px-4 py-2.5 bg-zinc-950/80 border border-zinc-800/80 rounded-xl text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
               />
-              {totalChapters > 0 && (
-                <p className="text-[10px] text-zinc-500">
-                  Total : {totalChapters} chapitres
-                  {totalChapters >= 10 && (
-                    <span className="text-amber-400 ml-1">(Le chapitre {totalChapters} peut être payant)</span>
-                  )}
-                </p>
-              )}
+              <p className="text-[10px] text-zinc-500">
+                {canHavePaidChapters 
+                  ? "✅ Position impaire - Chapitres payants autorisés"
+                  : "❌ Position paire - Chapitres gratuits obligatoires"}
+              </p>
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-xs md:text-sm font-bold text-zinc-300">
@@ -366,7 +398,7 @@ export default function ChapterUploadPage() {
             </div>
           </div>
 
-          {/* ✅ SECTION CHAPITRE PAYANT */}
+          {/* ✅ SECTION CHAPITRE PAYANT - AVEC VÉRIFICATION DE POSITION */}
           {mode === "images" && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -374,9 +406,18 @@ export default function ChapterUploadPage() {
                 <label className="text-xs md:text-sm font-bold text-zinc-300">
                   Pages payantes
                 </label>
+                {!loadingPosition && mangaPosition !== null && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    canHavePaidChapters 
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                      : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                  }`}>
+                    {canHavePaidChapters ? "✅ Payant autorisé" : "❌ Gratuit obligatoire"}
+                  </span>
+                )}
               </div>
 
-              {isLastChapter ? (
+              {canHavePaidChapters ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl">
                     <button
@@ -424,13 +465,11 @@ export default function ChapterUploadPage() {
                   )}
                 </div>
               ) : (
-                <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl">
-                  <div className="flex items-center gap-2 text-zinc-500">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <div className="p-3 bg-amber-950/30 border border-amber-500/30 rounded-xl">
+                  <div className="flex items-center gap-2 text-amber-300">
+                    <AlertCircle className="w-4 h-4 text-amber-400" />
                     <span className="text-sm font-medium">
-                      {totalChapters < 10
-                        ? "Les 10 premiers chapitres sont gratuits"
-                        : "Seul le dernier chapitre peut être payant"}
+                      Ce manga est en position paire (N°{mangaPosition}) — Tous les chapitres doivent être gratuits.
                     </span>
                   </div>
                 </div>
@@ -443,7 +482,7 @@ export default function ChapterUploadPage() {
               <div className="flex items-center gap-2 text-zinc-500">
                 <FileText className="w-4 h-4 text-blue-400" />
                 <span className="text-sm font-medium">
-                  Les PDF sont automatiquement payants si le chapitre est le dernier (≥ 10 chapitres)
+                  Les PDF sont automatiquement payants si le manga est en position impaire
                 </span>
               </div>
             </div>
