@@ -15,6 +15,7 @@ import {
   Plus,
   X,
   Lock,
+  Coins,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -36,6 +37,7 @@ export default function ChapterUploadPage() {
   const [success, setSuccess] = useState(false);
 
   // ✅ ÉTATS POUR LE CHAPITRE PAYANT
+  const [totalChapters, setTotalChapters] = useState(0);
   const [isPaidChapter, setIsPaidChapter] = useState(false);
   const [paidPages, setPaidPages] = useState<number[]>([]);
 
@@ -44,6 +46,25 @@ export default function ChapterUploadPage() {
   const [canHavePaidChapters, setCanHavePaidChapters] = useState(false);
   const [positionMessage, setPositionMessage] = useState("");
   const [loadingPosition, setLoadingPosition] = useState(true);
+
+  // ✅ RÉCUPÉRER LE NOMBRE TOTAL DE CHAPITRES
+  useEffect(() => {
+    const fetchTotalChapters = async () => {
+      try {
+        const res = await fetch(`${API_URL}/mangas/${mangaId}/chapters`);
+        if (res.ok) {
+          const data = await res.json();
+          setTotalChapters(data.length || 0);
+        }
+      } catch (error) {
+        console.error("Erreur récupération chapitres:", error);
+      }
+    };
+
+    if (mangaId) {
+      fetchTotalChapters();
+    }
+  }, [mangaId]);
 
   // ✅ RÉCUPÉRER LA POSITION DU MANGA
   useEffect(() => {
@@ -67,12 +88,14 @@ export default function ChapterUploadPage() {
           setCanHavePaidChapters(posData.data.canHavePaidChapters);
           setPositionMessage(posData.data.message);
         } else {
+          // Si l'endpoint n'existe pas encore, utiliser la logique de fallback
           setMangaPosition(1);
           setCanHavePaidChapters(true);
           setPositionMessage("Position non disponible - Utilisation de la logique par défaut");
         }
       } catch (error) {
         console.error("Erreur récupération position:", error);
+        // Fallback: position par défaut
         setMangaPosition(1);
         setCanHavePaidChapters(true);
       } finally {
@@ -96,6 +119,7 @@ export default function ChapterUploadPage() {
     setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // ✅ TOGGLE POUR MARQUER UNE PAGE COMME PAYANTE
   const togglePagePaid = (index: number) => {
     setPaidPages((prev) =>
       prev.includes(index)
@@ -231,6 +255,7 @@ export default function ChapterUploadPage() {
 
       setProgress("Enregistrement du chapitre en base de données...");
 
+      // ✅ CONSTRUCTION DU BODY AVEC FREE PAGE INDEXES
       const finalizeBody: any = {
         number: chapterNum,
         title: title.trim() || undefined,
@@ -378,11 +403,17 @@ export default function ChapterUploadPage() {
                 required
                 className="w-full px-4 py-2.5 bg-zinc-950/80 border border-zinc-800/80 rounded-xl text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
               />
-              <p className="text-[10px] text-zinc-500">
-                {canHavePaidChapters 
-                  ? "✅ Position impaire - Chapitres payants autorisés"
-                  : "❌ Position paire - Chapitres gratuits obligatoires"}
-              </p>
+              {totalChapters > 0 && (
+                <p className="text-[10px] text-zinc-500">
+                  Total : {totalChapters} chapitres
+                  {canHavePaidChapters && (
+                    <span className="text-emerald-400 ml-1">(✅ Chapitres payants autorisés)</span>
+                  )}
+                  {!canHavePaidChapters && (
+                    <span className="text-amber-400 ml-1">(❌ Chapitres gratuits obligatoires)</span>
+                  )}
+                </p>
+              )}
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-xs md:text-sm font-bold text-zinc-300">
@@ -398,7 +429,7 @@ export default function ChapterUploadPage() {
             </div>
           </div>
 
-          {/* ✅ SECTION CHAPITRE PAYANT - AVEC VÉRIFICATION DE POSITION */}
+          {/* ✅ SECTION CHAPITRE PAYANT AVEC VÉRIFICATION DE POSITION */}
           {mode === "images" && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -418,6 +449,7 @@ export default function ChapterUploadPage() {
               </div>
 
               {canHavePaidChapters ? (
+                // ✅ POSITION IMPAIRE → Peut être payant
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl">
                     <button
@@ -465,6 +497,7 @@ export default function ChapterUploadPage() {
                   )}
                 </div>
               ) : (
+                // ❌ POSITION PAIRE → DOIT ÊTRE GRATUIT
                 <div className="p-3 bg-amber-950/30 border border-amber-500/30 rounded-xl">
                   <div className="flex items-center gap-2 text-amber-300">
                     <AlertCircle className="w-4 h-4 text-amber-400" />
