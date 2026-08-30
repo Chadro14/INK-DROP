@@ -3,148 +3,137 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BottomNav } from "@/components/layout/bottom-nav";
-import { Loader } from "@/components/ui/loader";
 import { 
-  BookOpen, 
-  Heart, 
-  Settings, 
-  LogOut, 
-  Edit, 
-  Eye, 
-  Mail, 
-  Calendar, 
-  Share2, 
-  Award, 
-  Zap, 
-  Coins, 
-  ChevronRight, 
+  ArrowLeft, 
   BadgeCheck, 
-  Shield, 
-  Palette,
-  Grid,
-  Sparkles,
-  Globe,
+  ShieldCheck, 
+  AlertCircle, 
+  CheckCircle2,
+  Users,
+  BookOpen,
+  Coins,
   Crown,
-  Bookmark,
-  Bell,
-  DollarSign,
-  TrendingUp,
-  QrCode,
+  UserX,
+  UserPlus,
   Ticket,
+  TrendingUp,
+  Loader2,
+  Search,
+  XCircle,
+  Eye,
+  EyeOff,
+  Clock,
+  Check,
+  X,
+  FileText,
+  Sparkles,
+  Zap,
   Rocket,
-  Briefcase,
   Star,
-  User,
+  PartyPopper,
+  Award,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-type UserProfile = {
+type User = {
   id: string;
   username: string;
   email: string;
   avatarUrl: string | null;
-  bio: string | null;
   role: string;
   isCertified: boolean;
   premiumActive: boolean;
-  isPro?: boolean;
-  premiumExpires: string | null;
-  premiumPlan?: string | null;
   createdAt: string;
-  manas: number;
-  steamPoints: number;
-  steamLevel: number;
-  avatarColor: string | null;
-  badgeColor?: string | null;
   _count: {
     mangas: number;
     followers: number;
-    following: number;
-    favorites?: number;
-    likes?: number;
   };
-  mangas?: any[];
-  earnings?: {
+};
+
+type CreatorRequest = {
+  id: string;
+  userId: string;
+  status: string;
+  portfolioUrl: string | null;
+  description: string | null;
+  examples: string[];
+  proofImages: string[];
+  reviewNotes: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    username: string;
+    email: string;
+    avatarUrl: string | null;
+  };
+};
+
+type Stats = {
+  users: {
     total: number;
+    creators: number;
+    certified: number;
+    premium: number;
+  };
+  content: {
+    mangas: number;
+    chapters: number;
+    comments: number;
+  };
+  payments: {
+    total: number;
+    revenue: number;
+  };
+  requests: {
     pending: number;
-    paid: number;
   };
 };
 
-type TicketBalance = {
-  username: string;
-  tickets: number;
-};
+type Tab = "dashboard" | "users" | "requests" | "certify" | "moderation";
 
-export default function ProfilePage() {
+export default function AdminPanel() {
   const router = useRouter();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [me, setMe] = useState<{ id: string; username: string; role: string; isCertified: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<"mangas" | "stats" | "menu">("mangas");
-  const [ticketBalance, setTicketBalance] = useState<TicketBalance | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [hasPendingRequest, setHasPendingRequest] = useState(false);
-  const [hasRejectedRequest, setHasRejectedRequest] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersTotal, setUsersTotal] = useState(0);
+  const [requests, setRequests] = useState<CreatorRequest[]>([]);
+  const [requestsTotal, setRequestsTotal] = useState(0);
+  const [processing, setProcessing] = useState(false);
+  const [message, setMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const load = async () => {
       const token = localStorage.getItem("token");
-
       if (!token) {
         router.push("/login");
         return;
       }
 
       try {
-        const [profileRes, earningsRes, ticketRes, requestRes] = await Promise.all([
-          fetch(`${API_URL}/users/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_URL}/dashboard/earnings`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_URL}/tickets/balance`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${API_URL}/creator-request/status`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-
-        if (!profileRes.ok) {
-          if (profileRes.status === 401) {
-            localStorage.removeItem("token");
-            router.push("/login");
-            return;
-          }
-          throw new Error("Erreur lors du chargement du profil");
-        }
-
-        const profileData = await profileRes.json();
-
-        let earningsData = null;
-        if (earningsRes.ok) {
-          earningsData = await earningsRes.json();
-        }
-
-        if (ticketRes.ok) {
-          const ticketData = await ticketRes.json();
-          setTicketBalance(ticketData);
-        }
-
-        if (requestRes.ok) {
-          const requestData = await requestRes.json();
-          if (requestData.status === "PENDING") setHasPendingRequest(true);
-          if (requestData.status === "REJECTED") setHasRejectedRequest(true);
-        }
-
-        setProfile({
-          ...profileData,
-          earnings: earningsData || { total: 0, pending: 0, paid: 0 },
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message || "Erreur de chargement");
+
+        if (data.role !== "ADMIN") {
+          setError("Accès réservé aux administrateurs");
+          setLoading(false);
+          return;
+        }
+
+        setMe(data);
+        await loadStats(token);
+        await loadUsers(token);
+        await loadRequests(token);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -152,709 +141,668 @@ export default function ProfilePage() {
       }
     };
 
-    fetchProfile();
+    load();
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/login");
-  };
-
-  const handleShare = () => {
-    const username = profile?.username || "utilisateur";
-    const shareUrl = `https://ink-drop-one.vercel.app/creator/${username}`;
-
-    if (navigator.share) {
-      navigator.share({
-        title: `INKDROP - ${username}`,
-        text: `Découvre le profil de ${username} sur INKDROP !`,
-        url: shareUrl,
-      }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(shareUrl);
-      alert("Lien copié !");
-    }
-  };
-
-  const fetchUnreadCount = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
+  const loadStats = async (token: string) => {
     try {
-      const res = await fetch(`${API_URL}/notifications/unread`, {
+      const res = await fetch(`${API_URL}/admin/stats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const data = await res.json();
-        setUnreadCount(data.count || 0);
+        setStats(data);
       }
     } catch (error) {
-      console.error("Erreur chargement notifications non lues:", error);
+      console.error("Erreur chargement stats:", error);
     }
   };
 
-  useEffect(() => {
-    fetchUnreadCount();
-  }, []);
+  const loadUsers = async (token: string, page: number = 1) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/users?page=${page}&limit=20`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data.data);
+        setUsersTotal(data.meta.total);
+      }
+    } catch (error) {
+      console.error("Erreur chargement users:", error);
+    }
+  };
 
-  const totalEarnings = profile?.earnings?.total || 0;
-  const isCreator = profile?.role === 'CREATOR' || profile?.role === 'ADMIN';
-  const isAdmin = profile?.role === 'ADMIN';
-  const isSuspended = profile?.role === 'SUSPENDED';
+  const loadRequests = async (token: string) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/creator-requests?status=PENDING`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRequests(data.data);
+        setRequestsTotal(data.meta.total);
+      }
+    } catch (error) {
+      console.error("Erreur chargement requests:", error);
+    }
+  };
 
-  // ✅ ICONE MANAS - Pièce d'or avec M
-  const ManaCoin = ({ className = "w-5 h-5" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" fill="url(#manaGradient)" stroke="#FBBF24" strokeWidth="1.5"/>
-      <circle cx="12" cy="12" r="8.5" fill="none" stroke="#D97706" strokeWidth="0.5" opacity="0.5"/>
-      <text x="12" y="17" textAnchor="middle" fontSize="12" fontWeight="800" fill="#78350F" fontFamily="Arial, sans-serif">M</text>
-      <defs>
-        <linearGradient id="manaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#FCD34D"/>
-          <stop offset="50%" stopColor="#FBBF24"/>
-          <stop offset="100%" stopColor="#F59E0B"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  );
+  const handleCertify = async (userId: string, certify: boolean = true) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-  // ✅ PRO - Étoile bleu/cyan (Telegram style)
-  const ProStar = ({ className = "w-5 h-5" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none">
-      <defs>
-        <linearGradient id="proGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#4FC3F7"/>
-          <stop offset="100%" stopColor="#00BCD4"/>
-        </linearGradient>
-      </defs>
-      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" 
-        fill="url(#proGrad)" stroke="#4FC3F7" strokeWidth="1.5" strokeLinejoin="round"/>
-      <path d="M12 6L13.5 9.5L17.5 10.5L14.5 13.5L15 17.5L12 15.5L9 17.5L9.5 13.5L6.5 10.5L10.5 9.5L12 6Z" 
-        fill="white" opacity="0.3"/>
-    </svg>
-  );
+    setProcessing(true);
+    setMessage("");
+    setError("");
 
-  // ✅ PREMIUM - Couronne violet/indigo
-  const CrownIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none">
-      <defs>
-        <linearGradient id="premiumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#7C3AED"/>
-          <stop offset="100%" stopColor="#4F46E5"/>
-        </linearGradient>
-      </defs>
-      <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" 
-        fill="url(#premiumGrad)" stroke="#7C3AED" strokeWidth="1.5" strokeLinejoin="round"/>
-      <path d="M5 16H19V20H5V16Z" 
-        fill="url(#premiumGrad)" stroke="#7C3AED" strokeWidth="1.5" strokeLinejoin="round"/>
-    </svg>
-  );
+    try {
+      const res = await fetch(`${API_URL}/admin/certify`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ userId, certify }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Erreur");
+
+      setMessage(`✅ Utilisateur ${certify ? "certifié" : "décertifié"} avec succès`);
+      await loadStats(token);
+      await loadUsers(token);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handlePromote = async (userId: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setProcessing(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/admin/promote/${userId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Erreur");
+
+      setMessage(`✅ Utilisateur promu créateur avec succès`);
+      await loadStats(token);
+      await loadUsers(token);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleRevokeCreator = async (userId: string, reason: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setProcessing(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/admin/revoke/${userId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Erreur");
+
+      setMessage(`✅ Statut de créateur révoqué`);
+      await loadStats(token);
+      await loadUsers(token);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleSuspend = async (userId: string, reason: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setProcessing(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/admin/suspend/${userId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Erreur");
+
+      setMessage(`✅ Utilisateur suspendu avec succès`);
+      await loadStats(token);
+      await loadUsers(token);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleGrantPremium = async (userId: string, durationMonths: number = 1) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setProcessing(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/admin/grant-premium/${userId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plan: "MONTHLY", durationMonths }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Erreur");
+
+      setMessage(`✅ Abonnement Premium offert (${durationMonths} mois)`);
+      await loadStats(token);
+      await loadUsers(token);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleApproveRequest = async (requestId: string, reviewNotes?: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setProcessing(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/admin/creator-requests/${requestId}/approve`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reviewNotes }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Erreur");
+
+      setMessage(`✅ Demande approuvée !`);
+      await loadRequests(token);
+      await loadStats(token);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string, reason: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setProcessing(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/admin/creator-requests/${requestId}/reject`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Erreur");
+
+      setMessage(`❌ Demande refusée`);
+      await loadRequests(token);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   if (loading) {
-    return <Loader message="Chargement de votre profil" />;
-  }
-
-  if (error || !profile) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-white px-4">
-        <p className="text-zinc-400 text-center">{error || "Profil non trouvé"}</p>
-        <button
-          onClick={() => router.push("/login")}
-          className="mt-4 px-6 py-2.5 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
-        >
-          Se connecter
-        </button>
+      <div className="flex items-center justify-center h-screen bg-zinc-950 text-white">
+        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  if (isSuspended) {
+  if (error && !me) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4 text-center text-white">
-        <div className="w-20 h-20 rounded-full bg-rose-950/40 border-2 border-rose-500/40 flex items-center justify-center mb-6">
-          <Shield className="w-10 h-10 text-rose-400" />
+      <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 px-4 text-center text-white space-y-4">
+        <div className="p-3.5 rounded-full bg-rose-950/50 border border-rose-500/40 text-rose-400 shadow-xl">
+          <AlertCircle className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-bold text-white mb-2">Compte suspendu</h1>
-        <p className="text-zinc-400 max-w-md">
-          Votre compte a été suspendu. Contactez l'équipe INKDROP pour plus d'informations.
-        </p>
-        <button
-          onClick={handleLogout}
-          className="mt-6 px-6 py-2.5 rounded-full bg-rose-600 hover:bg-rose-500 text-white font-semibold transition-all"
+        <p className="text-zinc-400 text-sm max-w-xs">{error}</p>
+        <Link 
+          href="/profile" 
+          className="px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition-all shadow-lg shadow-blue-900/30"
         >
-          Se déconnecter
-        </button>
+          Retour au profil
+        </Link>
       </div>
     );
   }
-
-  const activeBadgeColor = profile.badgeColor || profile.avatarColor || "#3B82F6";
-
-  // ============================================
-  // BOUTON DE DEMANDE DE COMPTE CRÉATEUR
-  // ============================================
-  const renderCreatorButton = () => {
-    if (isAdmin) return null;
-
-    if (isCreator) {
-      return (
-        <Link
-          href="/creator/dashboard"
-          className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold transition-all shadow-lg shadow-emerald-900/30 flex items-center justify-center gap-2"
-        >
-          <Briefcase className="w-4 h-4" />
-          Tableau de bord créateur
-        </Link>
-      );
-    }
-
-    if (hasPendingRequest) {
-      return (
-        <div className="w-full px-4 py-2.5 rounded-xl bg-amber-600/20 border border-amber-500/30 text-amber-400 text-sm font-medium flex items-center justify-center gap-2 cursor-default">
-          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25"/>
-            <path d="M12 2C6.477 2 2 6.477 2 12" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
-          </svg>
-          Demande en attente
-        </div>
-      );
-    }
-
-    if (hasRejectedRequest) {
-      return (
-        <Link
-          href="/creator-request"
-          className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white text-sm font-bold transition-all shadow-lg shadow-rose-900/30 flex items-center justify-center gap-2"
-        >
-          <Rocket className="w-4 h-4" />
-          Nouvelle demande
-        </Link>
-      );
-    }
-
-    return (
-      <Link
-        href="/creator-request"
-        className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2 group"
-      >
-        <Rocket className="w-4 h-4 group-hover:scale-110 transition-transform" />
-        <span>Devenir créateur</span>
-        <Sparkles className="w-3.5 h-3.5 text-blue-300" />
-      </Link>
-    );
-  };
 
   return (
-    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
-
+    <div className="flex flex-col min-h-screen bg-zinc-950 text-white selection:bg-blue-500 selection:text-white pb-10">
+      
       {/* ===== HEADER ===== */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <span className="text-base font-bold tracking-tight text-white/90">
-            @{profile.username.toLowerCase()}
+        <div className="flex items-center justify-between max-w-6xl mx-auto">
+          <Link href="/profile" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium">
+            <ArrowLeft className="w-4 h-4" />
+            <span>Retour</span>
+          </Link>
+          <span className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-blue-400" />
+            Admin Panel
           </span>
-          <div className="flex items-center gap-1 text-zinc-400">
-            <Link
-              href="/profile/qr-code"
-              className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all relative"
-              title="Mon QR Code"
-            >
-              <QrCode className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-            </Link>
-            <Link
-              href="/notifications"
-              className="relative p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all"
-            >
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold flex items-center justify-center">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </Link>
-            <button onClick={handleShare} className="p-2 rounded-full hover:bg-zinc-900 hover:text-white transition-all">
-              <Share2 className="w-5 h-5" />
-            </button>
-          </div>
+          <div className="w-12" />
         </div>
       </header>
 
-      {/* ===== BANNIÈRE ===== */}
-      <div className="h-32 md:h-48 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
-        {isCreator && (
-          <div className="absolute bottom-3 right-4 px-3 py-1 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-400 text-[10px] font-bold flex items-center gap-1.5">
-            <Star className="w-3 h-3 fill-blue-400" />
-            Créateur
+      {/* ===== CONTENU PRINCIPAL ===== */}
+      <main className="flex-1 px-4 md:px-8 py-6 max-w-6xl mx-auto w-full space-y-6">
+
+        {/* ALERTES avec animations */}
+        {message && (
+          <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-sm flex items-center justify-center gap-2 shadow-lg animate-in slide-in-from-top duration-300">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{message}</span>
           </div>
         )}
-        {profile.premiumActive && (
-          <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-violet-600/20 border border-violet-500/30 text-violet-400 text-[10px] font-bold flex items-center gap-1.5">
-            <Crown className="w-3 h-3 fill-violet-400" />
-            Premium
+
+        {error && (
+          <div className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-sm flex items-center justify-center gap-2 shadow-lg animate-in slide-in-from-top duration-300">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
-        {profile.isPro && !profile.premiumActive && (
-          <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-cyan-600/20 border border-cyan-400/30 text-cyan-400 text-[10px] font-bold flex items-center gap-1.5">
-            <Star className="w-3 h-3 fill-cyan-400" />
-            Pro
-          </div>
-        )}
-      </div>
 
-      <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
-
-        {/* ===== AVATAR ===== */}
-        <div className="relative mb-3 group">
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 overflow-hidden border-4 border-zinc-950 shadow-2xl ring-2 ring-blue-500/30 shrink-0">
-            {profile.avatarUrl ? (
-              <img 
-                src={profile.avatarUrl} 
-                alt={profile.username} 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-3xl md:text-4xl font-black text-blue-400 bg-gradient-to-br from-zinc-800 to-zinc-900">
-                {profile.username?.charAt(0).toUpperCase() || "?"}
-              </div>
-            )}
-          </div>
-          {profile.isCertified && (
-            <div className="absolute -bottom-1 -right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
-              <BadgeCheck
-                className="w-6 h-6 md:w-7 md:h-7"
-                fill={activeBadgeColor}
-                color="black"
-                strokeWidth={1.5}
-              />
-            </div>
-          )}
-          <Link
-            href="/profile/settings?tab=avatar"
-            className="absolute -bottom-1 -left-1 p-1.5 rounded-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/60 transition-all shadow-lg"
-          >
-            <Edit className="w-3.5 h-3.5 text-zinc-400" />
-          </Link>
-        </div>
-
-        {/* ===== NOM + BADGE (icônes seules) ===== */}
-        <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
-          <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">
-            {profile.username}
-          </h1>
-          
-          {/* PRO - Icône étoile bleue/cyan avec glow */}
-          {profile.isPro && !profile.premiumActive && (
-            <span className="relative">
-              <span className="absolute inset-0 rounded-full blur-xl bg-cyan-400/30 animate-pulse" />
-              <ProStar className="w-5 h-5 relative z-10" />
-            </span>
-          )}
-          
-          {/* PREMIUM - Icône couronne violette avec glow intense */}
-          {profile.premiumActive && (
-            <span className="relative">
-              <span className="absolute inset-0 rounded-full blur-2xl bg-violet-500/40 animate-pulse" />
-              <span className="absolute inset-0">
-                <span className="absolute -top-1 -right-1 w-1 h-1 bg-violet-300 rounded-full animate-ping" style={{ animationDuration: '1s' }} />
-                <span className="absolute -bottom-1 -left-1 w-0.5 h-0.5 bg-violet-300 rounded-full animate-ping" style={{ animationDuration: '0.7s', animationDelay: '0.3s' }} />
-              </span>
-              <CrownIcon className="w-5 h-5 relative z-10" />
-            </span>
-          )}
-        </div>
-
-        {/* ===== BIO ===== */}
-        <p className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal">
-          {profile.bio || "Membre INKDROP"}
-        </p>
-
-        {/* ===== INFOS ===== */}
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-4">
-          <span className="flex items-center gap-1.5">
-            <Mail className="w-3.5 h-3.5 text-blue-400" /> 
-            {profile.email}
-          </span>
-          <span className="w-1 h-1 rounded-full bg-zinc-700" />
-          <span className="flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-blue-400" /> 
-            Membre depuis {new Date(profile.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-          </span>
-          <span className="w-1 h-1 rounded-full bg-zinc-700" />
-          <span className="flex items-center gap-1.5">
-            <Globe className="w-3.5 h-3.5 text-blue-400" />
-            {isAdmin ? 'Administrateur' : isCreator ? 'Créateur' : 'Membre'}
-          </span>
-        </div>
-
-        {/* ===== STATS SOCIALES + MANAS ===== */}
-        <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
-          <div className="text-center">
-            <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
-            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Abonnements</p>
-          </div>
-          <div className="h-7 w-[1px] bg-zinc-800" />
-          <div className="text-center">
-            <p className="text-lg md:text-xl font-black text-white">{profile._count?.followers || 0}</p>
-            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Abonnés</p>
-          </div>
-          <div className="h-7 w-[1px] bg-zinc-800" />
-          <div className="text-center">
-            <p className="text-lg md:text-xl font-black text-amber-400 flex items-center justify-center gap-1.5">
-              <ManaCoin className="w-6 h-6" />
-              {profile.manas || 0}
+        {/* ===== ADMIN INFO avec effet fun ===== */}
+        <div className="bg-gradient-to-r from-zinc-900/60 via-blue-950/30 to-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 md:p-5 backdrop-blur-md shadow-lg flex items-center justify-between relative overflow-hidden group">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div>
+            <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+              Administrateur
             </p>
-            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">MANAS</p>
+            <p className="font-bold text-white text-lg flex items-center gap-2">
+              {me?.username}
+              {me?.isCertified && <BadgeCheck className="w-5 h-5 text-blue-400 fill-blue-500/20 animate-pulse" />}
+              <span className="text-xs text-zinc-500 font-normal ml-1">⭐ Super Admin</span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-600/30 to-blue-500/20 text-blue-400 border border-blue-500/30 font-medium flex items-center gap-1.5">
+              <Zap className="w-3 h-3" />
+              {me?.role}
+            </span>
           </div>
         </div>
 
-        {/* ===== BOUTON CRÉATEUR ===== */}
-        {!isAdmin && (
-          <div className="w-full max-w-md mb-4">
-            {renderCreatorButton()}
+        {/* ===== TABS avec couleurs fun ===== */}
+        <div className="flex flex-wrap gap-2 border-b border-zinc-800/60 pb-3">
+          {[
+            { key: "dashboard", label: "Tableau de bord", icon: TrendingUp, color: "blue" },
+            { key: "users", label: "Utilisateurs", icon: Users, color: "emerald" },
+            { key: "requests", label: "Demandes", icon: FileText, color: "amber" },
+            { key: "certify", label: "Certification", icon: BadgeCheck, color: "purple" },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const colorMap: Record<string, string> = {
+              blue: "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/30",
+              emerald: "bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/30",
+              amber: "bg-amber-600 hover:bg-amber-500 text-white shadow-amber-900/30",
+              purple: "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-900/30",
+            };
+            const inactiveColorMap: Record<string, string> = {
+              blue: "hover:bg-blue-950/30 hover:text-blue-400 border-blue-500/20",
+              emerald: "hover:bg-emerald-950/30 hover:text-emerald-400 border-emerald-500/20",
+              amber: "hover:bg-amber-950/30 hover:text-amber-400 border-amber-500/20",
+              purple: "hover:bg-purple-950/30 hover:text-purple-400 border-purple-500/20",
+            };
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as Tab)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
+                  isActive
+                    ? colorMap[tab.color]
+                    : `bg-zinc-900/60 text-zinc-400 hover:${inactiveColorMap[tab.color]} border border-zinc-800/50`
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {tab.label}
+                {isActive && <Sparkles className="w-3 h-3 text-white/70 animate-pulse" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ===== TAB: DASHBOARD avec couleurs vives ===== */}
+        {activeTab === "dashboard" && stats && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-gradient-to-br from-blue-950/40 to-blue-900/20 border border-blue-500/30 rounded-xl p-4 text-center group hover:scale-[1.02] transition-all duration-300 hover:shadow-blue-500/20 hover:shadow-lg">
+                <div className="relative">
+                  <Users className="w-6 h-6 text-blue-400 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+                </div>
+                <p className="text-2xl font-bold text-white">{stats.users.total}</p>
+                <p className="text-xs text-zinc-500 font-medium">Utilisateurs</p>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-950/40 to-emerald-900/20 border border-emerald-500/30 rounded-xl p-4 text-center group hover:scale-[1.02] transition-all duration-300 hover:shadow-emerald-500/20 hover:shadow-lg">
+                <div className="relative">
+                  <BookOpen className="w-6 h-6 text-emerald-400 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-ping" style={{ animationDelay: '0.3s' }} />
+                </div>
+                <p className="text-2xl font-bold text-white">{stats.content.mangas}</p>
+                <p className="text-xs text-zinc-500 font-medium">Mangas</p>
+              </div>
+              <div className="bg-gradient-to-br from-amber-950/40 to-amber-900/20 border border-amber-500/30 rounded-xl p-4 text-center group hover:scale-[1.02] transition-all duration-300 hover:shadow-amber-500/20 hover:shadow-lg">
+                <div className="relative">
+                  <Coins className="w-6 h-6 text-amber-400 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 animate-ping" style={{ animationDelay: '0.6s' }} />
+                </div>
+                <p className="text-2xl font-bold text-white">{stats.payments.revenue.toFixed(2)}$</p>
+                <p className="text-xs text-zinc-500 font-medium">Revenus</p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-950/40 to-purple-900/20 border border-purple-500/30 rounded-xl p-4 text-center group hover:scale-[1.02] transition-all duration-300 hover:shadow-purple-500/20 hover:shadow-lg">
+                <div className="relative">
+                  <Ticket className="w-6 h-6 text-purple-400 mx-auto mb-2 group-hover:scale-110 transition-transform" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-purple-400 animate-ping" style={{ animationDelay: '0.9s' }} />
+                </div>
+                <p className="text-2xl font-bold text-white">{stats.requests.pending}</p>
+                <p className="text-xs text-zinc-500 font-medium">Demandes en attente</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 hover:border-blue-500/30 transition-colors">
+                <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-blue-400" />
+                  Statut des utilisateurs
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Créateurs</span>
+                    <span className="text-blue-400 font-bold">{stats.users.creators}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Certifiés</span>
+                    <span className="text-purple-400 font-bold">{stats.users.certified}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Premium</span>
+                    <span className="text-amber-400 font-bold">{stats.users.premium}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 hover:border-emerald-500/30 transition-colors">
+                <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-emerald-400" />
+                  Contenu
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Chapitres</span>
+                    <span className="text-emerald-400 font-bold">{stats.content.chapters}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-400">Commentaires</span>
+                    <span className="text-rose-400 font-bold">{stats.content.comments}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* ===== BARRE D'ONGLETS ===== */}
-        <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
-          <button
-            onClick={() => setActiveTab("mangas")}
-            className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
-              activeTab === "mangas"
-                ? "border-blue-500 text-white"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            <Grid className="w-4 h-4" />
-            <span>Mangas ({profile._count?.mangas || 0})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("stats")}
-            className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
-              activeTab === "stats"
-                ? "border-blue-500 text-white"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            <Zap className="w-4 h-4" />
-            <span>Balance & Stats</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("menu")}
-            className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
-              activeTab === "menu"
-                ? "border-blue-500 text-white"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Avantages</span>
-          </button>
-        </div>
+        {/* ===== TAB: USERS ===== */}
+        {activeTab === "users" && (
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Rechercher un utilisateur..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm"
+                />
+              </div>
+              <button className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-medium transition-all shadow-blue-900/30 shadow-lg flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Rechercher
+              </button>
+            </div>
 
-        {/* ===== TAB 1 : MANGAS ===== */}
-        {activeTab === "mangas" && (
-          <div className="w-full">
-            {!profile.mangas || profile.mangas.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center bg-zinc-900/30 rounded-2xl border border-zinc-800/40 max-w-md mx-auto my-2">
-                <BookOpen className="w-10 h-10 text-zinc-700" />
-                <p className="text-zinc-400 mt-3 text-sm font-medium">Aucun manga publié</p>
-                {isCreator ? (
-                  <Link
-                    href="/creator/upload"
-                    className="mt-4 px-5 py-2 rounded-full bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-all shadow shadow-blue-600/20"
-                  >
-                    Publier ton premier projet
-                  </Link>
-                ) : (
-                  <p className="text-zinc-500 text-xs mt-2">Deviens créateur pour publier tes mangas</p>
-                )}
+            <div className="overflow-x-auto rounded-xl border border-zinc-800/60">
+              <table className="w-full text-sm">
+                <thead className="bg-zinc-900/60 text-zinc-400 border-b border-zinc-800/60">
+                  <tr>
+                    <th className="text-left py-3 px-3 font-medium">Utilisateur</th>
+                    <th className="text-left py-3 px-3 font-medium">Rôle</th>
+                    <th className="text-left py-3 px-3 font-medium">Statut</th>
+                    <th className="text-left py-3 px-3 font-medium">Actions ⚡</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user, index) => (
+                    <tr key={user.id} className={`border-b border-zinc-800/40 hover:bg-zinc-900/40 transition-colors ${index % 2 === 0 ? 'bg-zinc-900/20' : ''}`}>
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                            user.role === "ADMIN" ? "bg-gradient-to-br from-rose-600 to-rose-500" :
+                            user.role === "CREATOR" ? "bg-gradient-to-br from-blue-600 to-blue-500" :
+                            "bg-gradient-to-br from-zinc-700 to-zinc-600"
+                          }`}>
+                            {user.username?.[0]?.toUpperCase() || "?"}
+                          </div>
+                          <div>
+                            <p className="text-white font-medium flex items-center gap-1.5">
+                              {user.username}
+                              {user.isCertified && <BadgeCheck className="w-3.5 h-3.5 text-blue-400" />}
+                            </p>
+                            <p className="text-zinc-500 text-xs">{user.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                          user.role === "ADMIN" ? "bg-gradient-to-r from-rose-600/30 to-rose-500/20 text-rose-400 border border-rose-500/30" :
+                          user.role === "CREATOR" ? "bg-gradient-to-r from-blue-600/30 to-blue-500/20 text-blue-400 border border-blue-500/30" :
+                          user.role === "SUSPENDED" ? "bg-gradient-to-r from-amber-600/30 to-amber-500/20 text-amber-400 border border-amber-500/30" :
+                          "bg-zinc-700/30 text-zinc-400 border border-zinc-600/30"
+                        }`}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2 text-xs">
+                          {user.isCertified && (
+                            <span className="flex items-center gap-1 text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                              <BadgeCheck className="w-3 h-3" />
+                              Certifié
+                            </span>
+                          )}
+                          {user.premiumActive && (
+                            <span className="flex items-center gap-1 text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                              <Crown className="w-3 h-3" />
+                              Premium
+                            </span>
+                          )}
+                          {user._count.mangas > 0 && (
+                            <span className="text-zinc-500 bg-zinc-800/30 px-2 py-0.5 rounded-full border border-zinc-700/30">
+                              {user._count.mangas} 📚
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            onClick={() => handleCertify(user.id, !user.isCertified)}
+                            disabled={processing}
+                            className={`p-1.5 rounded-lg transition-all duration-200 ${
+                              user.isCertified 
+                                ? "text-blue-400 hover:bg-blue-950/40 hover:scale-110" 
+                                : "text-zinc-500 hover:text-blue-400 hover:bg-blue-950/30 hover:scale-110"
+                            }`}
+                            title={user.isCertified ? "Décertifier" : "Certifier"}
+                          >
+                            <BadgeCheck className="w-4 h-4" />
+                          </button>
+                          {user.role !== "CREATOR" && user.role !== "ADMIN" && (
+                            <button
+                              onClick={() => handlePromote(user.id)}
+                              disabled={processing}
+                              className="p-1.5 rounded-lg text-zinc-500 hover:text-emerald-400 hover:bg-emerald-950/30 hover:scale-110 transition-all duration-200"
+                              title="Promouvoir créateur"
+                            >
+                              <Rocket className="w-4 h-4" />
+                            </button>
+                          )}
+                          {user.role === "CREATOR" && (
+                            <button
+                              onClick={() => {
+                                const reason = prompt("Raison de la révocation :");
+                                if (reason) handleRevokeCreator(user.id, reason);
+                              }}
+                              disabled={processing}
+                              className="p-1.5 rounded-lg text-zinc-500 hover:text-amber-400 hover:bg-amber-950/30 hover:scale-110 transition-all duration-200"
+                              title="Révoquer créateur"
+                            >
+                              <UserX className="w-4 h-4" />
+                            </button>
+                          )}
+                          {user.role !== "SUSPENDED" && user.role !== "ADMIN" && (
+                            <button
+                              onClick={() => {
+                                const reason = prompt("Raison de la suspension :");
+                                if (reason) handleSuspend(user.id, reason);
+                              }}
+                              disabled={processing}
+                              className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 hover:scale-110 transition-all duration-200"
+                              title="Suspendre"
+                            >
+                              <EyeOff className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              const months = parseInt(prompt("Nombre de mois Premium (1-12) :") || "1");
+                              if (months > 0) handleGrantPremium(user.id, months);
+                            }}
+                            disabled={processing}
+                            className="p-1.5 rounded-lg text-zinc-500 hover:text-amber-400 hover:bg-amber-950/30 hover:scale-110 transition-all duration-200"
+                            title="Offrir Premium"
+                          >
+                            <Crown className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-zinc-500 text-xs flex items-center gap-1.5">
+              <Users className="w-3 h-3" />
+              Total : {usersTotal} utilisateurs
+            </p>
+          </div>
+        )}
+
+        {/* ===== TAB: REQUESTS ===== */}
+        {activeTab === "requests" && (
+          <div className="space-y-4">
+            {requests.length === 0 ? (
+              <div className="text-center py-12 bg-zinc-900/30 rounded-2xl border border-zinc-800/40">
+                <div className="relative inline-block">
+                  <PartyPopper className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
+                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
+                </div>
+                <p className="text-zinc-400 font-medium">🎉 Aucune demande en attente !</p>
+                <p className="text-zinc-500 text-xs mt-1">Toutes les demandes ont été traitées.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 md:gap-3">
-                {profile.mangas.map((manga: any) => (
-                  <Link
-                    key={manga.id}
-                    href={`/manga/${manga.id}`}
-                    className="group relative aspect-[2/3] bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800/60 hover:scale-[1.02] hover:border-blue-500/50 transition-all duration-200"
-                  >
-                    {manga.coverUrl || manga.imageUrl ? (
-                      <img 
-                        src={manga.coverUrl || manga.imageUrl} 
-                        alt={manga.title} 
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <BookOpen className="w-8 h-8 text-zinc-700" />
+              requests.map((req) => (
+                <div key={req.id} className="bg-gradient-to-r from-zinc-900/40 to-zinc-900/20 border border-zinc-800/80 rounded-xl p-4 space-y-3 hover:border-amber-500/30 transition-all duration-300 hover:shadow-amber-500/10 hover:shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-600/30 to-amber-500/20 flex items-center justify-center text-sm font-bold text-amber-400 border border-amber-500/30">
+                        {req.user.username?.[0]?.toUpperCase() || "?"}
                       </div>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 p-1.5 md:p-2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end justify-between">
-                      <span className="flex items-center gap-1 text-white text-[10px] md:text-xs font-bold drop-shadow">
-                        <Eye className="w-3 h-3 text-sky-400" /> {manga.viewsCount || 0}
-                      </span>
-                      <span className="flex items-center gap-1 text-white text-[10px] md:text-xs font-bold drop-shadow">
-                        <Heart className="w-3 h-3 text-rose-500 fill-rose-500" /> {manga.likesCount || 0}
-                      </span>
+                      <div>
+                        <p className="text-white font-bold flex items-center gap-2">
+                          {req.user.username}
+                          <span className="text-xs text-zinc-500 font-normal">@{req.user.email}</span>
+                        </p>
+                        <p className="text-zinc-500 text-xs flex items-center gap-2">
+                          <Clock className="w-3 h-3" />
+                          Demandé le {new Date(req.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ===== TAB 2 : STATS & BALANCE ===== */}
-        {activeTab === "stats" && (
-          <div className="w-full max-w-xl mx-auto space-y-3">
-            <div className="grid grid-cols-3 gap-2.5">
-              {isCreator ? (
-                <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                  <DollarSign className="w-5 h-5 mx-auto text-emerald-400 mb-1" />
-                  <p className="text-base md:text-lg font-black text-white">
-                    ${(profile.manas / 100).toFixed(2)}
-                  </p>
-                  <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Balance</p>
-                </div>
-              ) : (
-                <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                  <ManaCoin className="w-6 h-6 mx-auto mb-1" />
-                  <p className="text-base md:text-lg font-black text-white">
-                    {profile.manas}
-                  </p>
-                  <p className="text-[10px] md:text-xs text-zinc-400 font-medium">MANAS</p>
-                </div>
-              )}
-
-              {isCreator ? (
-                <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                  <TrendingUp className="w-5 h-5 mx-auto text-blue-400 mb-1" />
-                  <p className="text-base md:text-lg font-black text-white">
-                    ${totalEarnings.toFixed(2)}
-                  </p>
-                  <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Revenus</p>
-                </div>
-              ) : (
-                <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center">
-                  <Heart className="w-5 h-5 mx-auto text-rose-400 mb-1" />
-                  <p className="text-base md:text-lg font-black text-white">
-                    {profile._count?.likes || 0}
-                  </p>
-                  <p className="text-[10px] md:text-xs text-zinc-400 font-medium">Likes reçus</p>
-                </div>
-              )}
-
-              <Link
-                href="/profile/tickets"
-                className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 text-center hover:border-blue-500/50 transition-all group"
-              >
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <Ticket className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
-                  <span className="text-base md:text-lg font-black text-white">
-                    {ticketBalance?.tickets || 0}
-                  </span>
-                </div>
-                <p className="text-[10px] md:text-xs text-zinc-400 font-medium flex items-center justify-center gap-1">
-                  Tickets
-                  <ChevronRight className="w-3 h-3 text-zinc-600 group-hover:translate-x-1 transition-transform" />
-                </p>
-              </Link>
-            </div>
-
-            {isCreator && profile.earnings && (
-              <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
-                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <DollarSign className="w-3.5 h-3.5" />
-                  Détail des revenus
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">Total</span>
-                    <span className="text-white font-bold">${profile.earnings.total.toFixed(2)}</span>
+                    <span className="px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-amber-600/30 to-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1.5 animate-pulse">
+                      <Clock className="w-3 h-3" />
+                      En attente
+                    </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">Payé</span>
-                    <span className="text-emerald-400 font-medium">${profile.earnings.paid.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">En attente</span>
-                    <span className="text-amber-400 font-medium">${profile.earnings.pending.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-                    <Ticket className="w-5 h-5 text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">Mes Tickets</p>
-                    <p className="text-xs text-zinc-500">
-                      {ticketBalance?.tickets || 0} ticket{ticketBalance?.tickets !== 1 ? 's' : ''} disponible{ticketBalance?.tickets !== 1 ? 's' : ''}
+                  {req.description && (
+                    <p className="text-zinc-400 text-sm bg-zinc-800/30 rounded-lg p-3 border border-zinc-800/40">
+                      "{req.description}"
                     </p>
-                  </div>
-                </div>
-                <Link
-                  href="/profile/tickets"
-                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-lg shadow-purple-600/20 flex items-center gap-1.5"
-                >
-                  <Ticket className="w-3.5 h-3.5" />
-                  Voir
-                </Link>
-              </div>
-              <p className="text-[10px] text-zinc-500 mt-3">
-                <Ticket className="w-3 h-3 inline mr-1 text-purple-400" />
-                1 ticket = 1 chapitre payant débloqué
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* ===== TAB 3 : AVANTAGES ===== */}
-        {activeTab === "menu" && (
-          <div className="w-full max-w-xl mx-auto bg-zinc-900/20 rounded-2xl border border-zinc-800/40 overflow-hidden">
-            {/* Premium */}
-            <Link
-              href="/premium"
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
-            >
-              {profile.premiumActive ? (
-                <Crown className="w-5 h-5 text-violet-400" />
-              ) : profile.isPro ? (
-                <Star className="w-5 h-5 text-cyan-400" />
-              ) : (
-                <User className="w-5 h-5 text-zinc-500" />
-              )}
-              <span className="text-sm font-medium text-white flex-1">
-                {profile.premiumActive ? "Abonnement Premium actif" : 
-                 profile.isPro ? "Abonnement Pro actif" : 
-                 "Devenir Premium"}
-              </span>
-              {profile.premiumActive && (
-                <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[9px] font-bold border border-violet-500/20 flex items-center gap-1">
-                  <Crown className="w-3 h-3" />
-                  Actif
-                </span>
-              )}
-              {profile.isPro && !profile.premiumActive && (
-                <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 text-[9px] font-bold border border-cyan-400/20 flex items-center gap-1">
-                  <Star className="w-3 h-3" />
-                  Pro
-                </span>
-              )}
-              <ChevronRight className="w-4 h-4 text-zinc-600" />
-            </Link>
-
-            {/* Certification */}
-            <Link
-              href="/certification"
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
-            >
-              <Award className="w-5 h-5 text-blue-400" />
-              <span className="text-sm font-medium text-white flex-1">Certification</span>
-              {profile.isCertified && (
-                <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[9px] font-bold border border-blue-500/20 flex items-center gap-1">
-                  <BadgeCheck className="w-3 h-3" />
-                  Certifié
-                </span>
-              )}
-              <ChevronRight className="w-4 h-4 text-zinc-600" />
-            </Link>
-
-            {/* Couleur du Badge */}
-            {profile.isCertified && (
-              <Link
-                href="/profile/badge-color"
-                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
-              >
-                <Palette className="w-5 h-5 text-purple-400" />
-                <span className="text-sm font-medium text-white flex-1">Couleur du Badge</span>
-                <div
-                  className="w-5 h-5 rounded-full border border-zinc-700 shadow-inner"
-                  style={{ backgroundColor: activeBadgeColor }}
-                />
-                <ChevronRight className="w-4 h-4 text-zinc-600" />
-              </Link>
-            )}
-
-            {/* Favoris */}
-            <Link
-              href="/favorites"
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
-            >
-              <Bookmark className="w-5 h-5 text-rose-400" />
-              <span className="text-sm font-medium text-white flex-1">Mes favoris</span>
-              <span className="text-xs text-zinc-500">({profile._count?.favorites || 0})</span>
-              <ChevronRight className="w-4 h-4 text-zinc-600" />
-            </Link>
-
-            {/* Historique MANAS */}
-            <Link
-              href="/profile/manas-history"
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
-            >
-              <ManaCoin className="w-5 h-5" />
-              <span className="text-sm font-medium text-white flex-1">Historique MANAS</span>
-              <span className="text-xs text-zinc-500">({profile.manas || 0})</span>
-              <ChevronRight className="w-4 h-4 text-zinc-600" />
-            </Link>
-
-            {/* Retrait d'argent */}
-            {isCreator && (
-              <Link
-                href="/creator/balance"
-                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
-              >
-                <DollarSign className="w-5 h-5 text-emerald-400" />
-                <span className="text-sm font-medium text-white flex-1">Retirer de l'argent</span>
-                <span className="text-xs text-zinc-500">≈ ${(profile.manas / 100).toFixed(2)}</span>
-                <ChevronRight className="w-4 h-4 text-zinc-600" />
-              </Link>
-            )}
-
-            {/* ✅ Administration - LIEN CORRIGÉ VERS /admin/certify */}
-            {isAdmin && (
-              <Link
-                href="/admin/certify"
-                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
-              >
-                <Shield className="w-5 h-5 text-rose-400" />
-                <span className="text-sm font-medium text-white flex-1">Administration</span>
-                <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[9px] font-bold border border-rose-500/20">
-                  Admin
-                </span>
-                <ChevronRight className="w-4 h-4 text-zinc-600" />
-              </Link>
-            )}
-
-            {/* Paramètres */}
-            <Link
-              href="/profile/settings"
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
-            >
-              <Settings className="w-5 h-5 text-zinc-400" />
-              <span className="text-sm font-medium text-white flex-1">Paramètres du compte</span>
-              <ChevronRight className="w-4 h-4 text-zinc-600" />
-            </Link>
-
-            {/* Déconnexion */}
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors w-full text-rose-400 border-t border-zinc-800/30"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="text-sm font-medium flex-1 text-left">Se déconnecter</span>
-              <ChevronRight className="w-4 h-4 text-rose-400/50" />
-            </button>
-          </div>
-        )}
-      </main>
-
-      <BottomNav />
-    </div>
-  );
-}
+                  )}
+                  {req.examples && req.examples.length > 0 && (
+                    <div className="flex items-center gap-2 text-zinc-500 text-xs">
+                      <span>📎</span
