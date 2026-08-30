@@ -799,10 +799,4 @@ export default function AdminPanel() {
                     </span>
                   </div>
                   {req.description && (
-                    <p className="text-zinc-400 text-sm bg-zinc-800/30 rounded-lg p-3 border border-zinc-800/40">
-                      "{req.description}"
-                    </p>
-                  )}
-                  {req.examples && req.examples.length > 0 && (
-                    <div className="flex items-center gap-2 text-zinc-500 text-xs">
-                      <span>📎</span
+                    <p className="text-zinc-400 text-sm bg-zinc-800/30 rounded-lg p-
