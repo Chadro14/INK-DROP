@@ -1,8 +1,7 @@
 "use client";
 
-import { Suspense } from "react";
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import Link from "next/link";
 import {
@@ -21,10 +20,10 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 
-function ChapterUploadContent() {
+export default function ChapterUploadPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const mangaId = searchParams.get("mangaId");
+  const params = useParams();
+  const mangaId = params?.id as string;
 
   const [mode, setMode] = useState<"images" | "pdf">("images");
   const [number, setNumber] = useState("");
@@ -40,13 +39,12 @@ function ChapterUploadContent() {
   const [isPaidChapter, setIsPaidChapter] = useState(false);
   const [paidPages, setPaidPages] = useState<number[]>([]);
 
-  // ✅ État simplifié pour la position
   const [mangaPosition, setMangaPosition] = useState<number | null>(null);
   const [canHavePaidChapters, setCanHavePaidChapters] = useState(true);
   const [positionMessage, setPositionMessage] = useState("");
   const [loadingPosition, setLoadingPosition] = useState(true);
 
-  // ✅ Récupérer la position du manga (avec fallback)
+  // ✅ RÉCUPÉRER LA POSITION DU MANGA
   useEffect(() => {
     const fetchMangaInfo = async () => {
       if (!mangaId) {
@@ -61,7 +59,6 @@ function ChapterUploadContent() {
       }
 
       try {
-        // ✅ Essayer de récupérer la position
         const posRes = await fetch(`${API_URL}/mangas/${mangaId}/position`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -72,14 +69,12 @@ function ChapterUploadContent() {
           setCanHavePaidChapters(posData.data?.canHavePaidChapters ?? true);
           setPositionMessage(posData.data?.message || "");
         } else {
-          // ✅ Fallback : position par défaut (1 = impaire = payant autorisé)
           setMangaPosition(1);
           setCanHavePaidChapters(true);
           setPositionMessage("Position par défaut (payant autorisé)");
         }
       } catch (error) {
         console.error("Erreur récupération position:", error);
-        // ✅ Fallback en cas d'erreur
         setMangaPosition(1);
         setCanHavePaidChapters(true);
         setPositionMessage("Erreur de position, mode payant par défaut");
@@ -284,7 +279,6 @@ function ChapterUploadContent() {
     }
   };
 
-  // ✅ Si pas de mangaId, afficher un message d'erreur
   if (!mangaId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4 text-center">
@@ -333,7 +327,6 @@ function ChapterUploadContent() {
 
         <form onSubmit={handleSubmit} className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 md:p-7 backdrop-blur-md shadow-xl space-y-6">
 
-          {/* ✅ AFFICHAGE DE LA POSITION (si disponible) */}
           {!loadingPosition && mangaPosition !== null && (
             <div className={`p-3 rounded-xl border ${
               canHavePaidChapters 
@@ -351,7 +344,7 @@ function ChapterUploadContent() {
                   {canHavePaidChapters ? "Payant autorisé" : "Gratuit obligatoire"}
                 </span>
               </div>
-              <p className="text-xs mt-1 opacity-80">{positionMessage || "Position normale"}</p>
+              <p className="text-xs mt-1 opacity-80">{positionMessage}</p>
             </div>
           )}
 
@@ -594,18 +587,5 @@ function ChapterUploadContent() {
 
       <BottomNav />
     </div>
-  );
-}
-
-// ✅ PAGE PRINCIPALE AVEC SUSPENSE
-export default function ChapterUploadPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-zinc-950 text-white">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
-      <ChapterUploadContent />
-    </Suspense>
   );
 }
