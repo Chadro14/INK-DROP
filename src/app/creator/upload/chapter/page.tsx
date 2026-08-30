@@ -21,7 +21,6 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 
-// ✅ COMPOSANT PRINCIPAL (avec useSearchParams)
 function ChapterUploadContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -38,40 +37,23 @@ function ChapterUploadContent() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const [totalChapters, setTotalChapters] = useState(0);
   const [isPaidChapter, setIsPaidChapter] = useState(false);
   const [paidPages, setPaidPages] = useState<number[]>([]);
 
+  // ✅ État simplifié pour la position
   const [mangaPosition, setMangaPosition] = useState<number | null>(null);
-  const [canHavePaidChapters, setCanHavePaidChapters] = useState(false);
+  const [canHavePaidChapters, setCanHavePaidChapters] = useState(true);
   const [positionMessage, setPositionMessage] = useState("");
   const [loadingPosition, setLoadingPosition] = useState(true);
 
-  // Récupérer le nombre total de chapitres
-  useEffect(() => {
-    const fetchTotalChapters = async () => {
-      if (!mangaId) return;
-      try {
-        const res = await fetch(`${API_URL}/mangas/${mangaId}/chapters`);
-        if (res.ok) {
-          const data = await res.json();
-          setTotalChapters(data.length || 0);
-        }
-      } catch (error) {
-        console.error("Erreur récupération chapitres:", error);
-      }
-    };
-
-    if (mangaId) {
-      fetchTotalChapters();
-    }
-  }, [mangaId]);
-
-  // Récupérer la position du manga
+  // ✅ Récupérer la position du manga (avec fallback)
   useEffect(() => {
     const fetchMangaInfo = async () => {
-      if (!mangaId) return;
-      
+      if (!mangaId) {
+        setLoadingPosition(false);
+        return;
+      }
+
       const token = localStorage.getItem("token");
       if (!token) {
         setLoadingPosition(false);
@@ -79,24 +61,28 @@ function ChapterUploadContent() {
       }
 
       try {
+        // ✅ Essayer de récupérer la position
         const posRes = await fetch(`${API_URL}/mangas/${mangaId}/position`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (posRes.ok) {
           const posData = await posRes.json();
-          setMangaPosition(posData.data.position);
-          setCanHavePaidChapters(posData.data.canHavePaidChapters);
-          setPositionMessage(posData.data.message);
+          setMangaPosition(posData.data?.position || 1);
+          setCanHavePaidChapters(posData.data?.canHavePaidChapters ?? true);
+          setPositionMessage(posData.data?.message || "");
         } else {
+          // ✅ Fallback : position par défaut (1 = impaire = payant autorisé)
           setMangaPosition(1);
           setCanHavePaidChapters(true);
-          setPositionMessage("Position non disponible");
+          setPositionMessage("Position par défaut (payant autorisé)");
         }
       } catch (error) {
         console.error("Erreur récupération position:", error);
+        // ✅ Fallback en cas d'erreur
         setMangaPosition(1);
         setCanHavePaidChapters(true);
+        setPositionMessage("Erreur de position, mode payant par défaut");
       } finally {
         setLoadingPosition(false);
       }
@@ -104,6 +90,8 @@ function ChapterUploadContent() {
 
     if (mangaId) {
       fetchMangaInfo();
+    } else {
+      setLoadingPosition(false);
     }
   }, [mangaId]);
 
@@ -160,8 +148,8 @@ function ChapterUploadContent() {
     }
 
     const chapterNum = parseInt(number, 10);
-    if (!number || isNaN(chapterNum)) {
-      setError("Veuillez entrer un numéro de chapitre valide.");
+    if (!number || isNaN(chapterNum) || chapterNum < 1) {
+      setError("Veuillez entrer un numéro de chapitre valide (>= 1).");
       return;
     }
 
@@ -282,7 +270,6 @@ function ChapterUploadContent() {
       }
 
       setSuccess(true);
-      router.refresh();
 
       setTimeout(() => {
         router.push(`/manga/${mangaId}`);
@@ -297,6 +284,7 @@ function ChapterUploadContent() {
     }
   };
 
+  // ✅ Si pas de mangaId, afficher un message d'erreur
   if (!mangaId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4 text-center">
@@ -345,6 +333,7 @@ function ChapterUploadContent() {
 
         <form onSubmit={handleSubmit} className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 md:p-7 backdrop-blur-md shadow-xl space-y-6">
 
+          {/* ✅ AFFICHAGE DE LA POSITION (si disponible) */}
           {!loadingPosition && mangaPosition !== null && (
             <div className={`p-3 rounded-xl border ${
               canHavePaidChapters 
@@ -362,7 +351,7 @@ function ChapterUploadContent() {
                   {canHavePaidChapters ? "Payant autorisé" : "Gratuit obligatoire"}
                 </span>
               </div>
-              <p className="text-xs mt-1 opacity-80">{positionMessage}</p>
+              <p className="text-xs mt-1 opacity-80">{positionMessage || "Position normale"}</p>
             </div>
           )}
 
