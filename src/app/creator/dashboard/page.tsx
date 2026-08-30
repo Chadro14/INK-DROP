@@ -9,7 +9,6 @@ import {
   ArrowLeft, 
   BookOpen, 
   Users, 
-  Coins, 
   Eye,
   Heart,
   Crown,
@@ -21,6 +20,10 @@ import {
   BarChart,
   User,
   CheckCircle,
+  Activity,
+  BookMarked,
+  UserPlus,
+  Sparkles,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -37,10 +40,20 @@ type CreatorStats = {
 type MangaStats = {
   id: string;
   title: string;
+  slug: string;
+  coverUrl: string | null;
   viewsCount: number;
   likesCount: number;
+  subscribersCount: number;
+  commentsCount: number;
+  isPremium: boolean;
+  status: string;
+  createdAt: string;
   _count: {
     chapters: number;
+    comments: number;
+    likes: number;
+    subscriptions: number;
   };
 };
 
@@ -61,6 +74,7 @@ export default function CreatorDashboard() {
       }
 
       try {
+        // Récupérer l'utilisateur
         const userRes = await fetch(`${API_URL}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -83,22 +97,40 @@ export default function CreatorDashboard() {
           return;
         }
 
+        // Récupérer les mangas du créateur
         const mangasRes = await fetch(`${API_URL}/mangas/creator/${userData.id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         let mangasData: MangaStats[] = [];
         if (mangasRes.ok) {
-          mangasData = await mangasRes.json();
+          const response = await mangasRes.json();
+          if (response.success && Array.isArray(response.data)) {
+            mangasData = response.data;
+          } else if (Array.isArray(response)) {
+            mangasData = response;
+          } else if (response.data && Array.isArray(response.data)) {
+            mangasData = response.data;
+          } else {
+            mangasData = [];
+          }
           setMangas(mangasData);
         }
 
+        // Calcul des statistiques
         const mangasCount = userData._count?.mangas || 0;
         const followersCount = userData._count?.followers || 0;
-        const totalViews = mangasData.reduce((acc, m) => acc + (m.viewsCount || 0), 0);
-        const totalLikes = mangasData.reduce((acc, m) => acc + (m.likesCount || 0), 0);
-        const totalChapters = mangasData.reduce((acc, m) => acc + (m._count?.chapters || 0), 0);
+        const totalViews = Array.isArray(mangasData) 
+          ? mangasData.reduce((acc, m) => acc + (m.viewsCount || 0), 0) 
+          : 0;
+        const totalLikes = Array.isArray(mangasData) 
+          ? mangasData.reduce((acc, m) => acc + (m.likesCount || 0), 0) 
+          : 0;
+        const totalChapters = Array.isArray(mangasData) 
+          ? mangasData.reduce((acc, m) => acc + (m._count?.chapters || 0), 0) 
+          : 0;
 
+        // Récupérer les revenus
         let earnings = 0;
         try {
           const earningsRes = await fetch(`${API_URL}/creator/earnings`, {
@@ -132,7 +164,7 @@ export default function CreatorDashboard() {
   }, [router]);
 
   if (loading) {
-    return <Loader message="Chargement du dashboard" />;
+    return <Loader message="Chargement du tableau de bord" />;
   }
 
   if (error) {
@@ -144,13 +176,45 @@ export default function CreatorDashboard() {
         <p className="text-zinc-400 text-center max-w-md">{error}</p>
         <Link
           href="/profile"
-          className="mt-6 px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all"
+          className="mt-6 px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all shadow-lg shadow-blue-600/20"
         >
           Retourner au profil
         </Link>
       </div>
     );
   }
+
+  // Icône Pro - Étoile (comme sur le profil)
+  const ProStar = ({ className = "w-5 h-5" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <defs>
+        <linearGradient id="proGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#4FC3F7"/>
+          <stop offset="100%" stopColor="#00BCD4"/>
+        </linearGradient>
+      </defs>
+      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" 
+        fill="url(#proGrad)" stroke="#4FC3F7" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M12 6L13.5 9.5L17.5 10.5L14.5 13.5L15 17.5L12 15.5L9 17.5L9.5 13.5L6.5 10.5L10.5 9.5L12 6Z" 
+        fill="white" opacity="0.3"/>
+    </svg>
+  );
+
+  // Icône Premium - Couronne (comme sur le profil)
+  const CrownIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <defs>
+        <linearGradient id="premiumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#7C3AED"/>
+          <stop offset="100%" stopColor="#4F46E5"/>
+        </linearGradient>
+      </defs>
+      <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" 
+        fill="url(#premiumGrad)" stroke="#7C3AED" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M5 16H19V20H5V16Z" 
+        fill="url(#premiumGrad)" stroke="#7C3AED" strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>
+  );
 
   const statCards = [
     { label: "Mangas", value: stats?.mangas || 0, icon: BookOpen, color: "text-blue-400" },
@@ -181,10 +245,10 @@ export default function CreatorDashboard() {
 
       <main className="flex-1 px-4 md:px-8 py-6 max-w-4xl mx-auto w-full">
         
-        {/* Info créateur avec avatar + infos réelles */}
+        {/* Info créateur */}
         <div className="bg-gradient-to-r from-zinc-900/60 via-blue-950/30 to-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 mb-6">
           <div className="flex items-center gap-4">
-            {/* Avatar réel */}
+            {/* Avatar */}
             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-600/30 to-blue-500/20 flex items-center justify-center border border-blue-500/30 overflow-hidden">
               {user?.avatarUrl ? (
                 <img 
@@ -205,9 +269,21 @@ export default function CreatorDashboard() {
                     Certifie
                   </span>
                 )}
-                {user?.premiumActive && (
-                  <Crown className="w-4 h-4 text-amber-400" />
-                )}
+                {user?.premiumActive ? (
+                  <span className="relative">
+                    <span className="absolute inset-0 rounded-full blur-2xl bg-violet-500/40 animate-pulse" />
+                    <span className="absolute inset-0">
+                      <span className="absolute -top-1 -right-1 w-1 h-1 bg-violet-300 rounded-full animate-ping" style={{ animationDuration: '1s' }} />
+                      <span className="absolute -bottom-1 -left-1 w-0.5 h-0.5 bg-violet-300 rounded-full animate-ping" style={{ animationDuration: '0.7s', animationDelay: '0.3s' }} />
+                    </span>
+                    <CrownIcon className="w-5 h-5 relative z-10" />
+                  </span>
+                ) : user?.isPro ? (
+                  <span className="relative">
+                    <span className="absolute inset-0 rounded-full blur-xl bg-cyan-400/30 animate-pulse" />
+                    <ProStar className="w-5 h-5 relative z-10" />
+                  </span>
+                ) : null}
               </p>
               <p className="text-xs text-zinc-400 flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded-full bg-zinc-800/50 text-zinc-400 border border-zinc-700/30 text-[10px]">
@@ -243,7 +319,11 @@ export default function CreatorDashboard() {
             </h3>
             <div className="space-y-3">
               {mangas.slice(0, 3).map((manga) => (
-                <div key={manga.id} className="bg-zinc-900/60 rounded-xl p-3 border border-zinc-800/40">
+                <Link
+                  key={manga.id}
+                  href={`/manga/${manga.slug || manga.id}`}
+                  className="bg-zinc-900/60 rounded-xl p-3 border border-zinc-800/40 hover:border-blue-500/30 transition-all block"
+                >
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium text-white truncate max-w-[150px]">{manga.title}</p>
                     <div className="flex items-center gap-3 text-xs text-zinc-500">
@@ -258,7 +338,7 @@ export default function CreatorDashboard() {
                       </span>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
               {mangas.length > 3 && (
                 <p className="text-xs text-zinc-500 text-center">+ {mangas.length - 3} autres mangas</p>
