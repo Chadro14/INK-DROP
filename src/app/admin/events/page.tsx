@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { BottomNav } from "@/components/layout/bottom-nav";
+import { Loader } from "@/components/ui/loader";
 import {
   ArrowLeft,
   Plus,
@@ -17,6 +19,7 @@ import {
   Eye,
   EyeOff,
   Clock,
+  Search,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -50,6 +53,8 @@ export default function AdminEventsPage() {
   const [message, setMessage] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState<string>("all");
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -130,7 +135,7 @@ export default function AdminEventsPage() {
         throw new Error(data.message || "Erreur lors de la suppression");
       }
 
-      setMessage("✅ Événement supprimé avec succès");
+      setMessage("Événement supprimé avec succès");
       setEvents((prev) => prev.filter((e) => e.id !== eventId));
     } catch (err: any) {
       setError(err.message);
@@ -161,9 +166,7 @@ export default function AdminEventsPage() {
         throw new Error(data.message || "Erreur lors de la mise à jour");
       }
 
-      setMessage(
-        `✅ Événement ${!currentStatus ? "activé" : "désactivé"} avec succès`
-      );
+      setMessage(`Événement ${!currentStatus ? "activé" : "désactivé"} avec succès`);
       setEvents((prev) =>
         prev.map((e) =>
           e.id === eventId ? { ...e, isActive: !currentStatus } : e
@@ -176,12 +179,12 @@ export default function AdminEventsPage() {
 
   const getTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      BATTLE: "⚔️ Battle",
-      DESSIN: "🎨 Défi Dessin",
-      TICKETS: "🎟️ Tickets",
-      RISING_CREATOR: "🚀 Rising Creator",
-      AWARDS: "👑 Awards",
-      TOURNAMENT: "💥 Tournament",
+      BATTLE: "Battle",
+      DESSIN: "Défi Dessin",
+      TICKETS: "Tickets",
+      RISING_CREATOR: "Rising Creator",
+      AWARDS: "Awards",
+      TOURNAMENT: "Tournament",
     };
     return labels[type] || type;
   };
@@ -203,10 +206,17 @@ export default function AdminEventsPage() {
     return { label: "En cours", color: "bg-emerald-600/20 text-emerald-400 border-emerald-500/30 animate-pulse" };
   };
 
+  const filteredEvents = events.filter((event) => {
+    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === "all" || event.type === filterType;
+    return matchesSearch && matchesType;
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <Loader label="Chargement des événements..." />
       </div>
     );
   }
@@ -229,7 +239,7 @@ export default function AdminEventsPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-10">
+    <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
       
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
@@ -243,7 +253,7 @@ export default function AdminEventsPage() {
           </Link>
           <span className="text-base font-bold text-white tracking-tight flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-400" />
-            Admin Événements
+            Gestion des événements
           </span>
           <Link
             href="/admin/events/create"
@@ -306,11 +316,42 @@ export default function AdminEventsPage() {
           </div>
         </div>
 
+        {/* FILTRES ET RECHERCHE */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Rechercher un événement..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm"
+            />
+          </div>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm"
+          >
+            <option value="all">Tous les types</option>
+            <option value="BATTLE">Battle</option>
+            <option value="DESSIN">Défi Dessin</option>
+            <option value="TICKETS">Tickets</option>
+            <option value="RISING_CREATOR">Rising Creator</option>
+            <option value="AWARDS">Awards</option>
+            <option value="TOURNAMENT">Tournament</option>
+          </select>
+        </div>
+
         {/* LISTE */}
-        {events.length === 0 ? (
+        {filteredEvents.length === 0 ? (
           <div className="text-center py-16 bg-zinc-900/30 rounded-2xl border border-zinc-800/40">
             <Trophy className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-            <p className="text-zinc-400 font-medium">Aucun événement</p>
+            <p className="text-zinc-400 font-medium">
+              {searchTerm || filterType !== "all"
+                ? "Aucun événement ne correspond à vos critères"
+                : "Aucun événement"}
+            </p>
             <Link
               href="/admin/events/create"
               className="mt-4 inline-block px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold transition-all shadow-lg shadow-blue-600/20"
@@ -332,7 +373,7 @@ export default function AdminEventsPage() {
                 </tr>
               </thead>
               <tbody>
-                {events.map((event) => {
+                {filteredEvents.map((event) => {
                   const status = getStatusBadge(event);
                   return (
                     <tr
@@ -425,6 +466,8 @@ export default function AdminEventsPage() {
           </div>
         )}
       </main>
+
+      <BottomNav />
     </div>
   );
 }
