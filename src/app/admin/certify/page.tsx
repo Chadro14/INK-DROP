@@ -72,6 +72,26 @@ type CreatorRequest = {
   };
 };
 
+type Event = {
+  id: string;
+  type: string;
+  title: string;
+  description: string | null;
+  theme: string | null;
+  icon: string | null;
+  coverUrl: string | null;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+  config: any;
+  rewards: any;
+  objectives: any;
+  createdAt: string;
+  _count?: {
+    participations: number;
+  };
+};
+
 type Stats = {
   users: {
     total: number;
@@ -106,6 +126,8 @@ export default function AdminPanel() {
   const [usersTotal, setUsersTotal] = useState(0);
   const [requests, setRequests] = useState<CreatorRequest[]>([]);
   const [requestsTotal, setRequestsTotal] = useState(0);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [eventsTotal, setEventsTotal] = useState(0);
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -137,6 +159,7 @@ export default function AdminPanel() {
         await loadStats(token);
         await loadUsers(token);
         await loadRequests(token);
+        await loadEvents(token);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -188,6 +211,21 @@ export default function AdminPanel() {
       }
     } catch (error) {
       console.error("Erreur chargement requests:", error);
+    }
+  };
+
+  const loadEvents = async (token: string) => {
+    try {
+      const res = await fetch(`${API_URL}/admin/events`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(data.data || []);
+        setEventsTotal(data.meta?.total || 0);
+      }
+    } catch (error) {
+      console.error("Erreur chargement events:", error);
     }
   };
 
@@ -399,6 +437,67 @@ export default function AdminPanel() {
 
       setMessage(`Demande refusée`);
       await loadRequests(token);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Gestion des événements
+  const handleToggleEvent = async (eventId: string, isActive: boolean) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setProcessing(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/admin/events/${eventId}/toggle`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isActive }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Erreur");
+
+      setMessage(`Événement ${isActive ? "activé" : "désactivé"} avec succès`);
+      await loadEvents(token);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm("Supprimer définitivement cet événement ?")) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setProcessing(true);
+    setMessage("");
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/admin/events/${eventId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Erreur");
+
+      setMessage("Événement supprimé avec succès");
+      await loadEvents(token);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -899,6 +998,142 @@ export default function AdminPanel() {
                 <p className="text-xs text-zinc-400">Premium</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ===== TAB: EVENTS ===== */}
+        {activeTab === "events" && (
+          <div className="space-y-4">
+            {/* Bouton Ajouter */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-zinc-400 text-sm">
+                <Trophy className="w-4 h-4 text-amber-400" />
+                <span>Gérez les événements de la plateforme</span>
+              </div>
+              <button
+                onClick={() => {
+                  alert("📝 Formulaire de création d'événement à implémenter");
+                }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white text-sm font-medium transition-all shadow-amber-900/30 shadow-lg flex items-center gap-2 hover:scale-[1.02]"
+              >
+                <Rocket className="w-4 h-4" />
+                Nouvel événement
+              </button>
+            </div>
+
+            {/* Liste des événements */}
+            {events.length === 0 ? (
+              <div className="text-center py-12 bg-zinc-900/30 rounded-2xl border border-zinc-800/40">
+                <Calendar className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
+                <p className="text-zinc-400 font-medium">Aucun événement</p>
+                <p className="text-zinc-500 text-xs mt-1">Créez votre premier événement pour engager la communauté.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {events.map((event) => {
+                  const isActive = event.isActive;
+                  const now = new Date();
+                  const start = new Date(event.startDate);
+                  const end = new Date(event.endDate);
+                  const isOngoing = start <= now && end >= now;
+                  const isUpcoming = start > now;
+                  const isPast = end < now;
+
+                  let statusText = "Terminé";
+                  let statusColor = "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
+                  if (isOngoing && isActive) {
+                    statusText = "En cours";
+                    statusColor = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+                  } else if (isUpcoming && isActive) {
+                    statusText = "À venir";
+                    statusColor = "bg-blue-500/20 text-blue-400 border-blue-500/30";
+                  } else if (isPast && isActive) {
+                    statusText = "Terminé";
+                    statusColor = "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
+                  } else if (!isActive) {
+                    statusText = "Désactivé";
+                    statusColor = "bg-rose-500/20 text-rose-400 border-rose-500/30";
+                  }
+
+                  return (
+                    <div
+                      key={event.id}
+                      className={`bg-gradient-to-r from-zinc-900/40 to-zinc-900/20 border rounded-xl p-4 space-y-3 transition-all duration-300 ${
+                        isActive && isOngoing
+                          ? "border-emerald-500/40 hover:border-emerald-500/60 hover:shadow-emerald-500/10 hover:shadow-lg"
+                          : "border-zinc-800/80 hover:border-amber-500/30 hover:shadow-amber-500/10 hover:shadow-lg"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+                            isActive && isOngoing
+                              ? "bg-emerald-600/30 text-emerald-400 border-emerald-500/30"
+                              : "bg-zinc-700/30 text-zinc-400 border-zinc-600/30"
+                          }`}>
+                            <Trophy className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-white font-bold flex items-center gap-2">
+                              {event.title}
+                              <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColor}`}>
+                                {statusText}
+                              </span>
+                            </p>
+                            <p className="text-zinc-500 text-xs flex items-center gap-3">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                Du {new Date(event.startDate).toLocaleDateString()} au {new Date(event.endDate).toLocaleDateString()}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Users className="w-3 h-3" />
+                                {event._count?.participations || 0} participants
+                              </span>
+                              <span className="text-zinc-600 text-[10px] uppercase">
+                                {event.type}
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleToggleEvent(event.id, !isActive)}
+                            disabled={processing}
+                            className={`p-1.5 rounded-lg transition-all duration-200 ${
+                              isActive
+                                ? "text-emerald-400 hover:bg-emerald-950/30"
+                                : "text-rose-400 hover:bg-rose-950/30"
+                            }`}
+                            title={isActive ? "Désactiver" : "Activer"}
+                          >
+                            {isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEvent(event.id)}
+                            disabled={processing}
+                            className="p-1.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-950/30 transition-all duration-200"
+                            title="Supprimer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      {event.description && (
+                        <p className="text-zinc-400 text-sm bg-zinc-800/30 rounded-lg p-2 border border-zinc-800/40 line-clamp-2">
+                          {event.description}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {eventsTotal > 0 && (
+              <p className="text-zinc-500 text-xs flex items-center gap-1.5">
+                <Trophy className="w-3 h-3" />
+                Total : {eventsTotal} événements
+              </p>
+            )}
           </div>
         )}
 
