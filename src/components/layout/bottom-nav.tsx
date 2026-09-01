@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Plus, Compass, User } from "lucide-react";
+import { Home, Search, Plus, Compass, User, Trophy } from "lucide-react";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -49,17 +49,19 @@ export function BottomNav() {
           <span className="text-[10px] font-medium">Publier</span>
         </Link>
 
+        {/* ✅ ÉVÉNEMENTS - NOUVEAU */}
         <Link
-          href="/inkstream"
+          href="/events"
           className={`flex flex-col items-center gap-1 transition-colors ${
-            isActive("/inkstream") ? "text-blue-500" : "text-zinc-500 hover:text-white"
+            isActive("/events") || pathname?.startsWith("/events/")
+              ? "text-amber-400"
+              : "text-zinc-500 hover:text-white"
           }`}
         >
-          <Compass className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Animes</span>
+          <Trophy className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Événements</span>
         </Link>
 
-        {/* ✅ PROFIL : Redirige vers /login si non connecté */}
         <Link
           href={token ? "/profile" : "/login"}
           className={`flex flex-col items-center gap-1 transition-colors ${
