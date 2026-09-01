@@ -452,7 +452,7 @@ export default function AdminPanel() {
       {/* ===== CONTENU PRINCIPAL ===== */}
       <main className="flex-1 px-4 md:px-8 py-6 max-w-6xl mx-auto w-full space-y-6">
 
-        {/* ALERTES avec animations */}
+        {/* ALERTES */}
         {message && (
           <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-sm flex items-center justify-center gap-2 shadow-lg animate-in slide-in-from-top duration-300">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -771,9 +771,7 @@ export default function AdminPanel() {
           <div className="space-y-4">
             {requests.length === 0 ? (
               <div className="text-center py-12 bg-zinc-900/30 rounded-2xl border border-zinc-800/40">
-                <div className="relative inline-block">
-                  <FileText className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-                </div>
+                <FileText className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
                 <p className="text-zinc-400 font-medium">Aucune demande en attente</p>
                 <p className="text-zinc-500 text-xs mt-1">Toutes les demandes ont été traitées.</p>
               </div>
@@ -808,4 +806,103 @@ export default function AdminPanel() {
                   )}
                   {req.examples && req.examples.length > 0 && (
                     <div className="flex items-center gap-2 text-zinc-500 text-xs">
-                      <span>
+                      <span>📎</span>
+                      <span>{req.examples.length} exemple{req.examples.length > 1 ? 's' : ''} fourni{req.examples.length > 1 ? 's' : ''}</span>
+                      {req.examples.length > 0 && (
+                        <span className="text-zinc-600 text-[10px] truncate max-w-[200px]">{req.examples[0]}</span>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={() => {
+                        const notes = prompt("Notes de l'administrateur :");
+                        handleApproveRequest(req.id, notes || undefined);
+                      }}
+                      disabled={processing}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs font-medium transition-all shadow-emerald-900/30 shadow-lg flex items-center gap-1.5 hover:scale-[1.02]"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Approuver
+                    </button>
+                    <button
+                      onClick={() => {
+                        const reason = prompt("Raison du refus :");
+                        if (reason) handleRejectRequest(req.id, reason);
+                      }}
+                      disabled={processing}
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white text-xs font-medium transition-all shadow-rose-900/30 shadow-lg flex items-center gap-1.5 hover:scale-[1.02]"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Refuser
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ===== TAB: CERTIFY ===== */}
+        {activeTab === "certify" && (
+          <div className="space-y-4">
+            <div className="bg-gradient-to-r from-zinc-900/40 to-purple-950/20 border border-purple-500/30 rounded-2xl p-5 md:p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-purple-500/20 border border-purple-500/30">
+                  <Award className="w-5 h-5 text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Certification</p>
+                  <p className="text-sm text-zinc-300">Attribuer le badge de certification à un utilisateur</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="ID de l'utilisateur..."
+                  value={selectedUser || ""}
+                  onChange={(e) => setSelectedUser(e.target.value)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
+                />
+                <button
+                  onClick={() => {
+                    if (selectedUser) {
+                      if (confirm("Certifier cet utilisateur ?")) {
+                        handleCertify(selectedUser, true);
+                      }
+                    }
+                  }}
+                  disabled={processing || !selectedUser}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white text-sm font-medium transition-all shadow-purple-900/30 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 hover:scale-[1.02]"
+                >
+                  {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  Certifier
+                </button>
+              </div>
+              <p className="text-zinc-500 text-xs flex items-center gap-1.5">
+                <AlertCircle className="w-3 h-3" />
+                Entrez l'ID d'un utilisateur pour le certifier. Il recevra un badge spécial.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-gradient-to-br from-blue-950/30 to-blue-900/10 border border-blue-500/20 rounded-xl p-3 text-center">
+                <BadgeCheck className="w-8 h-8 text-blue-400 mx-auto mb-1" />
+                <p className="text-xs text-zinc-400">Certifié</p>
+              </div>
+              <div className="bg-gradient-to-br from-purple-950/30 to-purple-900/10 border border-purple-500/20 rounded-xl p-3 text-center">
+                <Star className="w-8 h-8 text-purple-400 mx-auto mb-1" />
+                <p className="text-xs text-zinc-400">Star</p>
+              </div>
+              <div className="bg-gradient-to-br from-amber-950/30 to-amber-900/10 border border-amber-500/20 rounded-xl p-3 text-center">
+                <Crown className="w-8 h-8 text-amber-400 mx-auto mb-1" />
+                <p className="text-xs text-zinc-400">Premium</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+    </div>
+  );
+}
