@@ -25,6 +25,7 @@ import {
   Target,
   BarChart,
   User,
+  Upload,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -274,6 +275,9 @@ export default function EventPage() {
   const Icon = getTypeIcon(event.type);
   const typeColor = getTypeColor(event.type);
 
+  // ✅ Vérifier si l'événement accepte les soumissions
+  const acceptsSubmissions = event.type !== "TICKETS" && event.type !== "AWARDS";
+
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
       
@@ -441,6 +445,17 @@ export default function EventPage() {
 
         {/* ACTIONS */}
         <div className="flex flex-wrap gap-3">
+          {/* ✅ SOUMETTRE UNE ŒUVRE - Visible si l'utilisateur participe et que l'événement accepte les soumissions */}
+          {isParticipating && isActive && acceptsSubmissions && (
+            <Link
+              href={`/events/${event.id}/participate`}
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Soumettre une œuvre
+            </Link>
+          )}
+
           {!isParticipating && isActive && (
             <button
               onClick={handleJoin}
