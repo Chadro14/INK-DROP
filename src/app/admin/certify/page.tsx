@@ -19,7 +19,6 @@ import {
   TrendingUp,
   Loader2,
   Search,
-  XCircle,
   Eye,
   EyeOff,
   Clock,
@@ -30,8 +29,12 @@ import {
   Zap,
   Rocket,
   Star,
-  PartyPopper,
   Award,
+  Trophy,
+  Calendar,
+  Settings,
+  LogOut,
+  ChevronRight,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -90,7 +93,7 @@ type Stats = {
   };
 };
 
-type Tab = "dashboard" | "users" | "requests" | "certify" | "moderation";
+type Tab = "dashboard" | "users" | "requests" | "certify" | "events";
 
 export default function AdminPanel() {
   const router = useRouter();
@@ -209,7 +212,7 @@ export default function AdminPanel() {
 
       if (!res.ok) throw new Error(data.message || "Erreur");
 
-      setMessage(`✅ Utilisateur ${certify ? "certifié" : "décertifié"} avec succès`);
+      setMessage(`Utilisateur ${certify ? "certifié" : "décertifié"} avec succès`);
       await loadStats(token);
       await loadUsers(token);
     } catch (err: any) {
@@ -239,7 +242,7 @@ export default function AdminPanel() {
 
       if (!res.ok) throw new Error(data.message || "Erreur");
 
-      setMessage(`✅ Utilisateur promu créateur avec succès`);
+      setMessage(`Utilisateur promu créateur avec succès`);
       await loadStats(token);
       await loadUsers(token);
     } catch (err: any) {
@@ -270,7 +273,7 @@ export default function AdminPanel() {
 
       if (!res.ok) throw new Error(data.message || "Erreur");
 
-      setMessage(`✅ Statut de créateur révoqué`);
+      setMessage(`Statut de créateur révoqué`);
       await loadStats(token);
       await loadUsers(token);
     } catch (err: any) {
@@ -301,7 +304,7 @@ export default function AdminPanel() {
 
       if (!res.ok) throw new Error(data.message || "Erreur");
 
-      setMessage(`✅ Utilisateur suspendu avec succès`);
+      setMessage(`Utilisateur suspendu avec succès`);
       await loadStats(token);
       await loadUsers(token);
     } catch (err: any) {
@@ -332,7 +335,7 @@ export default function AdminPanel() {
 
       if (!res.ok) throw new Error(data.message || "Erreur");
 
-      setMessage(`✅ Abonnement Premium offert (${durationMonths} mois)`);
+      setMessage(`Abonnement Premium offert (${durationMonths} mois)`);
       await loadStats(token);
       await loadUsers(token);
     } catch (err: any) {
@@ -363,7 +366,7 @@ export default function AdminPanel() {
 
       if (!res.ok) throw new Error(data.message || "Erreur");
 
-      setMessage(`✅ Demande approuvée !`);
+      setMessage(`Demande approuvée`);
       await loadRequests(token);
       await loadStats(token);
     } catch (err: any) {
@@ -394,7 +397,7 @@ export default function AdminPanel() {
 
       if (!res.ok) throw new Error(data.message || "Erreur");
 
-      setMessage(`❌ Demande refusée`);
+      setMessage(`Demande refusée`);
       await loadRequests(token);
     } catch (err: any) {
       setError(err.message);
@@ -464,7 +467,7 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* ===== ADMIN INFO avec effet fun ===== */}
+        {/* ===== ADMIN INFO ===== */}
         <div className="bg-gradient-to-r from-zinc-900/60 via-blue-950/30 to-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 md:p-5 backdrop-blur-md shadow-lg flex items-center justify-between relative overflow-hidden group">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           <div>
@@ -475,7 +478,7 @@ export default function AdminPanel() {
             <p className="font-bold text-white text-lg flex items-center gap-2">
               {me?.username}
               {me?.isCertified && <BadgeCheck className="w-5 h-5 text-blue-400 fill-blue-500/20 animate-pulse" />}
-              <span className="text-xs text-zinc-500 font-normal ml-1">⭐ Super Admin</span>
+              <span className="text-xs text-zinc-500 font-normal ml-1">Super Admin</span>
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm">
@@ -486,13 +489,14 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        {/* ===== TABS avec couleurs fun ===== */}
+        {/* ===== TABS ===== */}
         <div className="flex flex-wrap gap-2 border-b border-zinc-800/60 pb-3">
           {[
             { key: "dashboard", label: "Tableau de bord", icon: TrendingUp, color: "blue" },
             { key: "users", label: "Utilisateurs", icon: Users, color: "emerald" },
             { key: "requests", label: "Demandes", icon: FileText, color: "amber" },
             { key: "certify", label: "Certification", icon: BadgeCheck, color: "purple" },
+            { key: "events", label: "Événements", icon: Trophy, color: "amber" },
           ].map((tab) => {
             const Icon = tab.icon;
             const colorMap: Record<string, string> = {
@@ -526,7 +530,7 @@ export default function AdminPanel() {
           })}
         </div>
 
-        {/* ===== TAB: DASHBOARD avec couleurs vives ===== */}
+        {/* ===== TAB: DASHBOARD ===== */}
         {activeTab === "dashboard" && stats && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -632,7 +636,7 @@ export default function AdminPanel() {
                     <th className="text-left py-3 px-3 font-medium">Utilisateur</th>
                     <th className="text-left py-3 px-3 font-medium">Rôle</th>
                     <th className="text-left py-3 px-3 font-medium">Statut</th>
-                    <th className="text-left py-3 px-3 font-medium">Actions ⚡</th>
+                    <th className="text-left py-3 px-3 font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -682,7 +686,7 @@ export default function AdminPanel() {
                           )}
                           {user._count.mangas > 0 && (
                             <span className="text-zinc-500 bg-zinc-800/30 px-2 py-0.5 rounded-full border border-zinc-700/30">
-                              {user._count.mangas} 📚
+                              {user._count.mangas} mangas
                             </span>
                           )}
                         </div>
@@ -768,10 +772,9 @@ export default function AdminPanel() {
             {requests.length === 0 ? (
               <div className="text-center py-12 bg-zinc-900/30 rounded-2xl border border-zinc-800/40">
                 <div className="relative inline-block">
-                  <PartyPopper className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
-                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
+                  <FileText className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
                 </div>
-                <p className="text-zinc-400 font-medium">🎉 Aucune demande en attente !</p>
+                <p className="text-zinc-400 font-medium">Aucune demande en attente</p>
                 <p className="text-zinc-500 text-xs mt-1">Toutes les demandes ont été traitées.</p>
               </div>
             ) : (
@@ -805,104 +808,4 @@ export default function AdminPanel() {
                   )}
                   {req.examples && req.examples.length > 0 && (
                     <div className="flex items-center gap-2 text-zinc-500 text-xs">
-                      <span>📎</span>
-                      <span>{req.examples.length} exemple{req.examples.length > 1 ? 's' : ''} fourni{req.examples.length > 1 ? 's' : ''}</span>
-                      {req.examples.length > 0 && (
-                        <span className="text-zinc-600 text-[10px] truncate max-w-[200px]">{req.examples[0]}</span>
-                      )}
-                    </div>
-                  )}
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      onClick={() => {
-                        const notes = prompt("Notes de l'administrateur :");
-                        handleApproveRequest(req.id, notes || undefined);
-                      }}
-                      disabled={processing}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-xs font-medium transition-all shadow-emerald-900/30 shadow-lg flex items-center gap-1.5 hover:scale-[1.02]"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      Approuver ✅
-                    </button>
-                    <button
-                      onClick={() => {
-                        const reason = prompt("Raison du refus :");
-                        if (reason) handleRejectRequest(req.id, reason);
-                      }}
-                      disabled={processing}
-                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 text-white text-xs font-medium transition-all shadow-rose-900/30 shadow-lg flex items-center gap-1.5 hover:scale-[1.02]"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      Refuser ❌
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* ===== TAB: CERTIFY ===== */}
-        {activeTab === "certify" && (
-          <div className="space-y-4">
-            <div className="bg-gradient-to-r from-zinc-900/40 to-purple-950/20 border border-purple-500/30 rounded-2xl p-5 md:p-6 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-purple-500/20 border border-purple-500/30">
-                  <Award className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Certification</p>
-                  <p className="text-sm text-zinc-300">Attribuer le badge de certification à un utilisateur</p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="ID de l'utilisateur..."
-                  value={selectedUser || ""}
-                  onChange={(e) => setSelectedUser(e.target.value)}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all text-sm"
-                />
-                <button
-                  onClick={() => {
-                    if (selectedUser) {
-                      if (confirm("Certifier cet utilisateur ?")) {
-                        handleCertify(selectedUser, true);
-                      }
-                    }
-                  }}
-                  disabled={processing || !selectedUser}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white text-sm font-medium transition-all shadow-purple-900/30 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 hover:scale-[1.02]"
-                >
-                  {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  Certifier
-                </button>
-              </div>
-              <p className="text-zinc-500 text-xs flex items-center gap-1.5">
-                <AlertCircle className="w-3 h-3" />
-                Entrez l'ID d'un utilisateur pour le certifier. Il recevra un badge spécial.
-              </p>
-            </div>
-
-            {/* Petit bonus fun */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-gradient-to-br from-blue-950/30 to-blue-900/10 border border-blue-500/20 rounded-xl p-3 text-center">
-                <BadgeCheck className="w-8 h-8 text-blue-400 mx-auto mb-1" />
-                <p className="text-xs text-zinc-400">Certifié</p>
-              </div>
-              <div className="bg-gradient-to-br from-purple-950/30 to-purple-900/10 border border-purple-500/20 rounded-xl p-3 text-center">
-                <Star className="w-8 h-8 text-purple-400 mx-auto mb-1" />
-                <p className="text-xs text-zinc-400">Star</p>
-              </div>
-              <div className="bg-gradient-to-br from-amber-950/30 to-amber-900/10 border border-amber-500/20 rounded-xl p-3 text-center">
-                <Crown className="w-8 h-8 text-amber-400 mx-auto mb-1" />
-                <p className="text-xs text-zinc-400">Premium</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-      </main>
-    </div>
-  );
-}
+                      <span>
