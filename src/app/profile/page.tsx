@@ -37,7 +37,6 @@ import {
   Star,
   User,
   Trophy,
-  Trash2,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -440,7 +439,7 @@ export default function ProfilePage() {
           </Link>
         </div>
 
-        {/* ===== NOM + BADGE (icônes seules) ===== */}
+        {/* ===== NOM + BADGE ===== */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
           <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">
             {profile.username}
@@ -720,4 +719,151 @@ export default function ProfilePage() {
             {/* Premium */}
             <Link
               href="/premium"
-              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+            >
+              {profile.premiumActive ? (
+                <Crown className="w-5 h-5 text-violet-400" />
+              ) : profile.isPro ? (
+                <Star className="w-5 h-5 text-cyan-400" />
+              ) : (
+                <User className="w-5 h-5 text-zinc-500" />
+              )}
+              <span className="text-sm font-medium text-white flex-1">
+                {profile.premiumActive ? "Abonnement Premium actif" : 
+                 profile.isPro ? "Abonnement Pro actif" : 
+                 "Devenir Premium"}
+              </span>
+              {profile.premiumActive && (
+                <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[9px] font-bold border border-violet-500/20 flex items-center gap-1">
+                  <Crown className="w-3 h-3" />
+                  Actif
+                </span>
+              )}
+              {profile.isPro && !profile.premiumActive && (
+                <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 text-[9px] font-bold border border-cyan-400/20 flex items-center gap-1">
+                  <Star className="w-3 h-3" />
+                  Pro
+                </span>
+              )}
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
+            </Link>
+
+            {/* ✅ Mes événements - NOUVEAU */}
+            <Link
+              href="/profile/events"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+            >
+              <Trophy className="w-5 h-5 text-amber-400" />
+              <span className="text-sm font-medium text-white flex-1">Mes événements</span>
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
+            </Link>
+
+            {/* Certification */}
+            <Link
+              href="/certification"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+            >
+              <Award className="w-5 h-5 text-blue-400" />
+              <span className="text-sm font-medium text-white flex-1">Certification</span>
+              {profile.isCertified && (
+                <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[9px] font-bold border border-blue-500/20 flex items-center gap-1">
+                  <BadgeCheck className="w-3 h-3" />
+                  Certifié
+                </span>
+              )}
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
+            </Link>
+
+            {/* Couleur du Badge */}
+            {profile.isCertified && (
+              <Link
+                href="/profile/badge-color"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+              >
+                <Palette className="w-5 h-5 text-purple-400" />
+                <span className="text-sm font-medium text-white flex-1">Couleur du Badge</span>
+                <div
+                  className="w-5 h-5 rounded-full border border-zinc-700 shadow-inner"
+                  style={{ backgroundColor: activeBadgeColor }}
+                />
+                <ChevronRight className="w-4 h-4 text-zinc-600" />
+              </Link>
+            )}
+
+            {/* Favoris */}
+            <Link
+              href="/favorites"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+            >
+              <Bookmark className="w-5 h-5 text-rose-400" />
+              <span className="text-sm font-medium text-white flex-1">Mes favoris</span>
+              <span className="text-xs text-zinc-500">({profile._count?.favorites || 0})</span>
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
+            </Link>
+
+            {/* Historique MANAS */}
+            <Link
+              href="/profile/manas-history"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+            >
+              <ManaCoin className="w-5 h-5" />
+              <span className="text-sm font-medium text-white flex-1">Historique MANAS</span>
+              <span className="text-xs text-zinc-500">({profile.manas || 0})</span>
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
+            </Link>
+
+            {/* Retrait d'argent */}
+            {isCreator && (
+              <Link
+                href="/creator/balance"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+              >
+                <DollarSign className="w-5 h-5 text-emerald-400" />
+                <span className="text-sm font-medium text-white flex-1">Retirer de l'argent</span>
+                <span className="text-xs text-zinc-500">≈ ${(profile.manas / 100).toFixed(2)}</span>
+                <ChevronRight className="w-4 h-4 text-zinc-600" />
+              </Link>
+            )}
+
+            {/* Administration */}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+              >
+                <Shield className="w-5 h-5 text-rose-400" />
+                <span className="text-sm font-medium text-white flex-1">Administration</span>
+                <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[9px] font-bold border border-rose-500/20">
+                  Admin
+                </span>
+                <ChevronRight className="w-4 h-4 text-zinc-600" />
+              </Link>
+            )}
+
+            {/* Paramètres */}
+            <Link
+              href="/profile/settings"
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors border-b border-zinc-800/30"
+            >
+              <Settings className="w-5 h-5 text-zinc-400" />
+              <span className="text-sm font-medium text-white flex-1">Paramètres du compte</span>
+              <ChevronRight className="w-4 h-4 text-zinc-600" />
+            </Link>
+
+            {/* Déconnexion */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-4 py-3.5 hover:bg-zinc-800/50 transition-colors w-full text-rose-400 border-t border-zinc-800/30"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="text-sm font-medium flex-1 text-left">Se déconnecter</span>
+              <ChevronRight className="w-4 h-4 text-rose-400/50" />
+            </button>
+          </div>
+        )}
+      </main>
+
+      <BottomNav />
+    </div>
+  );
+}
