@@ -207,7 +207,12 @@ export default function AdminEventCreatePage() {
     }
 
     try {
-      const res = await fetch(`${API_URL}/events`, {
+      // ✅ CORRECTION 1 : Convertir les dates en ISO-8601
+      const startDateISO = new Date(startDate).toISOString();
+      const endDateISO = new Date(endDate).toISOString();
+
+      // ✅ CORRECTION 2 : Bonne URL (/admin/events)
+      const res = await fetch(`${API_URL}/admin/events`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -220,8 +225,8 @@ export default function AdminEventCreatePage() {
           theme: theme || undefined,
           icon: icon || undefined,
           coverUrl: coverUrl || undefined,
-          startDate,
-          endDate,
+          startDate: startDateISO,   // ✅ Format ISO complet
+          endDate: endDateISO,       // ✅ Format ISO complet
           config: { maxParticipants },
           rewards,
           objectives,
