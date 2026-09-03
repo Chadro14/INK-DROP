@@ -299,7 +299,9 @@ export default function EventPage() {
 
   const Icon = getTypeIcon(event.type);
   const typeColor = getTypeColor(event.type);
-  const acceptsSubmissions = event.type !== "TICKETS" && event.type !== "AWARDS";
+
+  // ✅ CORRECTION : Les événements DESSIN, BATTLE et TOURNAMENT acceptent les soumissions
+  const acceptsSubmissions = event.type === "DESSIN" || event.type === "BATTLE" || event.type === "TOURNAMENT";
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -311,6 +313,14 @@ export default function EventPage() {
   };
 
   const isDescriptionLong = event.description && event.description.length > 200;
+
+  // ✅ DIAGNOSTIC - Affiche les valeurs dans la console
+  console.log("🔍 DIAGNOSTIC:");
+  console.log("📌 event.type:", event.type);
+  console.log("📌 isParticipating:", isParticipating);
+  console.log("📌 isActive:", isActive);
+  console.log("📌 acceptsSubmissions:", acceptsSubmissions);
+  console.log("📌 userParticipation:", event.userParticipation);
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-white overflow-hidden">
@@ -384,7 +394,7 @@ export default function EventPage() {
         </div>
       </div>
 
-      {/* CONTENU SCROLLABLE - ✅ CORRECTION ICI */}
+      {/* CONTENU SCROLLABLE */}
       <main className="flex-1 overflow-y-auto max-w-4xl mx-auto w-full px-4 md:px-8 py-4 space-y-6 pb-6">
         
         {/* THEME */}
@@ -511,8 +521,8 @@ export default function EventPage() {
 
         {/* ACTIONS */}
         <div className="flex flex-wrap gap-3 pb-4">
-          {/* SOUMETTRE UNE ŒUVRE */}
-          {isParticipating && isActive && acceptsSubmissions && (
+          {/* ✅ SOUMETTRE UNE ŒUVRE - CORRIGÉ */}
+          {(isParticipating || event.type === "DESSIN" || event.type === "BATTLE" || event.type === "TOURNAMENT") && isActive && acceptsSubmissions && (
             <Link
               href={`/events/${event.id}/participate`}
               className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
