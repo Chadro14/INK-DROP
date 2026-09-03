@@ -26,6 +26,8 @@ import {
   BarChart,
   User,
   Upload,
+  Eye,
+  Heart,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -125,6 +127,24 @@ export default function EventPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (data.message?.includes("déjà")) {
+          setError("✅ Vous participez déjà à cet événement !");
+          setEvent((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              userParticipation: {
+                id: "existing",
+                isCompleted: false,
+                rewardClaimed: false,
+                progress: {},
+                score: 0,
+              },
+            };
+          });
+          setJoining(false);
+          return;
+        }
         throw new Error(data.message || "Erreur lors de l'inscription");
       }
 
@@ -220,9 +240,10 @@ export default function EventPage() {
     );
   }
 
+  // ✅ CORRECTION : Force les dates en UTC avec heures
   const now = new Date();
-  const start = new Date(event.startDate);
-  const end = new Date(event.endDate);
+  const start = new Date(event.startDate + 'T00:00:00Z');
+  const end = new Date(event.endDate + 'T23:59:59Z');
   const isActive = event.isActive && start <= now && end >= now;
   const isUpcoming = start > now;
   const isPast = end < now || !event.isActive;
@@ -231,10 +252,13 @@ export default function EventPage() {
   const isCompleted = event.userParticipation?.isCompleted || false;
   const rewardClaimed = event.userParticipation?.rewardClaimed || false;
 
-  const progress = event.objectives.reduce((acc, obj) => {
-    const current = event.userParticipation?.progress?.[obj.id] || 0;
-    return acc + (current / obj.target);
-  }, 0) / event.objectives.length * 100;
+  // Calcul de la progression
+  const progress = event.objectives.length > 0 
+    ? event.objectives.reduce((acc, obj) => {
+        const current = event.userParticipation?.progress?.[obj.id] || 0;
+        return acc + (current / obj.target);
+      }, 0) / event.objectives.length * 100
+    : 0;
 
   const getTypeColor = (type: string) => {
     const colors: Record<string, string> = {
@@ -272,11 +296,31 @@ export default function EventPage() {
     return labels[type] || type;
   };
 
+  const getTypeBadgeColor = (type: string) => {
+    const colors: Record<string, string> = {
+      BATTLE: "bg-amber-500/20 border-amber-500/30 text-amber-400",
+      DESSIN: "bg-purple-500/20 border-purple-500/30 text-purple-400",
+      TICKETS: "bg-blue-500/20 border-blue-500/30 text-blue-400",
+      RISING_CREATOR: "bg-emerald-500/20 border-emerald-500/30 text-emerald-400",
+      AWARDS: "bg-rose-500/20 border-rose-500/30 text-rose-400",
+      TOURNAMENT: "bg-red-500/20 border-red-500/30 text-red-400",
+    };
+    return colors[type] || "bg-zinc-500/20 border-zinc-500/30 text-zinc-400";
+  };
+
   const Icon = getTypeIcon(event.type);
   const typeColor = getTypeColor(event.type);
-
-  // ✅ Vérifier si l'événement accepte les soumissions
   const acceptsSubmissions = event.type !== "TICKETS" && event.type !== "AWARDS";
+
+  // Formatage des dates
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
@@ -308,57 +352,77 @@ export default function EventPage() {
         <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-white">{event.title}</h1>
-            <div className="flex items-center gap-3 mt-1 text-xs text-zinc-400">
+            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-zinc-400">
               <span className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5" />
-                {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
+                {formatDate(event.startDate)} - {formatDate(event.endDate)}
               </span>
-              <span className="w-1 h-1 rounded-full bg-zinc-700" />
+              <span className="w-1 h-1 rounded-full bg-zinc-700 hidden sm:block" />
               <span className="flex items-center gap-1">
                 <Users className="w-3.5 h-3.5" />
                 {event._count?.participations || 0} participants
               </span>
-              <span className="w-1 h-1 rounded-full bg-zinc-700" />
+              <span className="w-1 h-1 rounded-full bg-zinc-700 hidden sm:block" />
               <span className={`flex items-center gap-1 ${typeColor}`}>
                 <Icon className="w-3.5 h-3.5" />
                 {getTypeLabel(event.type)}
               </span>
             </div>
           </div>
-          {isActive && (
-            <span className="px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-400 text-xs font-bold border border-emerald-500/30 animate-pulse">
-              En cours • {daysLeft}j restants
-            </span>
-          )}
-          {isUpcoming && (
-            <span className="px-3 py-1 rounded-full bg-blue-600/20 text-blue-400 text-xs font-bold border border-blue-500/30">
-              À venir
-            </span>
-          )}
-          {isPast && (
-            <span className="px-3 py-1 rounded-full bg-zinc-600/20 text-zinc-400 text-xs font-bold border border-zinc-600/30">
-              Terminé
-            </span>
-          )}
+          <div className="flex flex-col items-end gap-1">
+            {isActive && (
+              <span className="px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-400 text-xs font-bold border border-emerald-500/30 animate-pulse">
+                🔴 En cours • {daysLeft}j restants
+              </span>
+            )}
+            {isUpcoming && (
+              <span className="px-3 py-1 rounded-full bg-blue-600/20 text-blue-400 text-xs font-bold border border-blue-500/30">
+                ⏳ À venir
+              </span>
+            )}
+            {isPast && (
+              <span className="px-3 py-1 rounded-full bg-zinc-600/20 text-zinc-400 text-xs font-bold border border-zinc-600/30">
+                ✅ Terminé
+              </span>
+            )}
+            {isParticipating && (
+              <span className="px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
+                ✓ Participant
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-8 flex flex-col gap-6">
 
+        {/* THEME */}
+        {event.theme && (
+          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
+            <p className="text-sm text-zinc-300">
+              🎯 <span className="font-medium">Thème :</span> {event.theme}
+            </p>
+          </div>
+        )}
+
         {/* DESCRIPTION */}
         {event.description && (
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
-            <p className="text-zinc-400 text-sm leading-relaxed">{event.description}</p>
+            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-400" />
+              Description
+            </h3>
+            <p className="text-zinc-300 text-sm leading-relaxed">{event.description}</p>
           </div>
         )}
 
         {/* OBJECTIFS */}
         {event.objectives && event.objectives.length > 0 && (
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
-            <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
               <Target className="w-4 h-4 text-blue-400" />
               Objectifs
-            </h2>
+            </h3>
             <div className="space-y-3">
               {event.objectives.map((obj) => {
                 const current = event.userParticipation?.progress?.[obj.id] || 0;
@@ -390,10 +454,10 @@ export default function EventPage() {
         {/* PROGRESSION GLOBALE */}
         {isParticipating && (
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
-            <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
               <BarChart className="w-4 h-4 text-blue-400" />
-              Progression
-            </h2>
+              Progression globale
+            </h3>
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
@@ -412,7 +476,7 @@ export default function EventPage() {
             {isCompleted && (
               <div className="mt-3 flex items-center gap-2 text-emerald-400 text-sm font-medium">
                 <CheckCircle2 className="w-4 h-4" />
-                Objectifs atteints !
+                ✅ Objectifs atteints !
               </div>
             )}
           </div>
@@ -421,15 +485,15 @@ export default function EventPage() {
         {/* RÉCOMPENSES */}
         {event.rewards && event.rewards.length > 0 && (
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
-            <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
               <Gift className="w-4 h-4 text-amber-400" />
               Récompenses
-            </h2>
+            </h3>
             <div className="flex flex-wrap gap-3">
               {event.rewards.map((reward, index) => (
                 <div
                   key={index}
-                  className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800/60 rounded-xl px-3 py-2"
+                  className="flex items-center gap-2 bg-zinc-950/60 border border-zinc-800/60 rounded-xl px-4 py-2.5"
                 >
                   {reward.icon === "coins" && <Coins className="w-4 h-4 text-amber-400" />}
                   {reward.icon === "ticket" && <Ticket className="w-4 h-4 text-purple-400" />}
@@ -445,7 +509,7 @@ export default function EventPage() {
 
         {/* ACTIONS */}
         <div className="flex flex-wrap gap-3">
-          {/* ✅ SOUMETTRE UNE ŒUVRE - Visible si l'utilisateur participe et que l'événement accepte les soumissions */}
+          {/* SOUMETTRE UNE ŒUVRE */}
           {isParticipating && isActive && acceptsSubmissions && (
             <Link
               href={`/events/${event.id}/participate`}
@@ -456,6 +520,7 @@ export default function EventPage() {
             </Link>
           )}
 
+          {/* PARTICIPER */}
           {!isParticipating && isActive && (
             <button
               onClick={handleJoin}
@@ -476,6 +541,7 @@ export default function EventPage() {
             </button>
           )}
 
+          {/* RÉCLAMER LES RÉCOMPENSES */}
           {isParticipating && isCompleted && !rewardClaimed && (
             <button
               onClick={handleClaimReward}
@@ -496,13 +562,15 @@ export default function EventPage() {
             </button>
           )}
 
+          {/* RÉCOMPENSES RÉCLAMÉES */}
           {isParticipating && rewardClaimed && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-sm font-medium">
               <CheckCircle2 className="w-4 h-4" />
-              Récompenses réclamées
+              Récompenses réclamées ✅
             </div>
           )}
 
+          {/* ÉVÉNEMENT TERMINÉ */}
           {isPast && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-800/40 border border-zinc-700/30 text-zinc-400 text-sm font-medium">
               <Clock className="w-4 h-4" />
@@ -510,12 +578,22 @@ export default function EventPage() {
             </div>
           )}
 
+          {/* ÉVÉNEMENT À VENIR */}
           {isUpcoming && !isParticipating && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-950/40 border border-blue-500/30 text-blue-300 text-sm font-medium">
               <Clock className="w-4 h-4" />
-              Débute le {new Date(event.startDate).toLocaleDateString()}
+              Débute le {formatDate(event.startDate)}
             </div>
           )}
+
+          {/* Voir le classement */}
+          <Link
+            href={`/events/${event.id}/ranking`}
+            className="px-6 py-2.5 rounded-xl bg-zinc-800/60 hover:bg-zinc-700/60 border border-zinc-700/50 text-zinc-300 text-sm font-medium transition-all flex items-center gap-2"
+          >
+            <Trophy className="w-4 h-4 text-amber-400" />
+            Voir le classement
+          </Link>
         </div>
 
         {/* ERREUR */}
