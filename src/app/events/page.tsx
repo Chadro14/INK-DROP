@@ -21,6 +21,8 @@ import {
   Zap,
   Eye,
   Heart,
+  FileText,
+  ArrowLeft,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -80,13 +82,13 @@ export default function EventsPage() {
 
   const getStatus = (event: Event) => {
     const now = new Date();
-    const start = new Date(event.startDate);
-    const end = new Date(event.endDate);
+    const start = new Date(event.startDate + 'T00:00:00Z');
+    const end = new Date(event.endDate + 'T23:59:59Z');
 
     if (!event.isActive) return { label: "Terminé", color: "bg-zinc-600/20 text-zinc-400 border-zinc-600/30" };
     if (start > now) return { label: "À venir", color: "bg-blue-600/20 text-blue-400 border-blue-500/30" };
     if (end < now) return { label: "Terminé", color: "bg-zinc-600/20 text-zinc-400 border-zinc-600/30" };
-    return { label: "En cours", color: "bg-emerald-600/20 text-emerald-400 border-emerald-500/30 animate-pulse" };
+    return { label: "En cours", color: "bg-emerald-600/20 text-emerald-400 border-emerald-500/30" };
   };
 
   const getTypeIcon = (type: string) => {
@@ -141,6 +143,7 @@ export default function EventsPage() {
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           <Link href="/" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium">
+            <ArrowLeft className="w-4 h-4" />
             <span>Accueil</span>
           </Link>
           <span className="text-base font-bold text-white tracking-tight flex items-center gap-2">
@@ -206,7 +209,7 @@ export default function EventsPage() {
               const Icon = getTypeIcon(event.type);
               const typeColor = getTypeColor(event.type);
               const now = new Date();
-              const end = new Date(event.endDate);
+              const end = new Date(event.endDate + 'T23:59:59Z');
               const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
               const isParticipating = !!event.userParticipation;
               const isCompleted = event.userParticipation?.isCompleted || false;
@@ -258,12 +261,18 @@ export default function EventsPage() {
                             ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
                             : "bg-blue-500/10 text-blue-400 border-blue-500/30"
                         }`}>
-                          {isCompleted ? "✅ Terminé" : "📌 En cours"}
+                          {isCompleted ? "Terminé" : "En cours"}
                         </span>
                       )}
                     </div>
                     {event.description && (
                       <p className="text-zinc-400 text-xs line-clamp-2">{event.description}</p>
+                    )}
+                    {event.theme && (
+                      <p className="text-zinc-500 text-[10px] flex items-center gap-1">
+                        <Sparkles className="w-3 h-3 text-purple-400" />
+                        Thème : {event.theme}
+                      </p>
                     )}
                     <div className="flex items-center justify-between text-xs text-zinc-500">
                       <span className="flex items-center gap-1">
