@@ -313,10 +313,10 @@ export default function EventPage() {
   const isDescriptionLong = event.description && event.description.length > 200;
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
+    <div className="flex flex-col h-screen bg-zinc-950 text-white overflow-hidden">
       
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <Link href="/events" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium">
             <ArrowLeft className="w-4 h-4" />
@@ -330,7 +330,7 @@ export default function EventPage() {
       </header>
 
       {/* BANNIÈRE */}
-      <div className="h-48 md:h-64 w-full bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-amber-950/40 border-b border-zinc-800/40 relative overflow-hidden flex-shrink-0">
+      <div className="h-48 md:h-56 w-full bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-amber-950/40 border-b border-zinc-800/40 relative overflow-hidden flex-shrink-0">
         {event.coverUrl ? (
           <img src={event.coverUrl} alt={event.title} className="w-full h-full object-cover opacity-50" />
         ) : (
@@ -339,7 +339,7 @@ export default function EventPage() {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/50 to-transparent" />
-        <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+        <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-end justify-between gap-2">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold text-white">{event.title}</h1>
             <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-zinc-400">
@@ -359,7 +359,7 @@ export default function EventPage() {
               </span>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             {isActive && (
               <span className="px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
                 En cours • {daysLeft}j restants
@@ -384,14 +384,14 @@ export default function EventPage() {
         </div>
       </div>
 
-      {/* CONTENU SCROLLABLE */}
-      <main className="flex-1 overflow-y-auto max-w-4xl mx-auto w-full px-4 md:px-8 -mt-8 pb-6 space-y-6">
-
+      {/* CONTENU SCROLLABLE - ✅ CORRECTION ICI */}
+      <main className="flex-1 overflow-y-auto max-w-4xl mx-auto w-full px-4 md:px-8 py-4 space-y-6 pb-6">
+        
         {/* THEME */}
         {event.theme && (
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
             <p className="text-sm text-zinc-300">
-              <span className="font-medium">Theme :</span> {event.theme}
+              <span className="font-medium">Thème :</span> {event.theme}
             </p>
           </div>
         )}
@@ -510,7 +510,7 @@ export default function EventPage() {
         )}
 
         {/* ACTIONS */}
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 pb-4">
           {/* SOUMETTRE UNE ŒUVRE */}
           {isParticipating && isActive && acceptsSubmissions && (
             <Link
