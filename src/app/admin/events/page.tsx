@@ -20,6 +20,7 @@ import {
   EyeOff,
   Clock,
   Search,
+  FileText,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -135,7 +136,7 @@ export default function AdminEventsPage() {
         throw new Error(data.message || "Erreur lors de la suppression");
       }
 
-      setMessage("Événement supprimé avec succès");
+      setMessage("✅ Événement supprimé avec succès");
       setEvents((prev) => prev.filter((e) => e.id !== eventId));
     } catch (err: any) {
       setError(err.message);
@@ -166,7 +167,7 @@ export default function AdminEventsPage() {
         throw new Error(data.message || "Erreur lors de la mise à jour");
       }
 
-      setMessage(`Événement ${!currentStatus ? "activé" : "désactivé"} avec succès`);
+      setMessage(`✅ Événement ${!currentStatus ? "activé" : "désactivé"} avec succès`);
       setEvents((prev) =>
         prev.map((e) =>
           e.id === eventId ? { ...e, isActive: !currentStatus } : e
@@ -179,12 +180,12 @@ export default function AdminEventsPage() {
 
   const getTypeLabel = (type: string) => {
     const labels: Record<string, string> = {
-      BATTLE: "Battle",
-      DESSIN: "Défi Dessin",
-      TICKETS: "Tickets",
-      RISING_CREATOR: "Rising Creator",
-      AWARDS: "Awards",
-      TOURNAMENT: "Tournament",
+      BATTLE: "⚔️ Battle",
+      DESSIN: "🎨 Défi Dessin",
+      TICKETS: "🎟️ Tickets",
+      RISING_CREATOR: "🚀 Rising Creator",
+      AWARDS: "👑 Awards",
+      TOURNAMENT: "💥 Tournament",
     };
     return labels[type] || type;
   };
@@ -203,7 +204,7 @@ export default function AdminEventsPage() {
     if (end < now) {
       return { label: "Terminé", color: "bg-zinc-600/20 text-zinc-400 border-zinc-600/30" };
     }
-    return { label: "En cours", color: "bg-emerald-600/20 text-emerald-400 border-emerald-500/30 animate-pulse" };
+    return { label: "🔴 En cours", color: "bg-emerald-600/20 text-emerald-400 border-emerald-500/30 animate-pulse" };
   };
 
   const filteredEvents = events.filter((event) => {
@@ -245,11 +246,11 @@ export default function AdminEventsPage() {
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           <Link
-            href="/profile"
+            href="/admin"
             className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Retour</span>
+            <span>Admin</span>
           </Link>
           <span className="text-base font-bold text-white tracking-tight flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-400" />
@@ -334,12 +335,12 @@ export default function AdminEventsPage() {
             className="px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm"
           >
             <option value="all">Tous les types</option>
-            <option value="BATTLE">Battle</option>
-            <option value="DESSIN">Défi Dessin</option>
-            <option value="TICKETS">Tickets</option>
-            <option value="RISING_CREATOR">Rising Creator</option>
-            <option value="AWARDS">Awards</option>
-            <option value="TOURNAMENT">Tournament</option>
+            <option value="BATTLE">⚔️ Battle</option>
+            <option value="DESSIN">🎨 Défi Dessin</option>
+            <option value="TICKETS">🎟️ Tickets</option>
+            <option value="RISING_CREATOR">🚀 Rising Creator</option>
+            <option value="AWARDS">👑 Awards</option>
+            <option value="TOURNAMENT">💥 Tournament</option>
           </select>
         </div>
 
@@ -360,7 +361,7 @@ export default function AdminEventsPage() {
             </Link>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-zinc-800/60">
             <table className="w-full text-sm">
               <thead className="bg-zinc-900/60 text-zinc-400 border-b border-zinc-800/60">
                 <tr>
@@ -383,9 +384,9 @@ export default function AdminEventsPage() {
                       <td className="py-3 px-3">
                         <div>
                           <p className="text-white font-medium">{event.title}</p>
-                          {event.description && (
+                          {event.theme && (
                             <p className="text-zinc-500 text-xs truncate max-w-[200px]">
-                              {event.description}
+                              🎯 {event.theme}
                             </p>
                           )}
                         </div>
