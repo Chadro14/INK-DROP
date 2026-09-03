@@ -29,6 +29,7 @@ import {
   Eye,
   Heart,
   FileText,
+  ChevronDown,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -81,6 +82,7 @@ export default function EventPage() {
   const [error, setError] = useState("");
   const [joining, setJoining] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -129,7 +131,7 @@ export default function EventPage() {
 
       if (!res.ok) {
         if (data.message?.includes("déjà")) {
-          setError("✅ Vous participez déjà à cet événement !");
+          setError("Vous participez déjà à cet événement");
           setEvent((prev) => {
             if (!prev) return null;
             return {
@@ -241,7 +243,6 @@ export default function EventPage() {
     );
   }
 
-  // ✅ CORRECTION : Force les dates en UTC avec heures
   const now = new Date();
   const start = new Date(event.startDate + 'T00:00:00Z');
   const end = new Date(event.endDate + 'T23:59:59Z');
@@ -253,7 +254,6 @@ export default function EventPage() {
   const isCompleted = event.userParticipation?.isCompleted || false;
   const rewardClaimed = event.userParticipation?.rewardClaimed || false;
 
-  // Calcul de la progression
   const progress = event.objectives.length > 0 
     ? event.objectives.reduce((acc, obj) => {
         const current = event.userParticipation?.progress?.[obj.id] || 0;
@@ -297,23 +297,10 @@ export default function EventPage() {
     return labels[type] || type;
   };
 
-  const getTypeBadgeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      BATTLE: "bg-amber-500/20 border-amber-500/30 text-amber-400",
-      DESSIN: "bg-purple-500/20 border-purple-500/30 text-purple-400",
-      TICKETS: "bg-blue-500/20 border-blue-500/30 text-blue-400",
-      RISING_CREATOR: "bg-emerald-500/20 border-emerald-500/30 text-emerald-400",
-      AWARDS: "bg-rose-500/20 border-rose-500/30 text-rose-400",
-      TOURNAMENT: "bg-red-500/20 border-red-500/30 text-red-400",
-    };
-    return colors[type] || "bg-zinc-500/20 border-zinc-500/30 text-zinc-400";
-  };
-
   const Icon = getTypeIcon(event.type);
   const typeColor = getTypeColor(event.type);
   const acceptsSubmissions = event.type !== "TICKETS" && event.type !== "AWARDS";
 
-  // Formatage des dates
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleDateString('fr-FR', {
@@ -322,6 +309,8 @@ export default function EventPage() {
       year: 'numeric',
     });
   };
+
+  const isDescriptionLong = event.description && event.description.length > 200;
 
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
@@ -341,7 +330,7 @@ export default function EventPage() {
       </header>
 
       {/* BANNIÈRE */}
-      <div className="h-48 md:h-64 w-full bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-amber-950/40 border-b border-zinc-800/40 relative overflow-hidden">
+      <div className="h-48 md:h-64 w-full bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-amber-950/40 border-b border-zinc-800/40 relative overflow-hidden flex-shrink-0">
         {event.coverUrl ? (
           <img src={event.coverUrl} alt={event.title} className="w-full h-full object-cover opacity-50" />
         ) : (
@@ -372,48 +361,60 @@ export default function EventPage() {
           </div>
           <div className="flex flex-col items-end gap-1">
             {isActive && (
-              <span className="px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-400 text-xs font-bold border border-emerald-500/30 animate-pulse">
-                🔴 En cours • {daysLeft}j restants
+              <span className="px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
+                En cours • {daysLeft}j restants
               </span>
             )}
             {isUpcoming && (
               <span className="px-3 py-1 rounded-full bg-blue-600/20 text-blue-400 text-xs font-bold border border-blue-500/30">
-                ⏳ À venir
+                À venir
               </span>
             )}
             {isPast && (
               <span className="px-3 py-1 rounded-full bg-zinc-600/20 text-zinc-400 text-xs font-bold border border-zinc-600/30">
-                ✅ Terminé
+                Terminé
               </span>
             )}
             {isParticipating && (
               <span className="px-3 py-1 rounded-full bg-emerald-600/20 text-emerald-400 text-xs font-bold border border-emerald-500/30">
-                ✓ Participant
+                Participant
               </span>
             )}
           </div>
         </div>
       </div>
 
-      <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-8 flex flex-col gap-6">
+      {/* CONTENU SCROLLABLE */}
+      <main className="flex-1 overflow-y-auto max-w-4xl mx-auto w-full px-4 md:px-8 -mt-8 pb-6 space-y-6">
 
         {/* THEME */}
         {event.theme && (
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
             <p className="text-sm text-zinc-300">
-              🎯 <span className="font-medium">Thème :</span> {event.theme}
+              <span className="font-medium">Theme :</span> {event.theme}
             </p>
           </div>
         )}
 
-        {/* DESCRIPTION */}
+        {/* DESCRIPTION AVEC BOUTON "VOIR PLUS" */}
         {event.description && (
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
             <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
               <FileText className="w-4 h-4 text-blue-400" />
               Description
             </h3>
-            <p className="text-zinc-300 text-sm leading-relaxed">{event.description}</p>
+            <p className={`text-zinc-300 text-sm leading-relaxed ${!showFullDescription && isDescriptionLong ? 'line-clamp-3' : ''}`}>
+              {event.description}
+            </p>
+            {isDescriptionLong && (
+              <button
+                onClick={() => setShowFullDescription(!showFullDescription)}
+                className="mt-2 text-blue-400 hover:text-blue-300 text-sm font-medium flex items-center gap-1 transition-colors"
+              >
+                {showFullDescription ? 'Voir moins' : 'Voir plus'}
+                <ChevronDown className={`w-4 h-4 transition-transform ${showFullDescription ? 'rotate-180' : ''}`} />
+              </button>
+            )}
           </div>
         )}
 
@@ -477,7 +478,7 @@ export default function EventPage() {
             {isCompleted && (
               <div className="mt-3 flex items-center gap-2 text-emerald-400 text-sm font-medium">
                 <CheckCircle2 className="w-4 h-4" />
-                ✅ Objectifs atteints !
+                Objectifs atteints !
               </div>
             )}
           </div>
@@ -567,7 +568,7 @@ export default function EventPage() {
           {isParticipating && rewardClaimed && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-sm font-medium">
               <CheckCircle2 className="w-4 h-4" />
-              Récompenses réclamées ✅
+              Récompenses réclamées
             </div>
           )}
 
