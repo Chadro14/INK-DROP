@@ -12,6 +12,8 @@ import {
   Loader2,
   Plus,
   X,
+  Sparkles,
+  Clock,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -207,7 +209,7 @@ export default function AdminEventCreatePage() {
     }
 
     try {
-      // ✅ CORRECTION 1 : Convertir les dates en ISO-8601
+      // ✅ CORRECTION 1 : Convertir les dates en ISO-8601 avec heures
       const startDateISO = new Date(startDate).toISOString();
       const endDateISO = new Date(endDate).toISOString();
 
@@ -567,7 +569,7 @@ export default function AdminEventCreatePage() {
           {/* OBJECTIFS */}
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 md:p-6 space-y-4">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-blue-400" />
+              <Target className="w-4 h-4 text-blue-400" />
               Objectifs *
             </h2>
 
@@ -642,7 +644,7 @@ export default function AdminEventCreatePage() {
               </>
             ) : (
               <>
-                <Trophy className="w-4 h-4" />
+                <Sparkles className="w-4 h-4" />
                 Créer l'événement
               </>
             )}
