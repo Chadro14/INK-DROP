@@ -28,6 +28,7 @@ import {
   Upload,
   Eye,
   Heart,
+  FileText,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
