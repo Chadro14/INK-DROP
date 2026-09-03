@@ -13,7 +13,7 @@ import {
   Plus,
   X,
   Sparkles,
-  Clock,
+  Target,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -26,6 +26,16 @@ const EVENT_TYPES = [
   { value: "AWARDS", label: "👑 INKDROP Awards" },
   { value: "TOURNAMENT", label: "💥 INKDROP Tournament" },
 ];
+
+// ✅ DESCRIPTION AUTOMATIQUE PAR TYPE
+const EVENT_TYPE_DESCRIPTIONS: Record<string, string> = {
+  BATTLE: "⚔️ Les créateurs soumettent leurs mangas et la communauté vote (UP/DOWN). Le manga avec le plus de votes remporte l'événement.",
+  DESSIN: "🎨 Les créateurs soumettent leurs dessins et la communauté note (⭐ 1 à 5 étoiles). La meilleure note moyenne remporte l'événement.",
+  TICKETS: "🎟️ Les participants gagnent des tickets en lisant, likant ou commentant. Celui qui accumule le plus de tickets remporte l'événement.",
+  RISING_CREATOR: "🚀 Les créateurs sont suivis sur leur croissance (followers, likes, vues). La meilleure progression sur la période remporte l'événement.",
+  AWARDS: "👑 L'admin sélectionne des nominés et la communauté vote pour les gagnants de chaque catégorie.",
+  TOURNAMENT: "💥 Les œuvres s'affrontent en 1v1 à élimination directe. Le vainqueur du tournoi remporte l'événement.",
+};
 
 const REWARD_TYPES = [
   { value: "MANAS", label: "MANAS" },
@@ -129,7 +139,6 @@ export default function AdminEventCreatePage() {
       },
     ]);
 
-    // Réinitialiser
     setRewardLabel("");
     setRewardValue(100);
   };
@@ -176,7 +185,6 @@ export default function AdminEventCreatePage() {
       return;
     }
 
-    // Validations
     if (!type) {
       setError("Veuillez sélectionner un type d'événement");
       setLoading(false);
@@ -209,11 +217,9 @@ export default function AdminEventCreatePage() {
     }
 
     try {
-      // ✅ CORRECTION 1 : Convertir les dates en ISO-8601 avec heures
       const startDateISO = new Date(startDate).toISOString();
       const endDateISO = new Date(endDate).toISOString();
 
-      // ✅ CORRECTION 2 : URL correcte (/events)
       const res = await fetch(`${API_URL}/events`, {
         method: "POST",
         headers: {
@@ -280,7 +286,6 @@ export default function AdminEventCreatePage() {
   return (
     <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-10">
       
-      {/* HEADER */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <Link
@@ -301,7 +306,6 @@ export default function AdminEventCreatePage() {
       <main className="max-w-3xl mx-auto w-full px-4 md:px-8 py-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           
-          {/* ALERTES */}
           {message && (
             <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-sm flex items-center gap-2 shadow-lg">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -340,6 +344,16 @@ export default function AdminEventCreatePage() {
                   </option>
                 ))}
               </select>
+              
+              {/* ✅ DESCRIPTION AUTOMATIQUE */}
+              {type && EVENT_TYPE_DESCRIPTIONS[type] && (
+                <div className="mt-2 p-3 rounded-xl bg-blue-950/30 border border-blue-500/20 text-blue-300 text-xs">
+                  <p className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-0.5">💡</span>
+                    <span>{EVENT_TYPE_DESCRIPTIONS[type]}</span>
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>
@@ -358,12 +372,12 @@ export default function AdminEventCreatePage() {
 
             <div>
               <label className="block text-xs font-semibold text-zinc-300 mb-1.5 uppercase tracking-wider">
-                Description
+                Description (optionnel)
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Décrivez l'événement..."
+                placeholder="Vous pouvez personnaliser la description ici..."
                 rows={3}
                 className="w-full px-4 py-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm resize-none"
               />
@@ -631,7 +645,6 @@ export default function AdminEventCreatePage() {
             )}
           </div>
 
-          {/* BOUTON SOUMISSION */}
           <button
             type="submit"
             disabled={loading}
