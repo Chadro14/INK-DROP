@@ -19,12 +19,14 @@ import {
   Flame,
   Users,
   Globe,
-  Film,
   Library,
   BadgeCheck,
   Loader2,
   RotateCcw,
-  Bell
+  Bell,
+  Trophy,
+  Crown,
+  Zap,
 } from "lucide-react";
 import { io, Socket } from 'socket.io-client';
 
@@ -140,21 +142,11 @@ type Creator = {
   _count: { mangas: number; followers: number };
 };
 
-type Anime = {
-  id: string;
-  title: string;
-  coverImage: string;
-  rating: number;
-  episodes: number;
-  genre: string[];
-};
-
 export default function Home() {
   const router = useRouter();
   const [mangas, setMangas] = useState<Manga[]>([]);
   const [trendingMangas, setTrendingMangas] = useState<Manga[]>([]);
   const [creators, setCreators] = useState<Creator[]>([]);
-  const [animes, setAnimes] = useState<Anime[]>(FALLBACK_ANIMES);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -171,24 +163,18 @@ export default function Home() {
   const observerRef = useRef<HTMLDivElement | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // ============================================
-  // ✅ PWA : ÉTATS POUR LE POPUP D'INSTALLATION
-  // ============================================
+  // ===== PWA =====
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
 
-  // ============================================
-  // ✅ NOTIFICATIONS : ÉTATS ET SOCKET
-  // ============================================
+  // ===== NOTIFICATIONS =====
   const [socket, setSocket] = useState<Socket | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotification, setShowNotification] = useState(false);
   const [latestNotification, setLatestNotification] = useState<any>(null);
 
-  // ============================================
-  // SAUVEGARDER DANS LE BACKEND
-  // ============================================
+  // ===== SAUVEGARDE =====
   const saveStateToBackend = useCallback(async (scrollY?: number) => {
     try {
       const token = localStorage.getItem('token');
@@ -214,13 +200,10 @@ export default function Home() {
         body: JSON.stringify(state),
       });
     } catch (error) {
-      console.error('❌ Erreur sauvegarde backend:', error);
+      console.error('Erreur sauvegarde:', error);
     }
   }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage]);
 
-  // ============================================
-  // SAUVEGARDE AVEC DEBOUNCE
-  // ============================================
   const saveStateDebounced = useCallback(() => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -230,18 +213,14 @@ export default function Home() {
     }, SAVE_DEBOUNCE);
   }, [saveStateToBackend]);
 
-  // ============================================
-  // ✅ RESTAURER DEPUIS LE BACKEND (AMÉLIORÉ)
-  // ============================================
+  // ===== RESTAURATION =====
   const restoreStateFromBackend = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return false;
 
       const res = await fetch(`${API_URL}/users/state`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) return false;
@@ -263,94 +242,16 @@ export default function Home() {
         setTimeout(() => {
           window.scrollTo({ top: state.scrollY, behavior: 'instant' });
         }, 500);
-        
-        setTimeout(() => {
-          if (window.scrollY !== state.scrollY) {
-            window.scrollTo({ top: state.scrollY, behavior: 'instant' });
-          }
-        }, 800);
       }
 
-      console.log(`✅ État restauré depuis le backend (${state.mangas.length} mangas)`);
       return true;
     } catch (error) {
-      console.error('❌ Erreur restauration backend:', error);
+      console.error('Erreur restauration:', error);
       return false;
     }
   }, []);
 
-  // ============================================
-  // ✅ DÉTECTER LE RETOUR ARRIÈRE POUR RESTAURER LE SCROLL
-  // ============================================
-  useEffect(() => {
-    const handlePopState = () => {
-      const saved = localStorage.getItem('inkdrop_state');
-      if (saved) {
-        try {
-          const state = JSON.parse(saved);
-          if (state.scrollY) {
-            setTimeout(() => {
-              window.scrollTo({ top: state.scrollY, behavior: 'instant' });
-            }, 300);
-            console.log('✅ Scroll restauré après retour arrière');
-          }
-        } catch (e) {
-          console.error('❌ Erreur restauration scroll:', e);
-        }
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, []);
-
-  // ============================================
-  // SAUVEGARDER AVANT DE QUITTER
-  // ============================================
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      saveStateToBackend();
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [saveStateToBackend]);
-
-  // ============================================
-  // SAUVEGARDER LE SCROLL EN TEMPS RÉEL
-  // ============================================
-  useEffect(() => {
-    let scrollTimeout: NodeJS.Timeout;
-
-    const handleScroll = () => {
-      if (scrollTimeout) clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        saveStateToBackend(window.scrollY);
-      }, SAVE_DEBOUNCE);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (scrollTimeout) clearTimeout(scrollTimeout);
-    };
-  }, [saveStateToBackend]);
-
-  // ============================================
-  // SAUVEGARDE À CHAQUE CHANGEMENT
-  // ============================================
-  useEffect(() => {
-    if (!loading && infiniteMangas.length > 0 && isRestored) {
-      saveStateDebounced();
-    }
-  }, [infiniteMangas, phase, usedQueries, hasMoreInkdrop, hasMoreMangadex, infinitePage, loading, isRestored, saveStateDebounced]);
-
-  // ============================================
-  // ✅ WEBSOCKET - CONNEXION AUX NOTIFICATIONS
-  // ============================================
+  // ===== WEBSOCKET =====
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -367,23 +268,15 @@ export default function Home() {
       });
 
       newSocket.on('connect', () => {
-        console.log('✅ Connecté au serveur WebSocket');
+        console.log('Connecté au WebSocket');
       });
 
       newSocket.on('notification', (data) => {
-        console.log('📩 Notification reçue:', data);
+        console.log('Notification reçue:', data);
         setLatestNotification(data);
         setShowNotification(true);
-        
         setNotifications((prev) => [data, ...prev]);
-        
-        setTimeout(() => {
-          setShowNotification(false);
-        }, 5000);
-      });
-
-      newSocket.on('disconnect', () => {
-        console.log('❌ Déconnecté du serveur WebSocket');
+        setTimeout(() => setShowNotification(false), 5000);
       });
 
       setSocket(newSocket);
@@ -392,22 +285,16 @@ export default function Home() {
         newSocket.disconnect();
       };
     } catch (error) {
-      console.error('❌ Erreur connexion WebSocket:', error);
+      console.error('Erreur WebSocket:', error);
     }
   }, []);
 
-  // ============================================
-  // ✅ NAVIGATION VERS LE PROFIL D'UN CRÉATEUR (CORRIGÉ)
-  // ============================================
+  // ===== NAVIGATION =====
   const handleCreatorClick = (username: string) => {
     saveStateToBackend();
-    const encodedUsername = encodeURIComponent(username);
-    router.push(`/creator/${encodedUsername}`);
+    router.push(`/creator/${encodeURIComponent(username)}`);
   };
 
-  // ============================================
-  // NAVIGATION VERS UN MANGA (avec source)
-  // ============================================
   const handleMangaClick = (manga: any) => {
     saveStateToBackend();
     if (manga.source === "mangadex") {
@@ -417,9 +304,7 @@ export default function Home() {
     }
   };
 
-  // ============================================
-  // ✅ PWA : ÉCOUTE DU POPUP D'INSTALLATION (AMÉLIORÉ)
-  // ============================================
+  // ===== PWA =====
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsAppInstalled(true);
@@ -431,7 +316,6 @@ export default function Home() {
       e.preventDefault();
       setDeferredPrompt(e);
       setShowInstallBanner(true);
-      console.log('✅ Popup d\'installation disponible');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -439,8 +323,6 @@ export default function Home() {
     const handleAppInstalled = () => {
       setIsAppInstalled(true);
       setShowInstallBanner(false);
-      setDeferredPrompt(null);
-      console.log('✅ App installée avec succès');
     };
 
     window.addEventListener('appinstalled', handleAppInstalled);
@@ -451,56 +333,40 @@ export default function Home() {
     };
   }, []);
 
-  // ============================================
-  // ✅ PWA : FONCTIONS D'INSTALLATION
-  // ============================================
   const handleInstall = () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then((choiceResult: any) => {
         if (choiceResult.outcome === 'accepted') {
-          console.log('✅ Utilisateur a accepté l\'installation');
           setShowInstallBanner(false);
         } else {
-          console.log('❌ Utilisateur a refusé l\'installation');
-          setShowInstallBanner(false);
           setTimeout(() => {
-            if (!isAppInstalled) {
-              setShowInstallBanner(true);
-            }
+            if (!isAppInstalled) setShowInstallBanner(true);
           }, 30000);
         }
         setDeferredPrompt(null);
       });
     } else {
-      alert('📱 Pour installer l\'application, utilisez le menu du navigateur : "Ajouter à l\'écran d\'accueil"');
+      alert('Utilisez le menu du navigateur : "Ajouter à l\'écran d\'accueil"');
     }
   };
 
-  // ============================================
-  // ✅ PWA : FERMER LE BANDEAU (temporairement)
-  // ============================================
   const handleDismissInstall = () => {
     setShowInstallBanner(false);
     setTimeout(() => {
-      if (!isAppInstalled) {
-        setShowInstallBanner(true);
-      }
+      if (!isAppInstalled) setShowInstallBanner(true);
     }, 60000);
   };
 
-  // ============================================
-  // FETCH MANGAS POPULAIRES
-  // ============================================
+  // ===== FETCH DATA =====
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [mangasRes, trendingRes, creatorsRes, animesRes] = await Promise.all([
+        const [mangasRes, trendingRes, creatorsRes] = await Promise.all([
           fetch(`${API_URL}/mangas?limit=6&sort=popular`),
           fetch(`${API_URL}/mangas?limit=10&sort=trending`),
-          fetch(`${API_URL}/creators/top?limit=6`),
-          fetch(`${API_URL}/inkstream/popular?limit=6`).catch(() => ({ ok: false })),
+          fetch(`${API_URL}/creators/top?limit=6`).catch(() => ({ ok: false })),
         ]);
 
         const mangasData = mangasRes.ok ? await mangasRes.json() : { data: [], total: 0 };
@@ -520,21 +386,9 @@ export default function Home() {
         setTotalMangas(mangasData.total || 0);
         setInfiniteMangas(inkdropMangas);
 
-        if (animesRes && animesRes.ok) {
-          const animesData = await animesRes.json();
-          if (animesData.data && animesData.data.length > 0) {
-            setAnimes(animesData.data);
-          } else {
-            setAnimes(FALLBACK_ANIMES);
-          }
-        } else {
-          setAnimes(FALLBACK_ANIMES);
-        }
-
         setIsRestored(true);
       } catch (error) {
         console.error("Erreur chargement:", error);
-        setAnimes(FALLBACK_ANIMES);
         setIsRestored(true);
       } finally {
         setLoading(false);
@@ -554,18 +408,13 @@ export default function Home() {
     restore();
   }, [restoreStateFromBackend]);
 
-  // ============================================
-  // FORCER LA TRANSITION
-  // ============================================
+  // ===== INFINITE SCROLL =====
   useEffect(() => {
     if (totalMangas > 0 && infiniteMangas.filter(m => m.source === "inkdrop").length >= totalMangas && hasMoreInkdrop) {
       setHasMoreInkdrop(false);
     }
   }, [infiniteMangas, totalMangas, hasMoreInkdrop]);
 
-  // ============================================
-  // CHARGER PLUS DE MANGAS INKDROP
-  // ============================================
   const fetchMoreInkdrop = async () => {
     if (loadingInfinite || !hasMoreInkdrop) return;
     setLoadingInfinite(true);
@@ -590,9 +439,6 @@ export default function Home() {
     }
   };
 
-  // ============================================
-  // CHARGER PLUS DE MANGAS MANGADROP
-  // ============================================
   const fetchMoreMangadex = async () => {
     if (loadingInfinite || !hasMoreMangadex) return;
     setLoadingInfinite(true);
@@ -621,13 +467,7 @@ export default function Home() {
       }
 
       const shuffledMangas = newMangas.sort(() => Math.random() - 0.5);
-
-      const existingIds = new Set(
-        infiniteMangas
-          .filter(m => m.source === "mangadex")
-          .map(m => m.id)
-      );
-
+      const existingIds = new Set(infiniteMangas.filter(m => m.source === "mangadex").map(m => m.id));
       const uniqueNewMangas = shuffledMangas.filter((m: any) => !existingIds.has(m.id));
 
       if (uniqueNewMangas.length === 0) {
@@ -652,12 +492,12 @@ export default function Home() {
           source: "mangadex",
           rating: m.rating,
           chapters: m.chapters || 0,
-          language: selected.lang === "fr" ? "🇫🇷" : "🇬🇧",
+          language: selected.lang === "fr" ? "FR" : "EN",
         }));
         setInfiniteMangas((prev) => [...prev, ...mangadexMangas]);
       }
     } catch (error) {
-      console.error("Erreur chargement MangaDrop:", error);
+      console.error("Erreur MangaDrop:", error);
       setHasMoreMangadex(false);
       setPhase("end");
     } finally {
@@ -665,9 +505,7 @@ export default function Home() {
     }
   };
 
-  // ============================================
-  // CARROUSEL TENDANCES
-  // ============================================
+  // ===== CARROUSEL TENDANCES =====
   const displayTrending = trendingMangas.length > 0 ? trendingMangas : mangas.slice(0, 6);
 
   useEffect(() => {
@@ -678,13 +516,8 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [displayTrending.length]);
 
-  const nextTrend = () => {
-    setCurrentTrendIndex((prev) => (prev + 1) % displayTrending.length);
-  };
-
-  const prevTrend = () => {
-    setCurrentTrendIndex((prev) => (prev - 1 + displayTrending.length) % displayTrending.length);
-  };
+  const nextTrend = () => setCurrentTrendIndex((prev) => (prev + 1) % displayTrending.length);
+  const prevTrend = () => setCurrentTrendIndex((prev) => (prev - 1 + displayTrending.length) % displayTrending.length);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -693,9 +526,7 @@ export default function Home() {
     }
   };
 
-  // ============================================
-  // OBSERVER POUR LE DÉFILEMENT INFINI
-  // ============================================
+  // ===== OBSERVER =====
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -722,15 +553,15 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
+    <div className="flex flex-col min-h-screen pb-24 bg-background text-foreground selection:bg-blue-500 selection:text-white">
 
       {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-lg mx-auto">
-          <span className="text-xl font-bold text-white tracking-tight">INKDROP</span>
+          <span className="text-xl font-bold text-foreground tracking-tight">INKDROP</span>
           <button
             onClick={() => setShowSearch(!showSearch)}
-            className="text-zinc-400 hover:text-white transition-colors p-2"
+            className="text-muted-foreground hover:text-foreground transition-colors p-2"
           >
             <Search className="w-5 h-5" />
           </button>
@@ -742,19 +573,19 @@ export default function Home() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher un créateur ou un manga..."
-              className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+              className="flex-1 px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
               autoFocus
             />
             <button
               type="submit"
-              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition-all"
+              className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition-all shadow-lg shadow-blue-900/20"
             >
               OK
             </button>
             <button
               type="button"
               onClick={() => setShowSearch(false)}
-              className="p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-all"
+              className="p-2.5 rounded-xl bg-card/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
             >
               <X className="w-4 h-4" />
             </button>
@@ -765,15 +596,15 @@ export default function Home() {
       {/* ===== TENDANCES ===== */}
       <section className="px-4 pt-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <Flame className="w-3.5 h-3.5 text-orange-500" />
             Tendances
           </h2>
-          <Link href="/discover" className="text-zinc-500 text-xs font-medium hover:text-white transition-colors">
+          <Link href="/discover" className="text-muted-foreground text-xs font-medium hover:text-foreground transition-colors">
             Voir tout
           </Link>
         </div>
-        <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
+        <div className="relative overflow-hidden rounded-xl border border-border bg-card/40">
           <div className="relative h-48 md:h-56">
             {displayTrending.length > 0 ? (
               displayTrending.map((manga, index) => (
@@ -792,24 +623,24 @@ export default function Home() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
-                        <BookOpen className="w-12 h-12 text-zinc-700" />
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <BookOpen className="w-12 h-12 text-muted-foreground/30" />
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/60 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-4">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-600/80 text-white border border-blue-400/30">
-                          🔥 Tendance
+                          Tendance
                         </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-zinc-800/80 text-yellow-400 border border-yellow-500/30 flex items-center gap-0.5">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-card/80 text-rose-400 border border-rose-500/30 flex items-center gap-0.5">
                           <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
                           {manga.likesCount || 0}
                         </span>
                       </div>
-                      <h3 className="text-lg md:text-xl font-bold text-white mt-1">{manga.title}</h3>
+                      <h3 className="text-lg md:text-xl font-bold text-foreground mt-1">{manga.title}</h3>
                       <p 
-                        className="text-zinc-400 text-xs hover:text-blue-400 transition-colors cursor-pointer"
+                        className="text-muted-foreground text-xs hover:text-blue-400 transition-colors cursor-pointer"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (manga.author?.username) {
@@ -824,8 +655,8 @@ export default function Home() {
                 </div>
               ))
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-zinc-500">
-                <p>Aucune tendance pour le moment</p>
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                <p>Aucune tendance</p>
               </div>
             )}
 
@@ -833,13 +664,13 @@ export default function Home() {
               <>
                 <button
                   onClick={prevTrend}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-zinc-950/60 text-zinc-300 hover:text-white border border-zinc-800 backdrop-blur-md z-20 transition-all"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-background/60 text-muted-foreground hover:text-foreground border border-border/60 backdrop-blur-md z-20 transition-all"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   onClick={nextTrend}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-zinc-950/60 text-zinc-300 hover:text-white border border-zinc-800 backdrop-blur-md z-20 transition-all"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-background/60 text-muted-foreground hover:text-foreground border border-border/60 backdrop-blur-md z-20 transition-all"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -850,7 +681,7 @@ export default function Home() {
                       key={index}
                       onClick={() => setCurrentTrendIndex(index)}
                       className={`h-1 rounded-full transition-all duration-300 ${
-                        index === currentTrendIndex ? "w-5 bg-blue-500" : "w-1.5 bg-zinc-600"
+                        index === currentTrendIndex ? "w-5 bg-blue-500" : "w-1.5 bg-muted"
                       }`}
                     />
                   ))}
@@ -864,11 +695,11 @@ export default function Home() {
       {/* ===== CRÉATEURS CERTIFIÉS ===== */}
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5 text-blue-400" />
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Crown className="w-3.5 h-3.5 text-amber-400" />
             Créateurs certifiés
           </h2>
-          <Link href="/discover" className="text-zinc-500 text-xs font-medium hover:text-white transition-colors">
+          <Link href="/discover" className="text-muted-foreground text-xs font-medium hover:text-foreground transition-colors">
             Voir tout
           </Link>
         </div>
@@ -882,14 +713,14 @@ export default function Home() {
                   onClick={() => handleCreatorClick(creator.username)}
                   className="flex flex-col items-center gap-1 flex-shrink-0 group cursor-pointer"
                 >
-                  <div className="w-14 h-14 rounded-full bg-zinc-900 flex items-center justify-center text-white font-bold text-lg border-2 border-zinc-800 group-hover:border-blue-500 transition-all relative">
+                  <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center text-foreground font-bold text-lg border-2 border-border group-hover:border-blue-500 transition-all relative">
                     {creator.avatarUrl ? (
                       <img src={creator.avatarUrl} alt={creator.username} className="w-full h-full rounded-full object-cover" />
                     ) : (
                       creator.username?.charAt(0).toUpperCase() || "?"
                     )}
                     {creator.isCertified && (
-                      <div className="absolute -bottom-0.5 -right-0.5 bg-zinc-950 p-0.5 rounded-full shadow-lg">
+                      <div className="absolute -bottom-0.5 -right-0.5 bg-background p-0.5 rounded-full shadow-lg">
                         <BadgeCheck
                           className="w-5 h-5"
                           fill={badgeColor}
@@ -899,7 +730,7 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-                  <span className="text-zinc-400 text-[10px] truncate max-w-14 text-center group-hover:text-blue-400 transition-colors">
+                  <span className="text-muted-foreground text-[10px] truncate max-w-14 text-center group-hover:text-blue-400 transition-colors">
                     {creator.username || "Inconnu"}
                   </span>
                 </div>
@@ -907,7 +738,7 @@ export default function Home() {
             })
           ) : (
             <div className="flex-1 text-center py-4">
-              <p className="text-zinc-500 text-xs">Aucun créateur certifié pour le moment</p>
+              <p className="text-muted-foreground text-xs">Aucun créateur certifié</p>
             </div>
           )}
         </div>
@@ -916,11 +747,11 @@ export default function Home() {
       {/* ===== MANGA POPULAIRES ===== */}
       <section className="px-4 py-2">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
             Mangas populaires
           </h2>
-          <Link href="/discover" className="text-zinc-500 text-xs font-medium hover:text-white transition-colors">
+          <Link href="/discover" className="text-muted-foreground text-xs font-medium hover:text-foreground transition-colors">
             Voir tout
           </Link>
         </div>
@@ -931,9 +762,9 @@ export default function Home() {
               <div
                 key={manga.id}
                 onClick={() => handleMangaClick(manga)}
-                className="group bg-zinc-900/40 border border-zinc-800/80 rounded-xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.97] cursor-pointer"
+                className="group bg-card/40 border border-border/60 rounded-xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.97] cursor-pointer"
               >
-                <div className="aspect-[2/3] bg-zinc-900 flex items-center justify-center relative overflow-hidden">
+                <div className="aspect-[2/3] bg-muted flex items-center justify-center relative overflow-hidden">
                   {manga.coverUrl ? (
                     <img
                       src={getImageUrl(manga.coverUrl)}
@@ -941,7 +772,7 @@ export default function Home() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (
-                    <BookOpen className="w-8 h-8 text-zinc-700" />
+                    <BookOpen className="w-8 h-8 text-muted-foreground/30" />
                   )}
                   <div className="absolute top-1.5 left-1.5">
                     <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-blue-600/80 text-white border border-blue-400/30">
@@ -950,7 +781,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="p-2">
-                  <h4 className="text-xs font-bold truncate text-white group-hover:text-blue-400 transition-colors">
+                  <h4 className="text-xs font-bold truncate text-foreground group-hover:text-blue-400 transition-colors">
                     {manga.title}
                   </h4>
                   <div 
@@ -966,14 +797,14 @@ export default function Home() {
                       <img 
                         src={manga.author.avatarUrl} 
                         alt={manga.author.username} 
-                        className="w-4 h-4 rounded-full object-cover border border-zinc-700"
+                        className="w-4 h-4 rounded-full object-cover border border-border"
                       />
                     ) : (
-                      <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[8px] text-zinc-500 font-bold">
+                      <div className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[8px] text-muted-foreground font-bold">
                         {manga.author?.username?.charAt(0) || "?"}
                       </div>
                     )}
-                    <p className="text-zinc-500 text-[9px] truncate flex items-center gap-0.5 group-hover:text-blue-400 transition-colors">
+                    <p className="text-muted-foreground text-[9px] truncate flex items-center gap-0.5 group-hover:text-blue-400 transition-colors">
                       {manga.author?.username || "Inconnu"}
                       {manga.author?.isCertified && (
                         <BadgeCheck
@@ -985,9 +816,9 @@ export default function Home() {
                       )}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 mt-0.5 text-zinc-500 text-[9px]">
+                  <div className="flex items-center gap-2 mt-0.5 text-muted-foreground text-[9px]">
                     <span className="flex items-center gap-0.5">
-                      <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500/20" />
+                      <Heart className="w-2.5 h-2.5 text-rose-500" />
                       {manga.likesCount || 0}
                     </span>
                     <span className="flex items-center gap-0.5">
@@ -1002,62 +833,18 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== ANIMES POPULAIRES ===== */}
+      {/* ===== DÉFILEMENT INFINI ===== */}
       <section className="px-4 py-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-            <Film className="w-3.5 h-3.5 text-purple-400" />
-            Animes populaires
-          </h2>
-          <Link href="/inkstream" className="text-zinc-500 text-xs font-medium hover:text-white transition-colors">
-            Voir tout
-          </Link>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-          {animes.map((anime) => (
-            <Link
-              key={anime.id}
-              href={`/inkstream/${anime.id}`}
-              className="flex-shrink-0 w-32 group"
-            >
-              <div className="aspect-[2/3] bg-zinc-900 rounded-xl overflow-hidden border border-zinc-800 group-hover:border-purple-500/50 transition-all relative">
-                {anime.coverImage ? (
-                  <img
-                    src={anime.coverImage}
-                    alt={anime.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Film className="w-8 h-8 text-zinc-700" />
-                  </div>
-                )}
-                <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/70 text-white text-[9px] font-bold flex items-center gap-0.5">
-                  <Star className="w-2.5 h-2.5 fill-yellow-500 text-yellow-500" />
-                  {anime.rating || 'N/A'}
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
-                  <p className="text-white text-xs font-bold truncate">{anime.title}</p>
-                  <p className="text-zinc-400 text-[9px]">{anime.episodes || 0} épisodes</p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== DÉFILEMENT INFINI ===== */}
-      <section className="px-4 py-2">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <Globe className="w-3.5 h-3.5 text-blue-400" />
             Découvrir
           </h2>
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-muted-foreground">
             {phase === "inkdrop" && "INKDROP"}
-            {phase === "transition" && "⏳ Transition..."}
-            {phase === "mangadex" && `🌐 MangaDrop (${usedQueries.length}/${MANGADEX_QUERIES.length})`}
-            {phase === "end" && "✅ Fin"}
+            {phase === "transition" && "Transition..."}
+            {phase === "mangadex" && `MangaDrop (${usedQueries.length}/${MANGADEX_QUERIES.length})`}
+            {phase === "end" && "Terminé"}
           </span>
         </div>
 
@@ -1070,10 +857,10 @@ export default function Home() {
                 <div
                   key={manga.id}
                   onClick={() => handleMangaClick(manga)}
-                  className="block bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.98] cursor-pointer"
+                  className="block bg-card/40 border border-border/60 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex gap-3 p-3">
-                    <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden">
+                    <div className="w-20 h-28 rounded-lg bg-muted flex-shrink-0 overflow-hidden">
                       {manga.coverUrl ? (
                         <img
                           src={getImageUrl(manga.coverUrl)}
@@ -1082,12 +869,12 @@ export default function Home() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <BookOpen className="w-6 h-6 text-zinc-700" />
+                          <BookOpen className="w-6 h-6 text-muted-foreground/30" />
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">
+                      <h3 className="text-sm font-bold text-foreground group-hover:text-blue-400 transition-colors">
                         {manga.title}
                       </h3>
                       <div 
@@ -1103,14 +890,14 @@ export default function Home() {
                           <img 
                             src={manga.author.avatarUrl} 
                             alt={manga.author.username} 
-                            className="w-4 h-4 rounded-full object-cover border border-zinc-700"
+                            className="w-4 h-4 rounded-full object-cover border border-border"
                           />
                         ) : (
-                          <div className="w-4 h-4 rounded-full bg-zinc-800 flex items-center justify-center text-[8px] text-zinc-500 font-bold">
+                          <div className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[8px] text-muted-foreground font-bold">
                             {manga.author?.username?.charAt(0) || "?"}
                           </div>
                         )}
-                        <p className="text-zinc-400 text-xs truncate flex items-center gap-0.5 group-hover:text-blue-400 transition-colors">
+                        <p className="text-muted-foreground text-xs truncate flex items-center gap-0.5 group-hover:text-blue-400 transition-colors">
                           {manga.author?.username || "Inconnu"}
                           {manga.author?.isCertified && (
                             <BadgeCheck
@@ -1122,9 +909,9 @@ export default function Home() {
                           )}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-zinc-500 text-[10px]">
+                      <div className="flex items-center gap-3 mt-1 text-muted-foreground text-[10px]">
                         <span className="flex items-center gap-0.5">
-                          <Heart className="w-3 h-3 text-rose-500 fill-rose-500/20" />
+                          <Heart className="w-3 h-3 text-rose-500" />
                           {manga.likesCount || 0}
                         </span>
                         <span className="flex items-center gap-0.5">
@@ -1132,7 +919,7 @@ export default function Home() {
                           {manga.viewsCount || 0}
                         </span>
                         {manga.genre && manga.genre.length > 0 && (
-                          <span className="px-1.5 py-0.5 rounded bg-zinc-800/50 text-zinc-400 text-[8px]">
+                          <span className="px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground text-[8px] border border-border/30">
                             {manga.genre[0]}
                           </span>
                         )}
@@ -1153,17 +940,13 @@ export default function Home() {
                 }}
                 className="group relative overflow-hidden w-full max-w-sm mx-auto px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-blue-600/20 border border-blue-500/30 hover:border-purple-500/50 transition-all duration-300 hover:scale-[1.01] active:scale-[0.98]"
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
                 <div className="relative z-10 flex items-center justify-center gap-3">
                   <Globe className="w-4 h-4 text-purple-400" />
-                  <span className="text-sm font-semibold text-white">
-                    Explore plus de <span className="text-purple-400 font-bold">100 000 mangas</span>, clique ici pour en découvrir.
+                  <span className="text-sm font-semibold text-foreground">
+                    Explorer <span className="text-purple-400 font-bold">100 000+ mangas</span>
                   </span>
                   <ChevronRight className="w-4 h-4 text-purple-400 group-hover:translate-x-1 transition-transform" />
                 </div>
-
-                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/5 to-transparent" />
               </button>
             </div>
           )}
@@ -1174,11 +957,8 @@ export default function Home() {
                 <div className="flex justify-center mb-3">
                   <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
                 </div>
-                <p className="text-white text-lg font-bold">
-                  📚 Chargement des mangas MangaDrop...
-                </p>
-                <p className="text-zinc-400 text-sm mt-1">
-                  Prépare-toi à découvrir de nouveaux mondes
+                <p className="text-foreground text-lg font-bold">
+                  Chargement des mangas MangaDrop...
                 </p>
               </div>
             </div>
@@ -1192,10 +972,10 @@ export default function Home() {
                   <div
                     key={`mangadex-${manga.id}-${index}`}
                     onClick={() => handleMangaClick(manga)}
-                    className="block bg-zinc-900/40 border border-purple-800/40 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all active:scale-[0.98] cursor-pointer"
+                    className="block bg-card/40 border border-purple-800/40 rounded-2xl overflow-hidden hover:border-purple-500/50 transition-all active:scale-[0.98] cursor-pointer"
                   >
                     <div className="flex gap-3 p-3">
-                      <div className="w-20 h-28 rounded-lg bg-zinc-900 flex-shrink-0 overflow-hidden relative">
+                      <div className="w-20 h-28 rounded-lg bg-muted flex-shrink-0 overflow-hidden relative">
                         {manga.coverUrl ? (
                           <img
                             src={manga.coverUrl}
@@ -1204,7 +984,7 @@ export default function Home() {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <BookOpen className="w-6 h-6 text-zinc-700" />
+                            <BookOpen className="w-6 h-6 text-muted-foreground/30" />
                           </div>
                         )}
                         <div className="absolute top-1 left-1 flex gap-1">
@@ -1223,22 +1003,22 @@ export default function Home() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-bold text-white group-hover:text-purple-400 transition-colors">
+                        <h3 className="text-sm font-bold text-foreground group-hover:text-purple-400 transition-colors">
                           {manga.title}
                         </h3>
-                        <p className="text-zinc-400 text-xs truncate">par {manga.author?.username || "Inconnu"}</p>
-                        <div className="flex items-center gap-3 mt-1 text-zinc-500 text-[10px]">
+                        <p className="text-muted-foreground text-xs truncate">par {manga.author?.username || "Inconnu"}</p>
+                        <div className="flex items-center gap-3 mt-1 text-muted-foreground text-[10px]">
                           <span className="flex items-center gap-0.5 text-purple-400">
                             <Globe className="w-3 h-3" />
                             MangaDrop
                           </span>
-                          <span className="flex items-center gap-0.5 text-zinc-400">
+                          <span className="flex items-center gap-0.5">
                             {manga.language || "🌐"}
                           </span>
                           {manga.chapters && (
                             <span className="flex items-center gap-0.5">
                               <Library className="w-3 h-3" />
-                              {manga.chapters} chapitres
+                              {manga.chapters}
                             </span>
                           )}
                           {manga.genre && manga.genre.length > 0 && (
@@ -1254,10 +1034,10 @@ export default function Home() {
 
               {loadingInfinite && phase === "mangadex" && (
                 <div className="flex justify-center py-4">
-                  <div className="flex items-center gap-2 text-zinc-500">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="w-5 h-5 text-purple-400 animate-spin" />
                     <span className="text-xs">
-                      Chargement des mangas MangaDrop ({usedQueries.length}/{MANGADEX_QUERIES.length})
+                      Chargement ({usedQueries.length}/{MANGADEX_QUERIES.length})
                     </span>
                   </div>
                 </div>
@@ -1275,25 +1055,23 @@ export default function Home() {
 
           {phase === "end" && (
             <div className="text-center py-8">
-              <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6">
-                <p className="text-white text-lg font-bold">🎉 Tu as tout vu !</p>
-                <p className="text-zinc-400 text-sm mt-1">
-                  Reviens demain pour découvrir de nouveaux mangas INKDROP
-                </p>
+              <div className="bg-card/40 border border-border/60 rounded-2xl p-6">
+                <p className="text-foreground text-lg font-bold">Tu as tout vu !</p>
+                <p className="text-muted-foreground text-sm mt-1">Reviens demain pour découvrir de nouveaux mangas</p>
                 <div className="flex justify-center gap-4 mt-3">
                   <Link
                     href="/"
-                    className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-blue-900/20"
                   >
                     <RotateCcw className="w-4 h-4" />
                     Recharger
                   </Link>
                   <Link
                     href="/discover?tab=mangadex"
-                    className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-purple-900/20"
                   >
                     <Globe className="w-4 h-4" />
-                    Explorer MangaDrop
+                    MangaDrop
                   </Link>
                 </div>
               </div>
@@ -1302,23 +1080,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== ✅ TOAST DE NOTIFICATION ===== */}
+      {/* ===== TOAST DE NOTIFICATION ===== */}
       {showNotification && latestNotification && (
-        <div className="fixed top-4 left-4 right-4 z-50 max-w-sm mx-auto bg-zinc-900 border border-blue-500/30 rounded-2xl shadow-2xl shadow-blue-900/30 p-4 animate-slide-down">
+        <div className="fixed top-4 left-4 right-4 z-50 max-w-sm mx-auto bg-card/90 border border-blue-500/30 rounded-2xl shadow-2xl shadow-blue-900/30 p-4 animate-slide-down backdrop-blur-xl">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-full bg-blue-500/20 flex-shrink-0">
               <Bell className="w-4 h-4 text-blue-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white">{latestNotification.title || 'Nouvelle notification'}</p>
-              <p className="text-xs text-zinc-400">{latestNotification.body || ''}</p>
-              <p className="text-[10px] text-zinc-500 mt-1">
+              <p className="text-sm font-bold text-foreground">{latestNotification.title || 'Nouvelle notification'}</p>
+              <p className="text-xs text-muted-foreground">{latestNotification.body || ''}</p>
+              <p className="text-[10px] text-muted-foreground mt-1">
                 {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
             <button
               onClick={() => setShowNotification(false)}
-              className="text-zinc-500 hover:text-white transition-colors flex-shrink-0"
+              className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1326,76 +1104,35 @@ export default function Home() {
         </div>
       )}
 
-      {/* ===== ✅ NOTIFICATION D'INSTALLATION PWA (CENTRÉE) ===== */}
+      {/* ===== BANDEAU D'INSTALLATION PWA ===== */}
       {showInstallBanner && !isAppInstalled && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="max-w-md w-full mx-4 bg-gradient-to-b from-zinc-900 to-zinc-950 border border-blue-500/30 rounded-3xl p-8 shadow-2xl shadow-blue-900/40 animate-scale-up">
+          <div className="max-w-md w-full mx-4 bg-gradient-to-b from-card to-background border border-blue-500/30 rounded-3xl p-8 shadow-2xl shadow-blue-900/40 animate-scale-up">
             
-            {/* Icône SVG */}
             <div className="flex justify-center mb-4">
-              <svg
-                width="80"
-                height="80"
-                viewBox="0 0 80 80"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <rect x="8" y="12" width="64" height="56" rx="12" fill="#2563EB" />
-                <rect x="16" y="20" width="48" height="40" rx="8" fill="#1D4ED8" />
-                <path
-                  d="M40 28C36 28 32 30 32 34C32 38 36 40 40 40C44 40 48 38 48 34C48 30 44 28 40 28Z"
-                  fill="#60A5FA"
-                />
-                <path
-                  d="M48 48C48 44 44 42 40 42C36 42 32 44 32 48V52H48V48Z"
-                  fill="#93C5FD"
-                />
-                <rect x="8" y="12" width="64" height="56" rx="12" stroke="#3B82F6" strokeWidth="2" />
-                <path
-                  d="M28 12V20M52 12V20M20 28H60M20 36H60"
-                  stroke="#3B82F6"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <circle cx="40" cy="68" r="4" fill="#3B82F6" />
-                <path
-                  d="M70 68C70 61.5 64.5 56 58 56H22C15.5 56 10 61.5 10 68"
-                  stroke="#3B82F6"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
+              <Trophy className="w-16 h-16 text-blue-400" />
             </div>
 
-            <h2 className="text-2xl font-extrabold text-white text-center">
+            <h2 className="text-2xl font-extrabold text-foreground text-center">
               Installer INKDROP
             </h2>
 
-            <p className="text-zinc-400 text-center mt-2 text-sm leading-relaxed">
+            <p className="text-muted-foreground text-center mt-2 text-sm leading-relaxed">
               Profitez de l'application <br />
               <span className="text-blue-400 font-medium">plus rapide et hors ligne</span>
             </p>
 
-            <div className="flex justify-center gap-6 mt-4 text-xs text-zinc-500">
+            <div className="flex justify-center gap-6 mt-4 text-xs text-muted-foreground">
               <div className="text-center">
-                <svg className="w-5 h-5 mx-auto text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" />
-                  <path d="M8 12L11 15L16 9" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <Zap className="w-5 h-5 mx-auto text-green-400" />
                 <p className="mt-1">Rapide</p>
               </div>
               <div className="text-center">
-                <svg className="w-5 h-5 mx-auto text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                  <path d="M2 17L12 22L22 17" />
-                  <path d="M2 12L12 17L22 12" />
-                </svg>
+                <Globe className="w-5 h-5 mx-auto text-blue-400" />
                 <p className="mt-1">Hors ligne</p>
               </div>
               <div className="text-center">
-                <svg className="w-5 h-5 mx-auto text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                </svg>
+                <Crown className="w-5 h-5 mx-auto text-purple-400" />
                 <p className="mt-1">Premium</p>
               </div>
             </div>
@@ -1404,16 +1141,12 @@ export default function Home() {
               onClick={handleInstall}
               className="w-full mt-6 py-3.5 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-400 hover:to-purple-400 text-white font-bold text-base transition-all shadow-lg shadow-blue-900/40 flex items-center justify-center gap-2"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 5V19" strokeLinecap="round" />
-                <path d="M5 12H19" strokeLinecap="round" />
-              </svg>
               Installer l'application
             </button>
 
             <button
               onClick={handleDismissInstall}
-              className="w-full mt-3 py-2 text-zinc-500 hover:text-zinc-300 text-sm font-medium transition-colors"
+              className="w-full mt-3 py-2 text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
             >
               Pas maintenant
             </button>
