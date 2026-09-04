@@ -69,6 +69,7 @@ type NotificationSettings = {
 type Preferences = {
   theme: "light" | "dark" | "system";
   language: "fr" | "en";
+  accentColor?: string; // ✅ AJOUTÉ
 };
 
 type Tab = "account" | "security" | "notifications" | "preferences" | "advanced";
@@ -106,7 +107,16 @@ export default function SettingsPage() {
   const [preferences, setPreferences] = useState<Preferences>({
     theme: "system",
     language: "fr",
+    accentColor: "#f97316",
   });
+
+  // ✅ Accent color state
+  const [accentColor, setAccentColor] = useState("#f97316");
+
+  // ===== APPLY COLOR =====
+  const applyColor = (color: string) => {
+    document.documentElement.style.setProperty('--primary', color);
+  };
 
   // ===== LOAD USER DATA =====
   useEffect(() => {
@@ -135,6 +145,11 @@ export default function SettingsPage() {
         }
         if (data.preferences) {
           setPreferences(data.preferences);
+          // ✅ Charger la couleur
+          if (data.preferences.accentColor) {
+            setAccentColor(data.preferences.accentColor);
+            applyColor(data.preferences.accentColor);
+          }
         }
       }
     } catch (error) {
@@ -332,6 +347,48 @@ export default function SettingsPage() {
       }
 
       setSuccess("Préférences mises à jour");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ===== UPDATE ACCENT COLOR =====
+  const handleColorChange = async (color: string) => {
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      // Mettre à jour les préférences avec la nouvelle couleur
+      const updatedPreferences = {
+        ...preferences,
+        accentColor: color,
+      };
+
+      const res = await fetch(`${API_URL}/users/preferences`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updatedPreferences),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Erreur");
+      }
+
+      setPreferences(updatedPreferences);
+      setAccentColor(color);
+      applyColor(color);
+      setSuccess("✅ Couleur mise à jour !");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -568,7 +625,7 @@ export default function SettingsPage() {
           </div>
         )}
 
-           {/* ========================================== */}
+        {/* ========================================== */}
         {/* TAB 2 : SECURITY */}
         {/* ========================================== */}
         {activeTab === "security" && (
@@ -809,6 +866,7 @@ export default function SettingsPage() {
             </p>
 
             <div className="space-y-4">
+              {/* Thème */}
               <div>
                 <label className="block text-zinc-300 text-xs font-medium mb-2">
                   Thème
@@ -840,6 +898,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Langue */}
               <div>
                 <label className="block text-zinc-300 text-xs font-medium mb-2">
                   Langue
@@ -869,6 +928,82 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* ✅ SÉLECTEUR DE COULEUR */}
+              <div className="mt-6 pt-4 border-t border-zinc-800/40">
+                <label className="block text-zinc-300 text-xs font-medium mb-2">
+                  Couleur principale
+                </label>
+
+                {/* Couleurs prédéfinies */}
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { color: "#f97316", label: "Orange" },
+                    { color: "#10b981", label: "Émeraude" },
+                    { color: "#8b5cf6", label: "Violet" },
+                    { color: "#ec4899", label: "Rose" },
+                    { color: "#06b6d4", label: "Cyan" },
+                    { color: "#ef4444", label: "Rouge" },
+                    { color: "#3b82f6", label: "Bleu" },
+                    { color: "#f59e0b", label: "Ambre" },
+                  ].map(({ color, label }) => (
+                    <button
+                      key={color}
+                      onClick={() => handleColorChange(color)}
+                      className={`w-10 h-10 rounded-full border-2 transition-all ${
+                        accentColor === color
+                          ? "border-white scale-110 shadow-lg shadow-white/20"
+                          : "border-transparent hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      title={label}
+                    />
+                  ))}
+                </div>
+
+                {/* Sélecteur personnalisé */}
+                <div className="mt-3 flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={accentColor}
+                    onChange={(e) => handleColorChange(e.target.value)}
+                    className="w-12 h-12 rounded-xl cursor-pointer bg-transparent border-2 border-zinc-800 hover:border-zinc-600 transition-colors"
+                  />
+                  <input
+                    type="text"
+                    value={accentColor}
+                    onChange={(e) => handleColorChange(e.target.value)}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white text-sm font-mono focus:border-blue-500 outline-none transition-all"
+                    placeholder="#f97316"
+                  />
+                </div>
+
+                {/* Aperçu */}
+                <div className="mt-3 pt-3 border-t border-zinc-800/40">
+                  <label className="block text-zinc-300 text-xs font-medium mb-2">
+                    Aperçu
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      className="px-4 py-2 rounded-xl text-white text-sm font-medium transition-all"
+                      style={{ backgroundColor: accentColor }}
+                    >
+                      Bouton principal
+                    </button>
+                    <span
+                      className="px-3 py-1 rounded-full text-white text-xs font-medium"
+                      style={{ backgroundColor: accentColor + '33' }}
+                    >
+                      Badge
+                    </span>
+                    <div
+                      className="w-8 h-8 rounded-full border-2"
+                      style={{ borderColor: accentColor }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bouton Enregistrer */}
               <button
                 onClick={handleUpdatePreferences}
                 disabled={saving}
