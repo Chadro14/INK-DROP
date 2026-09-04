@@ -41,7 +41,6 @@ type NotificationSettings = {
 type Preferences = {
   theme: "light" | "dark" | "system";
   language: "fr" | "en";
-  accentColor?: string;
 };
 
 type Tab = "account" | "security" | "notifications" | "preferences" | "advanced";
@@ -79,14 +78,16 @@ export default function SettingsPage() {
   const [preferences, setPreferences] = useState<Preferences>({
     theme: "system",
     language: "fr",
-    accentColor: "#f97316",
   });
 
-  const [accentColor, setAccentColor] = useState("#f97316");
-
-  // ===== APPLY COLOR =====
-  const applyColor = (color: string) => {
-    document.documentElement.style.setProperty("--primary", color);
+  // ===== APPLY THEME =====
+  const applyTheme = (theme: string) => {
+    const root = document.documentElement;
+    if (theme === "light") {
+      root.classList.add("light-theme");
+    } else {
+      root.classList.remove("light-theme");
+    }
   };
 
   // ===== LOAD USER DATA =====
@@ -116,9 +117,8 @@ export default function SettingsPage() {
         }
         if (data.preferences) {
           setPreferences(data.preferences);
-          if (data.preferences.accentColor) {
-            setAccentColor(data.preferences.accentColor);
-            applyColor(data.preferences.accentColor);
+          if (data.preferences.theme) {
+            applyTheme(data.preferences.theme);
           }
         }
       }
@@ -316,6 +316,10 @@ export default function SettingsPage() {
         throw new Error(data.message || "Error");
       }
 
+      if (preferences.theme) {
+        applyTheme(preferences.theme);
+      }
+
       setSuccess("Preferences updated");
     } catch (err: any) {
       setError(err.message);
@@ -324,8 +328,8 @@ export default function SettingsPage() {
     }
   };
 
-  // ===== UPDATE ACCENT COLOR =====
-  const handleColorChange = async (color: string) => {
+  // ===== CHANGE THEME =====
+  const handleThemeChange = async (theme: "light" | "dark" | "system") => {
     setSaving(true);
     setError("");
     setSuccess("");
@@ -336,7 +340,7 @@ export default function SettingsPage() {
     try {
       const updatedPreferences = {
         ...preferences,
-        accentColor: color,
+        theme: theme,
       };
 
       const res = await fetch(`${API_URL}/users/preferences`, {
@@ -355,9 +359,8 @@ export default function SettingsPage() {
       }
 
       setPreferences(updatedPreferences);
-      setAccentColor(color);
-      applyColor(color);
-      setSuccess("Color updated successfully");
+      applyTheme(theme === "light" ? "light" : "dark");
+      setSuccess(`Theme ${theme === "light" ? "light" : "dark"} activated`);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -821,6 +824,7 @@ export default function SettingsPage() {
             </p>
 
             <div className="space-y-4">
+              {/* Theme */}
               <div>
                 <label className="block text-zinc-300 text-xs font-medium mb-2">Theme</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -831,12 +835,7 @@ export default function SettingsPage() {
                   ].map(({ value, label, icon: Icon }) => (
                     <button
                       key={value}
-                      onClick={() =>
-                        setPreferences({
-                          ...preferences,
-                          theme: value as Preferences["theme"],
-                        })
-                      }
+                      onClick={() => handleThemeChange(value as "light" | "dark" | "system")}
                       className={`py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 border ${
                         preferences.theme === value
                           ? "bg-blue-600 text-white border-blue-500"
@@ -850,6 +849,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Language */}
               <div>
                 <label className="block text-zinc-300 text-xs font-medium mb-2">Language</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -877,73 +877,7 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-zinc-800/40">
-                <label className="block text-zinc-300 text-xs font-medium mb-2">Primary Color</label>
-
-                <div className="flex flex-wrap gap-3">
-                  {[
-                    { color: "#f97316", label: "Orange" },
-                    { color: "#10b981", label: "Emerald" },
-                    { color: "#8b5cf6", label: "Purple" },
-                    { color: "#ec4899", label: "Pink" },
-                    { color: "#06b6d4", label: "Cyan" },
-                    { color: "#ef4444", label: "Red" },
-                    { color: "#3b82f6", label: "Blue" },
-                    { color: "#f59e0b", label: "Amber" },
-                  ].map(({ color, label }) => (
-                    <button
-                      key={color}
-                      onClick={() => handleColorChange(color)}
-                      className={`w-10 h-10 rounded-full border-2 transition-all ${
-                        accentColor === color
-                          ? "border-white scale-110 shadow-lg shadow-white/20"
-                          : "border-transparent hover:scale-105"
-                      }`}
-                      style={{ backgroundColor: color }}
-                      title={label}
-                    />
-                  ))}
-                </div>
-
-                <div className="mt-3 flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={accentColor}
-                    onChange={(e) => handleColorChange(e.target.value)}
-                    className="w-12 h-12 rounded-xl cursor-pointer bg-transparent border-2 border-zinc-800 hover:border-zinc-600 transition-colors"
-                  />
-                  <input
-                    type="text"
-                    value={accentColor}
-                    onChange={(e) => handleColorChange(e.target.value)}
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white text-sm font-mono focus:border-blue-500 outline-none transition-all"
-                    placeholder="#f97316"
-                  />
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-zinc-800/40">
-                  <label className="block text-zinc-300 text-xs font-medium mb-2">Preview</label>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      className="px-4 py-2 rounded-xl text-white text-sm font-medium transition-all"
-                      style={{ backgroundColor: accentColor }}
-                    >
-                      Primary Button
-                    </button>
-                    <span
-                      className="px-3 py-1 rounded-full text-white text-xs font-medium"
-                      style={{ backgroundColor: accentColor + "33" }}
-                    >
-                      Badge
-                    </span>
-                    <div
-                      className="w-8 h-8 rounded-full border-2"
-                      style={{ borderColor: accentColor }}
-                    />
-                  </div>
-                </div>
-              </div>
-
+              {/* Save Button */}
               <button
                 onClick={handleUpdatePreferences}
                 disabled={saving}
