@@ -457,15 +457,15 @@ export default function SettingsPage() {
     label: string;
     description?: string;
   }) => (
-    <div className="flex items-center justify-between py-3 border-b border-zinc-800/40 last:border-0">
+    <div className="flex items-center justify-between py-3 border-b border-border last:border-0">
       <div>
-        <p className="text-sm font-medium text-white">{label}</p>
-        {description && <p className="text-xs text-zinc-500 mt-0.5">{description}</p>}
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
       </div>
       <button
         onClick={onChange}
         className={`relative w-11 h-6 rounded-full transition-all duration-300 flex-shrink-0 ${
-          value ? "bg-blue-600" : "bg-zinc-700"
+          value ? "bg-blue-600" : "bg-muted"
         }`}
       >
         <span
@@ -479,26 +479,26 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-zinc-950">
+      <div className="flex items-center justify-center h-screen bg-background">
         <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
+    <div className="flex flex-col min-h-screen pb-24 bg-background text-foreground">
 
       {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <Link
             href="/profile"
-            className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium"
+            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-sm font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back</span>
           </Link>
-          <span className="text-base font-bold text-white tracking-tight">Settings</span>
+          <span className="text-base font-bold text-foreground tracking-tight">Settings</span>
           <div className="w-12" />
         </div>
       </header>
@@ -520,7 +520,7 @@ export default function SettingsPage() {
         )}
 
         {/* ===== TAB MENU ===== */}
-        <div className="grid grid-cols-5 gap-1 mb-6 bg-zinc-900/40 rounded-xl p-1 border border-zinc-800/60">
+        <div className="grid grid-cols-5 gap-1 mb-6 bg-card/40 rounded-xl p-1 border border-border/60">
           {[
             { id: "account", icon: User, label: "Account" },
             { id: "security", icon: Shield, label: "Security" },
@@ -536,7 +536,7 @@ export default function SettingsPage() {
                 className={`py-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-0.5 ${
                   activeTab === tab.id
                     ? "bg-blue-600 text-white shadow-md"
-                    : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -551,27 +551,27 @@ export default function SettingsPage() {
         {/* ========================================== */}
         {activeTab === "account" && (
           <div className="space-y-3">
-            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                 <User className="w-4 h-4 text-blue-400" />
                 Account Information
               </h3>
               <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-zinc-800/40">
-                  <span className="text-zinc-400 text-sm">Email</span>
-                  <span className="text-white text-sm font-medium">
+                <div className="flex justify-between py-2 border-b border-border/40">
+                  <span className="text-muted-foreground text-sm">Email</span>
+                  <span className="text-foreground text-sm font-medium">
                     {user?.email || "Not set"}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-zinc-800/40">
-                  <span className="text-zinc-400 text-sm">Username</span>
-                  <span className="text-white text-sm font-medium">
+                <div className="flex justify-between py-2 border-b border-border/40">
+                  <span className="text-muted-foreground text-sm">Username</span>
+                  <span className="text-foreground text-sm font-medium">
                     {user?.username || "Not set"}
                   </span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-zinc-800/40">
-                  <span className="text-zinc-400 text-sm">Role</span>
-                  <span className="text-white text-sm font-medium">
+                <div className="flex justify-between py-2 border-b border-border/40">
+                  <span className="text-muted-foreground text-sm">Role</span>
+                  <span className="text-foreground text-sm font-medium">
                     {user?.role === "ADMIN"
                       ? "Administrator"
                       : user?.role === "CREATOR"
@@ -580,8 +580,8 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 {user?.isCertified && (
-                  <div className="flex justify-between py-2 border-b border-zinc-800/40">
-                    <span className="text-zinc-400 text-sm">Certified</span>
+                  <div className="flex justify-between py-2 border-b border-border/40">
+                    <span className="text-muted-foreground text-sm">Certified</span>
                     <span className="text-blue-400 text-sm font-medium flex items-center gap-1">
                       <ShieldCheck className="w-4 h-4" />
                       Yes
@@ -598,14 +598,14 @@ export default function SettingsPage() {
         {/* ========================================== */}
         {activeTab === "security" && (
           <div className="space-y-3">
-            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Key className="w-4 h-4 text-blue-400" />
                 Change Password
               </h3>
               <form onSubmit={handlePasswordChange} className="space-y-3">
                 <div>
-                  <label className="block text-zinc-300 text-xs font-medium mb-1">
+                  <label className="block text-muted-foreground text-xs font-medium mb-1">
                     New Password
                   </label>
                   <div className="relative">
@@ -613,7 +613,7 @@ export default function SettingsPage() {
                       type={showPassword ? "text" : "password"}
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
                       required
                       minLength={8}
                       placeholder="New password"
@@ -621,21 +621,21 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-zinc-300 text-xs font-medium mb-1">
+                  <label className="block text-muted-foreground text-xs font-medium mb-1">
                     Confirm Password
                   </label>
                   <input
                     type={showPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+                    className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
                     required
                     placeholder="Confirm password"
                   />
@@ -650,35 +650,35 @@ export default function SettingsPage() {
               </form>
             </div>
 
-            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Mail className="w-4 h-4 text-blue-400" />
                 Change Email
               </h3>
               {!showEmailConfirm ? (
                 <form onSubmit={handleRequestEmailChange} className="space-y-3">
                   <div>
-                    <label className="block text-zinc-300 text-xs font-medium mb-1">
+                    <label className="block text-muted-foreground text-xs font-medium mb-1">
                       New Email
                     </label>
                     <input
                       type="email"
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
                       placeholder="new@email.com"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-zinc-300 text-xs font-medium mb-1">
+                    <label className="block text-muted-foreground text-xs font-medium mb-1">
                       Current Password
                     </label>
                     <input
                       type="password"
                       value={emailPassword}
                       onChange={(e) => setEmailPassword(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
                       placeholder="••••••••"
                       required
                     />
@@ -694,18 +694,18 @@ export default function SettingsPage() {
               ) : (
                 <form onSubmit={handleConfirmEmailChange} className="space-y-3">
                   <div>
-                    <label className="block text-zinc-300 text-xs font-medium mb-1">
+                    <label className="block text-muted-foreground text-xs font-medium mb-1">
                       Verification Token
                     </label>
                     <input
                       type="text"
                       value={emailToken}
                       onChange={(e) => setEmailToken(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+                      className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
                       placeholder="Enter the token received by email"
                       required
                     />
-                    <p className="text-xs text-zinc-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       A token has been sent to your new email address.
                     </p>
                   </div>
@@ -719,7 +719,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => setShowEmailConfirm(false)}
-                    className="w-full py-2 text-sm text-zinc-500 hover:text-white transition-colors"
+                    className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Cancel
                   </button>
@@ -733,16 +733,16 @@ export default function SettingsPage() {
         {/* TAB 3 : NOTIFICATIONS */}
         {/* ========================================== */}
         {activeTab === "notifications" && (
-          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+          <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
+            <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
               <Bell className="w-4 h-4 text-blue-400" />
               Notifications
             </h3>
-            <p className="text-xs text-zinc-500 mb-4">
+            <p className="text-xs text-muted-foreground mb-4">
               Manage the notifications you receive
             </p>
 
-            <div className="divide-y divide-zinc-800/40">
+            <div className="divide-y divide-border/40">
               <Toggle
                 value={notifSettings.newChapter}
                 onChange={() =>
@@ -814,19 +814,19 @@ export default function SettingsPage() {
         {/* TAB 4 : PREFERENCES */}
         {/* ========================================== */}
         {activeTab === "preferences" && (
-          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+          <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
+            <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
               <Palette className="w-4 h-4 text-blue-400" />
               Appearance & Language
             </h3>
-            <p className="text-xs text-zinc-500 mb-4">
+            <p className="text-xs text-muted-foreground mb-4">
               Customize the application display
             </p>
 
             <div className="space-y-4">
               {/* Theme */}
               <div>
-                <label className="block text-zinc-300 text-xs font-medium mb-2">Theme</label>
+                <label className="block text-muted-foreground text-xs font-medium mb-2">Theme</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { value: "light", label: "Light", icon: Sun },
@@ -839,7 +839,7 @@ export default function SettingsPage() {
                       className={`py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 border ${
                         preferences.theme === value
                           ? "bg-blue-600 text-white border-blue-500"
-                          : "bg-zinc-900/90 text-zinc-400 border-zinc-800 hover:border-zinc-700"
+                          : "bg-card/90 text-muted-foreground border-border hover:border-border/80"
                       }`}
                     >
                       <Icon className="w-3.5 h-3.5" />
@@ -851,7 +851,7 @@ export default function SettingsPage() {
 
               {/* Language */}
               <div>
-                <label className="block text-zinc-300 text-xs font-medium mb-2">Language</label>
+                <label className="block text-muted-foreground text-xs font-medium mb-2">Language</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { value: "fr", label: "Francais" },
@@ -868,7 +868,7 @@ export default function SettingsPage() {
                       className={`py-2.5 rounded-xl text-xs font-medium transition-all border ${
                         preferences.language === value
                           ? "bg-blue-600 text-white border-blue-500"
-                          : "bg-zinc-900/90 text-zinc-400 border-zinc-800 hover:border-zinc-700"
+                          : "bg-card/90 text-muted-foreground border-border hover:border-border/80"
                       }`}
                     >
                       {label}
@@ -894,8 +894,8 @@ export default function SettingsPage() {
         {/* ========================================== */}
         {activeTab === "advanced" && (
           <div className="space-y-3">
-            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+            <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                 <SettingsIcon className="w-4 h-4 text-blue-400" />
                 Advanced Actions
               </h3>
@@ -904,24 +904,24 @@ export default function SettingsPage() {
                 <button
                   onClick={handleExportData}
                   disabled={saving}
-                  className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/60 transition-all border border-zinc-800/40"
+                  className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-card/60 hover:bg-card/80 transition-all border border-border/40"
                 >
-                  <span className="text-sm text-white flex items-center gap-2">
-                    <Download className="w-4 h-4 text-zinc-400" />
+                  <span className="text-sm text-foreground flex items-center gap-2">
+                    <Download className="w-4 h-4 text-muted-foreground" />
                     Export My Data
                   </span>
-                  <ChevronRight className="w-4 h-4 text-zinc-500" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
 
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-900/60 hover:bg-zinc-800/60 transition-all border border-zinc-800/40"
+                  className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-card/60 hover:bg-card/80 transition-all border border-border/40"
                 >
-                  <span className="text-sm text-white flex items-center gap-2">
-                    <LogOut className="w-4 h-4 text-zinc-400" />
+                  <span className="text-sm text-foreground flex items-center gap-2">
+                    <LogOut className="w-4 h-4 text-muted-foreground" />
                     Log Out
                   </span>
-                  <ChevronRight className="w-4 h-4 text-zinc-500" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
 
                 <button
@@ -937,7 +937,7 @@ export default function SettingsPage() {
                 </button>
               </div>
 
-              <p className="text-xs text-zinc-500 mt-4 text-center">
+              <p className="text-xs text-muted-foreground mt-4 text-center">
                 Account deletion is irreversible. All your data will be lost.
               </p>
             </div>
