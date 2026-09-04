@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   ArrowLeft,
   Shield,
@@ -41,6 +42,7 @@ type NotificationSettings = {
 type Preferences = {
   theme: "light" | "dark" | "system";
   language: "fr" | "en";
+  accentColor?: string;
 };
 
 type Tab = "account" | "security" | "notifications" | "preferences" | "advanced";
@@ -78,7 +80,11 @@ export default function SettingsPage() {
   const [preferences, setPreferences] = useState<Preferences>({
     theme: "system",
     language: "fr",
+    accentColor: "#f97316",
   });
+
+  // Accent color state
+  const [accentColor, setAccentColor] = useState("#f97316");
 
   // ===== APPLY THEME =====
   const applyTheme = (theme: string) => {
@@ -89,6 +95,16 @@ export default function SettingsPage() {
       root.classList.remove("light-theme");
     }
   };
+
+  // ===== APPLY COLOR =====
+  const applyColor = (color: string) => {
+    if (color) {
+      document.documentElement.style.setProperty("--primary", color);
+    }
+  };
+
+  // ===== APPLY COLOR WITH HOOK =====
+  useThemeColor(accentColor);
 
   // ===== LOAD USER DATA =====
   useEffect(() => {
@@ -119,6 +135,10 @@ export default function SettingsPage() {
           setPreferences(data.preferences);
           if (data.preferences.theme) {
             applyTheme(data.preferences.theme);
+          }
+          if (data.preferences.accentColor) {
+            setAccentColor(data.preferences.accentColor);
+            applyColor(data.preferences.accentColor);
           }
         }
       }
@@ -319,6 +339,10 @@ export default function SettingsPage() {
       if (preferences.theme) {
         applyTheme(preferences.theme);
       }
+      if (preferences.accentColor) {
+        setAccentColor(preferences.accentColor);
+        applyColor(preferences.accentColor);
+      }
 
       setSuccess("Preferences updated");
     } catch (err: any) {
@@ -361,6 +385,47 @@ export default function SettingsPage() {
       setPreferences(updatedPreferences);
       applyTheme(theme === "light" ? "light" : "dark");
       setSuccess(`Theme ${theme === "light" ? "light" : "dark"} activated`);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ===== CHANGE COLOR =====
+  const handleColorChange = async (color: string) => {
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const updatedPreferences = {
+        ...preferences,
+        accentColor: color,
+      };
+
+      const res = await fetch(`${API_URL}/users/preferences`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updatedPreferences),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Error");
+      }
+
+      setPreferences(updatedPreferences);
+      setAccentColor(color);
+      applyColor(color);
+      setSuccess("Color updated successfully");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -874,6 +939,74 @@ export default function SettingsPage() {
                       {label}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Color Picker */}
+              <div className="mt-6 pt-4 border-t border-border/40">
+                <label className="block text-muted-foreground text-xs font-medium mb-2">Primary Color</label>
+
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    { color: "#f97316", label: "Orange" },
+                    { color: "#10b981", label: "Emerald" },
+                    { color: "#8b5cf6", label: "Purple" },
+                    { color: "#ec4899", label: "Pink" },
+                    { color: "#06b6d4", label: "Cyan" },
+                    { color: "#ef4444", label: "Red" },
+                    { color: "#3b82f6", label: "Blue" },
+                    { color: "#f59e0b", label: "Amber" },
+                  ].map(({ color, label }) => (
+                    <button
+                      key={color}
+                      onClick={() => handleColorChange(color)}
+                      className={`w-10 h-10 rounded-full border-2 transition-all ${
+                        accentColor === color
+                          ? "border-white scale-110 shadow-lg shadow-white/20"
+                          : "border-transparent hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      title={label}
+                    />
+                  ))}
+                </div>
+
+                <div className="mt-3 flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={accentColor}
+                    onChange={(e) => handleColorChange(e.target.value)}
+                    className="w-12 h-12 rounded-xl cursor-pointer bg-transparent border-2 border-border hover:border-foreground transition-colors"
+                  />
+                  <input
+                    type="text"
+                    value={accentColor}
+                    onChange={(e) => handleColorChange(e.target.value)}
+                    className="flex-1 px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground text-sm font-mono focus:border-blue-500 outline-none transition-all"
+                    placeholder="#f97316"
+                  />
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-border/40">
+                  <label className="block text-muted-foreground text-xs font-medium mb-2">Preview</label>
+                  <div className="flex flex-wrap gap-3">
+                    <button
+                      className="px-4 py-2 rounded-xl text-white text-sm font-medium transition-all"
+                      style={{ backgroundColor: accentColor }}
+                    >
+                      Primary Button
+                    </button>
+                    <span
+                      className="px-3 py-1 rounded-full text-white text-xs font-medium"
+                      style={{ backgroundColor: accentColor + "33" }}
+                    >
+                      Badge
+                    </span>
+                    <div
+                      className="w-8 h-8 rounded-full border-2"
+                      style={{ borderColor: accentColor }}
+                    />
+                  </div>
                 </div>
               </div>
 
