@@ -6,6 +6,7 @@ import './globals.css';
 import { Providers } from './providers';
 import AiChatbot from '@/components/ai/AiChatbot';
 import { SocketProvider } from '@/providers/SocketProvider';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -22,7 +23,10 @@ export default function RootLayout({
 }) {
   const [accentColor, setAccentColor] = useState("#f97316");
 
-  // ===== CHARGER LA COULEUR AU DÉMARRAGE =====
+  // ===== APPLIQUER LA COULEUR AVEC LE HOOK =====
+  useThemeColor(accentColor);
+
+  // ===== CHARGER LA COULEUR ET LE THÈME AU DÉMARRAGE =====
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -49,6 +53,16 @@ export default function RootLayout({
             const color = data.preferences.accentColor;
             setAccentColor(color);
             document.documentElement.style.setProperty("--primary", color);
+          }
+
+          // ✅ Appliquer le thème également (pour la sauvegarde)
+          if (data.preferences?.theme) {
+            const root = document.documentElement;
+            if (data.preferences.theme === "light") {
+              root.classList.add("light-theme");
+            } else {
+              root.classList.remove("light-theme");
+            }
           }
         })
         .catch((error) => {
