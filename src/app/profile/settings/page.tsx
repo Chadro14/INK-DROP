@@ -6,7 +6,6 @@ import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import {
   ArrowLeft,
-  Lock,
   Shield,
   LogOut,
   Trash2,
@@ -17,9 +16,6 @@ import {
   Mail,
   Bell,
   Palette,
-  Globe,
-  Smartphone,
-  Monitor,
   Download,
   Loader2,
   ChevronRight,
@@ -29,30 +25,6 @@ import {
   User,
   Key,
   ShieldCheck,
-  Sparkles,
-  Crown,
-  CreditCard,
-  MessageCircle,
-  Heart,
-  Users,
-  DollarSign,
-  Info,
-  HelpCircle,
-  FileText,
-  Zap,
-  Award,
-  Gift,
-  Clock,
-  Smartphone as PhoneIcon,
-  Check,
-  XCircle,
-  ToggleLeft,
-  ToggleRight,
-  UserPlus,
-  Users as UsersIcon,
-  BookOpen,
-  Star,
-  Menu,
   Settings as SettingsIcon,
 } from "lucide-react";
 
@@ -69,7 +41,7 @@ type NotificationSettings = {
 type Preferences = {
   theme: "light" | "dark" | "system";
   language: "fr" | "en";
-  accentColor?: string; // ✅ AJOUTÉ
+  accentColor?: string;
 };
 
 type Tab = "account" | "security" | "notifications" | "preferences" | "advanced";
@@ -110,12 +82,11 @@ export default function SettingsPage() {
     accentColor: "#f97316",
   });
 
-  // ✅ Accent color state
   const [accentColor, setAccentColor] = useState("#f97316");
 
   // ===== APPLY COLOR =====
   const applyColor = (color: string) => {
-    document.documentElement.style.setProperty('--primary', color);
+    document.documentElement.style.setProperty("--primary", color);
   };
 
   // ===== LOAD USER DATA =====
@@ -145,7 +116,6 @@ export default function SettingsPage() {
         }
         if (data.preferences) {
           setPreferences(data.preferences);
-          // ✅ Charger la couleur
           if (data.preferences.accentColor) {
             setAccentColor(data.preferences.accentColor);
             applyColor(data.preferences.accentColor);
@@ -153,7 +123,7 @@ export default function SettingsPage() {
         }
       }
     } catch (error) {
-      console.error("Erreur chargement des préférences:", error);
+      console.error("Error loading preferences:", error);
     } finally {
       setLoading(false);
     }
@@ -167,13 +137,13 @@ export default function SettingsPage() {
     setSuccess("");
 
     if (newPassword !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas");
+      setError("Passwords do not match");
       setSaving(false);
       return;
     }
 
     if (newPassword.length < 8) {
-      setError("Le mot de passe doit contenir au moins 8 caractères");
+      setError("Password must be at least 8 characters");
       setSaving(false);
       return;
     }
@@ -197,10 +167,10 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur");
+        throw new Error(data.message || "Error");
       }
 
-      setSuccess("Mot de passe modifié");
+      setSuccess("Password updated successfully");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
@@ -218,7 +188,7 @@ export default function SettingsPage() {
     setSuccess("");
 
     if (!newEmail || !emailPassword) {
-      setError("Veuillez remplir tous les champs");
+      setError("Please fill in all fields");
       setSaving(false);
       return;
     }
@@ -239,10 +209,10 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur");
+        throw new Error(data.message || "Error");
       }
 
-      setSuccess("Email de vérification envoyé");
+      setSuccess("Verification email sent");
       setShowEmailConfirm(true);
       setNewEmail("");
       setEmailPassword("");
@@ -260,7 +230,7 @@ export default function SettingsPage() {
     setSuccess("");
 
     if (!emailToken) {
-      setError("Token requis");
+      setError("Token required");
       setSaving(false);
       return;
     }
@@ -275,10 +245,10 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Token invalide");
+        throw new Error(data.message || "Invalid token");
       }
 
-      setSuccess("Email modifié");
+      setSuccess("Email updated successfully");
       setEmailToken("");
       setShowEmailConfirm(false);
     } catch (err: any) {
@@ -310,10 +280,10 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur");
+        throw new Error(data.message || "Error");
       }
 
-      setSuccess("Notifications mises à jour");
+      setSuccess("Notifications updated");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -343,10 +313,10 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur");
+        throw new Error(data.message || "Error");
       }
 
-      setSuccess("Préférences mises à jour");
+      setSuccess("Preferences updated");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -364,7 +334,6 @@ export default function SettingsPage() {
     if (!token) return;
 
     try {
-      // Mettre à jour les préférences avec la nouvelle couleur
       const updatedPreferences = {
         ...preferences,
         accentColor: color,
@@ -382,13 +351,13 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur");
+        throw new Error(data.message || "Error");
       }
 
       setPreferences(updatedPreferences);
       setAccentColor(color);
       applyColor(color);
-      setSuccess("✅ Couleur mise à jour !");
+      setSuccess("Color updated successfully");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -398,14 +367,10 @@ export default function SettingsPage() {
 
   // ===== DELETE ACCOUNT =====
   const handleDeleteAccount = async () => {
-    const password = prompt("Entrez votre mot de passe pour confirmer :");
+    const password = prompt("Enter your password to confirm:");
     if (!password) return;
 
-    if (
-      !confirm(
-        "Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible."
-      )
-    ) {
+    if (!confirm("Are you sure you want to delete your account? This action is irreversible.")) {
       return;
     }
 
@@ -429,11 +394,11 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur");
+        throw new Error(data.message || "Error");
       }
 
       localStorage.removeItem("token");
-      setSuccess("Compte supprimé");
+      setSuccess("Account deleted");
       setTimeout(() => router.push("/login"), 2000);
     } catch (err: any) {
       setError(err.message);
@@ -469,9 +434,9 @@ export default function SettingsPage() {
       a.click();
       URL.revokeObjectURL(url);
 
-      setSuccess("Données exportées");
+      setSuccess("Data exported");
     } catch {
-      setError("Erreur export");
+      setError("Export error");
     } finally {
       setSaving(false);
     }
@@ -492,9 +457,7 @@ export default function SettingsPage() {
     <div className="flex items-center justify-between py-3 border-b border-zinc-800/40 last:border-0">
       <div>
         <p className="text-sm font-medium text-white">{label}</p>
-        {description && (
-          <p className="text-xs text-zinc-500 mt-0.5">{description}</p>
-        )}
+        {description && <p className="text-xs text-zinc-500 mt-0.5">{description}</p>}
       </div>
       <button
         onClick={onChange}
@@ -530,11 +493,9 @@ export default function SettingsPage() {
             className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Retour</span>
+            <span>Back</span>
           </Link>
-          <span className="text-base font-bold text-white tracking-tight">
-            Paramètres
-          </span>
+          <span className="text-base font-bold text-white tracking-tight">Settings</span>
           <div className="w-12" />
         </div>
       </header>
@@ -558,11 +519,11 @@ export default function SettingsPage() {
         {/* ===== TAB MENU ===== */}
         <div className="grid grid-cols-5 gap-1 mb-6 bg-zinc-900/40 rounded-xl p-1 border border-zinc-800/60">
           {[
-            { id: "account", icon: User, label: "Compte" },
-            { id: "security", icon: Shield, label: "Sécurité" },
+            { id: "account", icon: User, label: "Account" },
+            { id: "security", icon: Shield, label: "Security" },
             { id: "notifications", icon: Bell, label: "Notifications" },
-            { id: "preferences", icon: Palette, label: "Apparence" },
-            { id: "advanced", icon: SettingsIcon, label: "Avancé" },
+            { id: "preferences", icon: Palette, label: "Appearance" },
+            { id: "advanced", icon: SettingsIcon, label: "Advanced" },
           ].map((tab) => {
             const Icon = tab.icon;
             return (
@@ -590,33 +551,37 @@ export default function SettingsPage() {
             <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
               <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
                 <User className="w-4 h-4 text-blue-400" />
-                Informations du compte
+                Account Information
               </h3>
               <div className="space-y-3">
                 <div className="flex justify-between py-2 border-b border-zinc-800/40">
                   <span className="text-zinc-400 text-sm">Email</span>
                   <span className="text-white text-sm font-medium">
-                    {user?.email || "Non défini"}
+                    {user?.email || "Not set"}
                   </span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-zinc-800/40">
-                  <span className="text-zinc-400 text-sm">Nom d'utilisateur</span>
+                  <span className="text-zinc-400 text-sm">Username</span>
                   <span className="text-white text-sm font-medium">
-                    {user?.username || "Non défini"}
+                    {user?.username || "Not set"}
                   </span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-zinc-800/40">
-                  <span className="text-zinc-400 text-sm">Rôle</span>
+                  <span className="text-zinc-400 text-sm">Role</span>
                   <span className="text-white text-sm font-medium">
-                    {user?.role === "ADMIN" ? "Administrateur" : user?.role === "CREATOR" ? "Créateur" : "Lecteur"}
+                    {user?.role === "ADMIN"
+                      ? "Administrator"
+                      : user?.role === "CREATOR"
+                      ? "Creator"
+                      : "Reader"}
                   </span>
                 </div>
                 {user?.isCertified && (
                   <div className="flex justify-between py-2 border-b border-zinc-800/40">
-                    <span className="text-zinc-400 text-sm">Certifié</span>
+                    <span className="text-zinc-400 text-sm">Certified</span>
                     <span className="text-blue-400 text-sm font-medium flex items-center gap-1">
                       <ShieldCheck className="w-4 h-4" />
-                      Oui
+                      Yes
                     </span>
                   </div>
                 )}
@@ -630,16 +595,15 @@ export default function SettingsPage() {
         {/* ========================================== */}
         {activeTab === "security" && (
           <div className="space-y-3">
-            {/* Change Password */}
             <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
               <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
                 <Key className="w-4 h-4 text-blue-400" />
-                Changer le mot de passe
+                Change Password
               </h3>
               <form onSubmit={handlePasswordChange} className="space-y-3">
                 <div>
                   <label className="block text-zinc-300 text-xs font-medium mb-1">
-                    Nouveau mot de passe
+                    New Password
                   </label>
                   <div className="relative">
                     <input
@@ -649,24 +613,20 @@ export default function SettingsPage() {
                       className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
                       required
                       minLength={8}
-                      placeholder="Nouveau mot de passe"
+                      placeholder="New password"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
                     >
-                      {showPassword ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
                 <div>
                   <label className="block text-zinc-300 text-xs font-medium mb-1">
-                    Confirmer
+                    Confirm Password
                   </label>
                   <input
                     type={showPassword ? "text" : "password"}
@@ -674,7 +634,7 @@ export default function SettingsPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
                     required
-                    placeholder="Confirmer"
+                    placeholder="Confirm password"
                   />
                 </div>
                 <button
@@ -682,39 +642,34 @@ export default function SettingsPage() {
                   disabled={saving}
                   className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {saving ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    "Mettre à jour"
-                  )}
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update"}
                 </button>
               </form>
             </div>
 
-            {/* Change Email */}
             <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
               <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
                 <Mail className="w-4 h-4 text-blue-400" />
-                Changer l'email
+                Change Email
               </h3>
               {!showEmailConfirm ? (
                 <form onSubmit={handleRequestEmailChange} className="space-y-3">
                   <div>
                     <label className="block text-zinc-300 text-xs font-medium mb-1">
-                      Nouvel email
+                      New Email
                     </label>
                     <input
                       type="email"
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
-                      placeholder="nouveau@email.com"
+                      placeholder="new@email.com"
                       required
                     />
                   </div>
                   <div>
                     <label className="block text-zinc-300 text-xs font-medium mb-1">
-                      Mot de passe actuel
+                      Current Password
                     </label>
                     <input
                       type="password"
@@ -730,25 +685,25 @@ export default function SettingsPage() {
                     disabled={saving}
                     className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Envoyer la demande"}
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Request"}
                   </button>
                 </form>
               ) : (
                 <form onSubmit={handleConfirmEmailChange} className="space-y-3">
                   <div>
                     <label className="block text-zinc-300 text-xs font-medium mb-1">
-                      Token de vérification
+                      Verification Token
                     </label>
                     <input
                       type="text"
                       value={emailToken}
                       onChange={(e) => setEmailToken(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
-                      placeholder="Entrez le token reçu par email"
+                      placeholder="Enter the token received by email"
                       required
                     />
                     <p className="text-xs text-zinc-500 mt-1">
-                      Un token a été envoyé à votre nouvelle adresse.
+                      A token has been sent to your new email address.
                     </p>
                   </div>
                   <button
@@ -756,14 +711,14 @@ export default function SettingsPage() {
                     disabled={saving}
                     className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer"}
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowEmailConfirm(false)}
                     className="w-full py-2 text-sm text-zinc-500 hover:text-white transition-colors"
                   >
-                    Annuler
+                    Cancel
                   </button>
                 </form>
               )}
@@ -781,7 +736,7 @@ export default function SettingsPage() {
               Notifications
             </h3>
             <p className="text-xs text-zinc-500 mb-4">
-              Gérez les notifications que vous recevez
+              Manage the notifications you receive
             </p>
 
             <div className="divide-y divide-zinc-800/40">
@@ -793,8 +748,8 @@ export default function SettingsPage() {
                     newChapter: !notifSettings.newChapter,
                   })
                 }
-                label="Nouveau chapitre"
-                description="Quand un manga suivi publie un chapitre"
+                label="New Chapter"
+                description="When a followed manga publishes a chapter"
               />
               <Toggle
                 value={notifSettings.newComment}
@@ -804,8 +759,8 @@ export default function SettingsPage() {
                     newComment: !notifSettings.newComment,
                   })
                 }
-                label="Nouveau commentaire"
-                description="Quand quelqu'un commente vos mangas"
+                label="New Comment"
+                description="When someone comments on your mangas"
               />
               <Toggle
                 value={notifSettings.newSubscriber}
@@ -815,8 +770,8 @@ export default function SettingsPage() {
                     newSubscriber: !notifSettings.newSubscriber,
                   })
                 }
-                label="Nouvel abonné"
-                description="Quand quelqu'un s'abonne à vous"
+                label="New Subscriber"
+                description="When someone subscribes to you"
               />
               <Toggle
                 value={notifSettings.earning}
@@ -826,8 +781,8 @@ export default function SettingsPage() {
                     earning: !notifSettings.earning,
                   })
                 }
-                label="Revenus"
-                description="Quand vous gagnez de l'argent"
+                label="Earnings"
+                description="When you earn money"
               />
               <Toggle
                 value={notifSettings.system}
@@ -837,8 +792,8 @@ export default function SettingsPage() {
                     system: !notifSettings.system,
                   })
                 }
-                label="Système"
-                description="Notifications importantes"
+                label="System"
+                description="Important notifications"
               />
             </div>
 
@@ -847,7 +802,7 @@ export default function SettingsPage() {
               disabled={saving}
               className="w-full mt-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
             </button>
           </div>
         )}
@@ -859,23 +814,20 @@ export default function SettingsPage() {
           <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
             <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
               <Palette className="w-4 h-4 text-blue-400" />
-              Apparence & Langue
+              Appearance & Language
             </h3>
             <p className="text-xs text-zinc-500 mb-4">
-              Personnalisez l'affichage de l'application
+              Customize the application display
             </p>
 
             <div className="space-y-4">
-              {/* Thème */}
               <div>
-                <label className="block text-zinc-300 text-xs font-medium mb-2">
-                  Thème
-                </label>
+                <label className="block text-zinc-300 text-xs font-medium mb-2">Theme</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { value: "light", label: "Clair", icon: Sun },
-                    { value: "dark", label: "Sombre", icon: Moon },
-                    { value: "system", label: "Système", icon: Laptop },
+                    { value: "light", label: "Light", icon: Sun },
+                    { value: "dark", label: "Dark", icon: Moon },
+                    { value: "system", label: "System", icon: Laptop },
                   ].map(({ value, label, icon: Icon }) => (
                     <button
                       key={value}
@@ -898,14 +850,11 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Langue */}
               <div>
-                <label className="block text-zinc-300 text-xs font-medium mb-2">
-                  Langue
-                </label>
+                <label className="block text-zinc-300 text-xs font-medium mb-2">Language</label>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { value: "fr", label: "Français" },
+                    { value: "fr", label: "Francais" },
                     { value: "en", label: "English" },
                   ].map(({ value, label }) => (
                     <button
@@ -928,23 +877,19 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* ✅ SÉLECTEUR DE COULEUR */}
               <div className="mt-6 pt-4 border-t border-zinc-800/40">
-                <label className="block text-zinc-300 text-xs font-medium mb-2">
-                  Couleur principale
-                </label>
+                <label className="block text-zinc-300 text-xs font-medium mb-2">Primary Color</label>
 
-                {/* Couleurs prédéfinies */}
                 <div className="flex flex-wrap gap-3">
                   {[
                     { color: "#f97316", label: "Orange" },
-                    { color: "#10b981", label: "Émeraude" },
-                    { color: "#8b5cf6", label: "Violet" },
-                    { color: "#ec4899", label: "Rose" },
+                    { color: "#10b981", label: "Emerald" },
+                    { color: "#8b5cf6", label: "Purple" },
+                    { color: "#ec4899", label: "Pink" },
                     { color: "#06b6d4", label: "Cyan" },
-                    { color: "#ef4444", label: "Rouge" },
-                    { color: "#3b82f6", label: "Bleu" },
-                    { color: "#f59e0b", label: "Ambre" },
+                    { color: "#ef4444", label: "Red" },
+                    { color: "#3b82f6", label: "Blue" },
+                    { color: "#f59e0b", label: "Amber" },
                   ].map(({ color, label }) => (
                     <button
                       key={color}
@@ -960,7 +905,6 @@ export default function SettingsPage() {
                   ))}
                 </div>
 
-                {/* Sélecteur personnalisé */}
                 <div className="mt-3 flex items-center gap-3">
                   <input
                     type="color"
@@ -977,21 +921,18 @@ export default function SettingsPage() {
                   />
                 </div>
 
-                {/* Aperçu */}
                 <div className="mt-3 pt-3 border-t border-zinc-800/40">
-                  <label className="block text-zinc-300 text-xs font-medium mb-2">
-                    Aperçu
-                  </label>
+                  <label className="block text-zinc-300 text-xs font-medium mb-2">Preview</label>
                   <div className="flex flex-wrap gap-3">
                     <button
                       className="px-4 py-2 rounded-xl text-white text-sm font-medium transition-all"
                       style={{ backgroundColor: accentColor }}
                     >
-                      Bouton principal
+                      Primary Button
                     </button>
                     <span
                       className="px-3 py-1 rounded-full text-white text-xs font-medium"
-                      style={{ backgroundColor: accentColor + '33' }}
+                      style={{ backgroundColor: accentColor + "33" }}
                     >
                       Badge
                     </span>
@@ -1003,13 +944,12 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Bouton Enregistrer */}
               <button
                 onClick={handleUpdatePreferences}
                 disabled={saving}
                 className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer"}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
               </button>
             </div>
           </div>
@@ -1023,7 +963,7 @@ export default function SettingsPage() {
             <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5">
               <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
                 <SettingsIcon className="w-4 h-4 text-blue-400" />
-                Actions avancées
+                Advanced Actions
               </h3>
 
               <div className="space-y-2">
@@ -1034,7 +974,7 @@ export default function SettingsPage() {
                 >
                   <span className="text-sm text-white flex items-center gap-2">
                     <Download className="w-4 h-4 text-zinc-400" />
-                    Exporter mes données
+                    Export My Data
                   </span>
                   <ChevronRight className="w-4 h-4 text-zinc-500" />
                 </button>
@@ -1045,7 +985,7 @@ export default function SettingsPage() {
                 >
                   <span className="text-sm text-white flex items-center gap-2">
                     <LogOut className="w-4 h-4 text-zinc-400" />
-                    Se déconnecter
+                    Log Out
                   </span>
                   <ChevronRight className="w-4 h-4 text-zinc-500" />
                 </button>
@@ -1057,14 +997,14 @@ export default function SettingsPage() {
                 >
                   <span className="text-sm text-rose-400 flex items-center gap-2">
                     <Trash2 className="w-4 h-4" />
-                    Supprimer mon compte
+                    Delete My Account
                   </span>
                   <ChevronRight className="w-4 h-4 text-rose-400/50" />
                 </button>
               </div>
 
               <p className="text-xs text-zinc-500 mt-4 text-center">
-                La suppression du compte est irréversible. Toutes vos données seront perdues.
+                Account deletion is irreversible. All your data will be lost.
               </p>
             </div>
           </div>
