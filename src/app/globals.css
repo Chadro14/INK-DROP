@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 @layer base {
+  /* ============================================
+     THÈME SOMBRE (DÉFAUT)
+     ============================================ */
   :root {
     --background: 0 0% 0%;
     --foreground: 0 0% 100%;
@@ -11,30 +14,19 @@
     --border: 0 0% 10%;
     --input: 0 0% 10%;
     --ring: 0 0% 100%;
+  }
 
-    /* ✅ NOUVELLES COULEURS - THÈME ORANGE/AMBRE (ACTIF) */
-    --primary: 35 100% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 35 100% 60%;
-    --secondary-foreground: 0 0% 100%;
-    --accent: 35 100% 40%;
-    --accent-foreground: 0 0% 100%;
-
-    /* ✅ NOUVELLES COULEURS - THÈME VERT ÉMERAUDE (commenté) */
-    /* --primary: 160 100% 40%; */
-    /* --primary-foreground: 0 0% 100%; */
-    /* --secondary: 160 100% 50%; */
-    /* --secondary-foreground: 0 0% 100%; */
-    /* --accent: 160 100% 30%; */
-    /* --accent-foreground: 0 0% 100%; */
-
-    /* ✅ NOUVELLES COULEURS - THÈME VIOLET (commenté) */
-    /* --primary: 270 100% 60%; */
-    /* --primary-foreground: 0 0% 100%; */
-    /* --secondary: 270 100% 70%; */
-    /* --secondary-foreground: 0 0% 100%; */
-    /* --accent: 270 100% 50%; */
-    /* --accent-foreground: 0 0% 100%; */
+  /* ============================================
+     THÈME CLAIR
+     ============================================ */
+  .light-theme {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 0%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 0%;
   }
 }
 
@@ -139,39 +131,4 @@
   .delay-300 { animation-delay: 0.3s; }
   .delay-400 { animation-delay: 0.4s; }
   .delay-500 { animation-delay: 0.5s; }
-
-  /* ✅ NOUVEAU : COULEURS UTILITAIRES */
-  .bg-primary {
-    background-color: hsl(var(--primary));
-  }
-  .bg-primary\/10 {
-    background-color: hsl(var(--primary) / 0.1);
-  }
-  .bg-primary\/20 {
-    background-color: hsl(var(--primary) / 0.2);
-  }
-  .bg-primary\/30 {
-    background-color: hsl(var(--primary) / 0.3);
-  }
-  .text-primary {
-    color: hsl(var(--primary));
-  }
-  .border-primary {
-    border-color: hsl(var(--primary));
-  }
-  .ring-primary {
-    --tw-ring-color: hsl(var(--primary));
-  }
-  .shadow-primary {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
-  }
-  .from-primary {
-    --tw-gradient-from: hsl(var(--primary));
-  }
-  .to-primary {
-    --tw-gradient-to: hsl(var(--primary));
-  }
-  .via-primary {
-    --tw-gradient-via: hsl(var(--primary));
-  }
 }
