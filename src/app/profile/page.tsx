@@ -507,7 +507,7 @@ export default function ProfilePage() {
         {/* ===== BOUTONS PUBLIER ===== */}
         <div className="w-full max-w-md mb-4 grid grid-cols-2 gap-3">
           <Link
-            href="/creator/upload/manga"
+            href="/creator/upload"
             className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition-all shadow-lg shadow-blue-600/20"
           >
             <BookOpen className="w-4 h-4" />
