@@ -1,9 +1,10 @@
+// components/layout/bottom-nav.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Plus, Film, User, Trophy } from "lucide-react";
+import { Home, Search, Plus, Compass, User, Trophy } from "lucide-react";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -16,10 +17,8 @@ export function BottomNav() {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/90 backdrop-blur-xl border-t border-zinc-800/60 px-2 py-2">
-      <div className="flex items-center justify-around max-w-lg mx-auto gap-1">
-        
-        {/* ACCUEIL */}
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/90 backdrop-blur-xl border-t border-zinc-800/60 px-4 py-2">
+      <div className="flex items-center justify-around max-w-lg mx-auto">
         <Link
           href="/"
           className={`flex flex-col items-center gap-1 transition-colors ${
@@ -30,7 +29,6 @@ export function BottomNav() {
           <span className="text-[10px] font-medium">Accueil</span>
         </Link>
 
-        {/* DÉCOUVRIR */}
         <Link
           href="/discover"
           className={`flex flex-col items-center gap-1 transition-colors ${
@@ -41,7 +39,6 @@ export function BottomNav() {
           <span className="text-[10px] font-medium">Découvrir</span>
         </Link>
 
-        {/* PUBLIER - MÊME ROUTE QUE TA BOTTOMNAV */}
         <Link
           href="/creator/upload"
           className="flex flex-col items-center gap-1 text-zinc-500 hover:text-white transition-colors"
@@ -52,20 +49,7 @@ export function BottomNav() {
           <span className="text-[10px] font-medium">Publier</span>
         </Link>
 
-        {/* REELS - NOUVEAU */}
-        <Link
-          href="/reels"
-          className={`flex flex-col items-center gap-1 transition-colors ${
-            isActive("/reels") || pathname?.startsWith("/reels/")
-              ? "text-purple-400"
-              : "text-zinc-500 hover:text-white"
-          }`}
-        >
-          <Film className="w-5 h-5" />
-          <span className="text-[10px] font-medium">Reels</span>
-        </Link>
-
-        {/* ÉVÉNEMENTS */}
+        {/* ✅ ÉVÉNEMENTS - NOUVEAU */}
         <Link
           href="/events"
           className={`flex flex-col items-center gap-1 transition-colors ${
@@ -78,7 +62,6 @@ export function BottomNav() {
           <span className="text-[10px] font-medium">Événements</span>
         </Link>
 
-        {/* PROFIL */}
         <Link
           href={token ? "/profile" : "/login"}
           className={`flex flex-col items-center gap-1 transition-colors ${
@@ -88,7 +71,6 @@ export function BottomNav() {
           <User className="w-5 h-5" />
           <span className="text-[10px] font-medium">Profil</span>
         </Link>
-
       </div>
     </nav>
   );
