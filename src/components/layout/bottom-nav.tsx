@@ -41,7 +41,7 @@ export function BottomNav() {
           <span className="text-[10px] font-medium">Découvrir</span>
         </Link>
 
-        {/* PUBLIER */}
+        {/* PUBLIER - MÊME ROUTE QUE TA BOTTOMNAV */}
         <Link
           href="/creator/upload"
           className="flex flex-col items-center gap-1 text-zinc-500 hover:text-white transition-colors"
