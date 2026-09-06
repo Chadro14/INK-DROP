@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { Loader } from "@/components/ui/loader";
 import {
   ArrowLeft,
   AlertCircle,
@@ -36,64 +35,33 @@ export default function CreateMangaPage() {
     "Tranche de vie", "Thriller"
   ];
 
-  const uploadCover = async (file: File): Promise<string | null> => {
+  // ✅ Upload de la couverture APRÈS la création du manga
+  const uploadCover = async (mangaId: string, file: File): Promise<string | null> => {
     const token = localStorage.getItem("token");
     if (!token) return null;
 
     try {
-      // 1. Obtenir l'URL d'upload signée
-      const urlRes = await fetch(`${API_URL}/mangas/cover/upload-url`, {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${API_URL}/mangas/${mangaId}/cover/upload-url`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: formData,
       });
 
-      if (!urlRes.ok) {
-        const errorData = await urlRes.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur génération URL");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Erreur upload couverture");
       }
 
-      const urlData = await urlRes.json();
-      const uploadUrl = urlData.data?.uploadUrl || urlData.uploadUrl;
-      const key = urlData.data?.key || urlData.key;
-
-      if (!uploadUrl || !key) {
-        throw new Error("URL ou clé manquante");
-      }
-
-      // 2. Uploader l'image
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error("Échec de l'upload de la couverture");
-      }
-
-      // 3. Finaliser
-      const finalizeRes = await fetch(`${API_URL}/mangas/cover/finalize`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ key }),
-      });
-
-      if (!finalizeRes.ok) {
-        const errorData = await finalizeRes.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur finalisation couverture");
-      }
-
-      const finalizeData = await finalizeRes.json();
-      return finalizeData.data?.coverUrl || finalizeData.coverUrl;
+      const data = await res.json();
+      return data.data?.coverUrl || data.coverUrl;
     } catch (error: any) {
       console.error("❌ Erreur upload couverture:", error.message);
-      throw error;
+      return null;
     }
   };
 
@@ -116,23 +84,13 @@ export default function CreateMangaPage() {
     setLoading(true);
 
     try {
-      let coverUrl = null;
-
-      // Uploader la couverture si présente
-      if (coverFile) {
-        coverUrl = await uploadCover(coverFile);
-      }
-
+      // 1. Créer le manga SANS couverture
       const payload: any = {
         title: title.trim(),
         description: description.trim() || undefined,
         genre: genre ? [genre] : [],
         status,
       };
-
-      if (coverUrl) {
-        payload.coverUrl = coverUrl;
-      }
 
       const res = await fetch(`${API_URL}/mangas`, {
         method: "POST",
@@ -149,9 +107,16 @@ export default function CreateMangaPage() {
         throw new Error(data.message || "Erreur lors de la création");
       }
 
+      const mangaId = data.data.id;
+
+      // 2. Uploader la couverture si présente
+      if (coverFile) {
+        await uploadCover(mangaId, coverFile);
+      }
+
       setSuccess(true);
       setTimeout(() => {
-        router.push(`/manga/${data.data.id}`);
+        router.push(`/manga/${mangaId}`);
       }, 1500);
     } catch (err: any) {
       setError(err.message);
@@ -261,6 +226,9 @@ export default function CreateMangaPage() {
                 </div>
                 <p className="text-sm font-medium text-foreground">Ajouter une couverture</p>
                 <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WEBP • Max 2MB</p>
+                <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                  La couverture sera ajoutée après la création du manga
+                </p>
                 <input
                   type="file"
                   accept="image/*"
