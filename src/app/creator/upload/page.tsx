@@ -32,7 +32,6 @@ export default function CreatorUploadPage() {
       }
 
       try {
-        // ✅ CORRECTION : Utiliser /users/me (backend correct)
         const res = await fetch(`${API_URL}/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -44,7 +43,6 @@ export default function CreatorUploadPage() {
         const data = await res.json();
         setUser(data);
         
-        // ✅ Vérifier le rôle (CREATOR ou ADMIN)
         if (data.role === "CREATOR" || data.role === "ADMIN") {
           setIsCreator(true);
         } else {
@@ -138,9 +136,9 @@ export default function CreatorUploadPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           
-          {/* AJOUTER UN CHAPITRE */}
+          {/* ✅ AJOUTER UN CHAPITRE - Redirige vers le dashboard */}
           <Link
-            href="/creator/upload/chapter"
+            href="/creator/dashboard"
             className="group bg-card/40 border border-border/60 rounded-2xl p-6 text-center hover:border-blue-500/50 transition-all hover:scale-[1.02] active:scale-[0.98]"
           >
             <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-500/30 transition-all">
@@ -154,7 +152,7 @@ export default function CreatorUploadPage() {
             </p>
             <div className="mt-4 inline-flex items-center gap-2 text-sm text-blue-400 font-medium">
               <PlusCircle className="w-4 h-4" />
-              Commencer
+              Voir mes mangas
             </div>
           </Link>
 
