@@ -344,11 +344,11 @@ export default function ChapterUploadPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-bold">Position :</span>
                 <span className="text-sm font-black text-white">N°{mangaPosition}</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${{
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                   canHavePaidChapters 
                     ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
                     : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                }[String(canHavePaidChapters)]}`}>
+                }`}>
                   {canHavePaidChapters ? "Payant autorisé" : "Gratuit obligatoire"}
                 </span>
               </div>
