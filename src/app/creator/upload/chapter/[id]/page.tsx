@@ -44,11 +44,8 @@ export default function ChapterUploadPage() {
   const [positionMessage, setPositionMessage] = useState("");
   const [loadingPosition, setLoadingPosition] = useState(true);
 
-  // ✅ État pour la couverture du chapitre
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
-  const [coverUploading, setCoverUploading] = useState(false);
+  // ✅ État pour la couverture du chapitre (URL simple)
+  const [coverUrl, setCoverUrl] = useState("");
 
   // RÉCUPÉRER LA POSITION DU MANGA
   useEffect(() => {
@@ -130,76 +127,6 @@ export default function ChapterUploadPage() {
       'pdf': 'application/pdf',
     };
     return mimeTypes[ext || ''] || 'application/octet-stream';
-  };
-
-  // ✅ Upload de la couverture du chapitre
-  const uploadCover = async (file: File): Promise<string | null> => {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
-
-    try {
-      setCoverUploading(true);
-
-      // 1. Obtenir l'URL d'upload signée
-      const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/cover/upload-url`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!urlRes.ok) {
-        const errorData = await urlRes.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur génération URL");
-      }
-
-      const urlData = await urlRes.json();
-      const uploadUrl = urlData.data?.uploadUrl || urlData.uploadUrl;
-      const key = urlData.data?.key || urlData.key;
-
-      if (!uploadUrl || !key) {
-        throw new Error("URL ou clé manquante");
-      }
-
-      // 2. Uploader l'image sur l'URL signée
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error("Échec de l'upload de la couverture");
-      }
-
-      // 3. Finaliser la couverture
-      const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/cover/finalize`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ key }),
-      });
-
-      if (!finalizeRes.ok) {
-        const errorData = await finalizeRes.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur finalisation couverture");
-      }
-
-      const finalizeData = await finalizeRes.json();
-      const publicUrl = finalizeData.data?.coverUrl || finalizeData.coverUrl;
-
-      setCoverUrl(publicUrl);
-      return publicUrl;
-    } catch (error: any) {
-      console.error("❌ Erreur upload couverture:", error.message);
-      setError(error.message || "Erreur lors de l'upload de la couverture");
-      return null;
-    } finally {
-      setCoverUploading(false);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -320,9 +247,9 @@ export default function ChapterUploadPage() {
         isDraft: false,
       };
 
-      // ✅ Ajouter la couverture si elle existe
-      if (coverUrl) {
-        finalizeBody.coverUrl = coverUrl;
+      // ✅ Ajouter la couverture si une URL est fournie
+      if (coverUrl.trim()) {
+        finalizeBody.coverUrl = coverUrl.trim();
       }
 
       if (isPaidChapter && canHavePaidChapters && mode === "images" && paidPages.length > 0) {
@@ -417,11 +344,11 @@ export default function ChapterUploadPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-bold">Position :</span>
                 <span className="text-sm font-black text-white">N°{mangaPosition}</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${{
                   canHavePaidChapters 
                     ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
                     : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                }`}>
+                }[String(canHavePaidChapters)]}`}>
                   {canHavePaidChapters ? "Payant autorisé" : "Gratuit obligatoire"}
                 </span>
               </div>
@@ -491,59 +418,22 @@ export default function ChapterUploadPage() {
             </div>
           </div>
 
-          {/* ✅ COUVERTURE DU CHAPITRE - AJOUTÉ */}
+          {/* ✅ COUVERTURE DU CHAPITRE - URL simple */}
           <div className="space-y-2">
             <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-blue-400" />
-              Couverture du chapitre (optionnel)
+              Couverture du chapitre (URL)
             </label>
-
-            {coverPreview ? (
-              <div className="relative w-32 h-40 rounded-xl overflow-hidden border border-zinc-800/80 group">
-                <img
-                  src={coverPreview}
-                  alt="Couverture du chapitre"
-                  className="w-full h-full object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCoverFile(null);
-                    setCoverPreview(null);
-                    setCoverUrl(null);
-                  }}
-                  className="absolute top-2 right-2 p-1 rounded-full bg-rose-600/90 text-white opacity-0 group-hover:opacity-100 transition-all"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                {coverUploading && (
-                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 text-white animate-spin" />
-                  </div>
-                )}
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-zinc-800 hover:border-blue-500/50 rounded-xl cursor-pointer bg-zinc-950/40 hover:bg-zinc-900/40 transition-all group">
-                <div className="p-2 rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/30 text-blue-400 mb-1 transition-all">
-                  <ImageIcon className="w-5 h-5" />
-                </div>
-                <p className="text-xs font-medium text-white">Ajouter une couverture</p>
-                <p className="text-[10px] text-zinc-500 mt-0.5">PNG, JPG, WEBP • Max 2MB</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setCoverFile(file);
-                      setCoverPreview(URL.createObjectURL(file));
-                      await uploadCover(file);
-                    }
-                  }}
-                  className="hidden"
-                />
-              </label>
-            )}
+            <input
+              type="url"
+              value={coverUrl}
+              onChange={(e) => setCoverUrl(e.target.value)}
+              placeholder="https://exemple.com/couverture-chapitre.jpg"
+              className="w-full px-4 py-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+            />
+            <p className="text-xs text-zinc-500">
+              Entrez l'URL de la couverture du chapitre (optionnel)
+            </p>
           </div>
 
           {mode === "images" && (
