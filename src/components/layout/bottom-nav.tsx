@@ -1,10 +1,9 @@
-// components/layout/bottom-nav.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, Plus, Compass, User, Trophy } from "lucide-react";
+import { Home, Search, Film, User, Trophy } from "lucide-react";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -19,6 +18,8 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-zinc-950/90 backdrop-blur-xl border-t border-zinc-800/60 px-4 py-2">
       <div className="flex items-center justify-around max-w-lg mx-auto">
+        
+        {/* ACCUEIL */}
         <Link
           href="/"
           className={`flex flex-col items-center gap-1 transition-colors ${
@@ -29,6 +30,7 @@ export function BottomNav() {
           <span className="text-[10px] font-medium">Accueil</span>
         </Link>
 
+        {/* DÉCOUVRIR */}
         <Link
           href="/discover"
           className={`flex flex-col items-center gap-1 transition-colors ${
@@ -39,17 +41,20 @@ export function BottomNav() {
           <span className="text-[10px] font-medium">Découvrir</span>
         </Link>
 
+        {/* REELS */}
         <Link
-          href="/creator/upload"
-          className="flex flex-col items-center gap-1 text-zinc-500 hover:text-white transition-colors"
+          href="/reels"
+          className={`flex flex-col items-center gap-1 transition-colors ${
+            isActive("/reels") || pathname?.startsWith("/reels/")
+              ? "text-purple-400"
+              : "text-zinc-500 hover:text-white"
+          }`}
         >
-          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/30 -mt-4">
-            <Plus className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-[10px] font-medium">Publier</span>
+          <Film className="w-5 h-5" />
+          <span className="text-[10px] font-medium">Reels</span>
         </Link>
 
-        {/* ✅ ÉVÉNEMENTS - NOUVEAU */}
+        {/* ÉVÉNEMENTS */}
         <Link
           href="/events"
           className={`flex flex-col items-center gap-1 transition-colors ${
@@ -62,6 +67,7 @@ export function BottomNav() {
           <span className="text-[10px] font-medium">Événements</span>
         </Link>
 
+        {/* PROFIL */}
         <Link
           href={token ? "/profile" : "/login"}
           className={`flex flex-col items-center gap-1 transition-colors ${
@@ -71,6 +77,7 @@ export function BottomNav() {
           <User className="w-5 h-5" />
           <span className="text-[10px] font-medium">Profil</span>
         </Link>
+
       </div>
     </nav>
   );
