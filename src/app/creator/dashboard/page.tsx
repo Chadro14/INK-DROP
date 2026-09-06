@@ -74,8 +74,8 @@ export default function CreatorDashboard() {
       }
 
       try {
-        // Récupérer l'utilisateur
-        const userRes = await fetch(`${API_URL}/auth/me`, {
+        // ✅ CORRECTION : Utiliser /users/me au lieu de /auth/me
+        const userRes = await fetch(`${API_URL}/users/me`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -169,11 +169,11 @@ export default function CreatorDashboard() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background px-4">
         <div className="w-16 h-16 rounded-full bg-rose-950/30 flex items-center justify-center mb-4">
           <AlertCircle className="w-8 h-8 text-rose-400" />
         </div>
-        <p className="text-zinc-400 text-center max-w-md">{error}</p>
+        <p className="text-muted-foreground text-center max-w-md">{error}</p>
         <Link
           href="/profile"
           className="mt-6 px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all shadow-lg shadow-blue-600/20"
@@ -226,16 +226,16 @@ export default function CreatorDashboard() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
+    <div className="flex flex-col min-h-screen bg-background text-foreground pb-24">
       
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
-          <Link href="/profile" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium">
+          <Link href="/profile" className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-sm font-medium">
             <ArrowLeft className="w-4 h-4" />
             <span>Retour</span>
           </Link>
-          <span className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+          <span className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
             <BarChart className="w-4 h-4 text-blue-400" />
             Dashboard Createur
           </span>
@@ -246,7 +246,7 @@ export default function CreatorDashboard() {
       <main className="flex-1 px-4 md:px-8 py-6 max-w-4xl mx-auto w-full">
         
         {/* Info créateur */}
-        <div className="bg-gradient-to-r from-zinc-900/60 via-blue-950/30 to-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 mb-6">
+        <div className="bg-gradient-to-r from-background/60 via-blue-950/30 to-background/60 border border-border/80 rounded-2xl p-5 mb-6">
           <div className="flex items-center gap-4">
             {/* Avatar */}
             <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-600/30 to-blue-500/20 flex items-center justify-center border border-blue-500/30 overflow-hidden">
@@ -261,7 +261,7 @@ export default function CreatorDashboard() {
               )}
             </div>
             <div>
-              <p className="text-lg font-bold text-white flex items-center gap-2">
+              <p className="text-lg font-bold text-foreground flex items-center gap-2">
                 {user?.username}
                 {user?.isCertified && (
                   <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20 flex items-center gap-1">
@@ -285,8 +285,8 @@ export default function CreatorDashboard() {
                   </span>
                 ) : null}
               </p>
-              <p className="text-xs text-zinc-400 flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-full bg-zinc-800/50 text-zinc-400 border border-zinc-700/30 text-[10px]">
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-card/50 text-muted-foreground border border-border/30 text-[10px]">
                   {user?.role}
                 </span>
                 <span>•</span>
@@ -301,10 +301,10 @@ export default function CreatorDashboard() {
           {statCards.map((stat, index) => {
             const Icon = stat.icon;
             return (
-              <div key={index} className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 text-center hover:border-blue-500/30 transition-all duration-300 hover:scale-[1.02] group">
+              <div key={index} className="bg-card/40 border border-border/80 rounded-xl p-4 text-center hover:border-blue-500/30 transition-all duration-300 hover:scale-[1.02] group">
                 <Icon className={`w-6 h-6 ${stat.color} mx-auto mb-2 group-hover:scale-110 transition-transform duration-300`} />
-                <p className="text-2xl font-bold text-white">{stat.value}</p>
-                <p className="text-[10px] text-zinc-500 font-medium">{stat.label}</p>
+                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                <p className="text-[10px] text-muted-foreground font-medium">{stat.label}</p>
               </div>
             );
           })}
@@ -312,8 +312,8 @@ export default function CreatorDashboard() {
 
         {/* Performances des mangas */}
         {mangas.length > 0 && (
-          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4 mb-6">
-            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+          <div className="bg-card/40 border border-border/80 rounded-2xl p-4 mb-6">
+            <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-blue-400" />
               Performances de vos mangas
             </h3>
@@ -322,11 +322,11 @@ export default function CreatorDashboard() {
                 <Link
                   key={manga.id}
                   href={`/manga/${manga.slug || manga.id}`}
-                  className="bg-zinc-900/60 rounded-xl p-3 border border-zinc-800/40 hover:border-blue-500/30 transition-all block"
+                  className="bg-card/60 rounded-xl p-3 border border-border/40 hover:border-blue-500/30 transition-all block"
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-white truncate max-w-[150px]">{manga.title}</p>
-                    <div className="flex items-center gap-3 text-xs text-zinc-500">
+                    <p className="text-sm font-medium text-foreground truncate max-w-[150px]">{manga.title}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Eye className="w-3 h-3 text-purple-400" /> {manga.viewsCount || 0}
                       </span>
@@ -341,7 +341,7 @@ export default function CreatorDashboard() {
                 </Link>
               ))}
               {mangas.length > 3 && (
-                <p className="text-xs text-zinc-500 text-center">+ {mangas.length - 3} autres mangas</p>
+                <p className="text-xs text-muted-foreground text-center">+ {mangas.length - 3} autres mangas</p>
               )}
             </div>
           </div>
@@ -349,8 +349,9 @@ export default function CreatorDashboard() {
 
         {/* Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* ✅ CORRECTION : Publier un manga → /creator/manga/create */}
           <Link
-            href="/creator/upload"
+            href="/creator/manga/create"
             className="p-4 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-center font-medium transition-all shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2"
           >
             <Plus className="w-5 h-5" />
@@ -358,7 +359,7 @@ export default function CreatorDashboard() {
           </Link>
           <Link
             href="/creator/balance"
-            className="p-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-center font-medium transition-all border border-zinc-700/50 flex items-center justify-center gap-2"
+            className="p-4 rounded-xl bg-card/60 hover:bg-card/80 text-foreground text-center font-medium transition-all border border-border/50 flex items-center justify-center gap-2"
           >
             <DollarSign className="w-5 h-5 text-emerald-400" />
             Gerer les revenus
@@ -367,11 +368,11 @@ export default function CreatorDashboard() {
 
         {/* Si aucun manga */}
         {stats?.mangas === 0 && (
-          <div className="mt-6 p-6 bg-zinc-900/30 border border-zinc-800/40 rounded-2xl text-center">
-            <BookOpen className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
-            <p className="text-zinc-400 font-medium">Vous n'avez pas encore publie de manga</p>
+          <div className="mt-6 p-6 bg-card/30 border border-border/40 rounded-2xl text-center">
+            <BookOpen className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground font-medium">Vous n'avez pas encore publie de manga</p>
             <Link
-              href="/creator/upload"
+              href="/creator/manga/create"
               className="mt-3 inline-block px-5 py-2 rounded-full bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 transition-all"
             >
               Publier votre premier manga
