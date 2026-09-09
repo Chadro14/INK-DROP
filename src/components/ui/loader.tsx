@@ -11,7 +11,7 @@ interface LoaderProps {
   color?: string;
 }
 
-function Loader({
+export function Loader({
   fullScreen = true,
   label = "Chargement…",
   size = 22,
@@ -19,7 +19,6 @@ function Loader({
 }: LoaderProps) {
   const gradientId = `inkGradient-${color.replace("#", "")}`;
 
-  // Génère les lignes de vitesse (convention manga : traits radiants à l'impact)
   const speedLines = Array.from({ length: 10 }, (_, i) => {
     const angle = (360 / 10) * i;
     return (
@@ -86,7 +85,6 @@ function Loader({
           height: ${size * 1.6}px;
         }
 
-        /* ===== TRAME DE DEMI-TEINTES (grain d'impression manga) ===== */
         .halftone {
           position: absolute;
           inset: -30px;
@@ -98,7 +96,6 @@ function Loader({
           animation: halftone-breathe 3.6s ease-in-out infinite;
         }
 
-        /* ===== LIGNES DE VITESSE (langage manga : impact) ===== */
         .speed-burst {
           position: absolute;
           inset: 0;
@@ -115,7 +112,6 @@ function Loader({
           animation: speed-shoot 1.8s ease-out infinite;
         }
 
-        /* ===== GOUTTE D'ENCRE ===== */
         .ink-drop {
           position: absolute;
           left: 50%;
@@ -134,7 +130,6 @@ function Loader({
           height: 62%;
         }
 
-        /* ===== ONDES D'ENCRE ===== */
         .ink-ripple {
           position: absolute;
           left: 50%;
@@ -251,5 +246,4 @@ function Loader({
   );
 }
 
-export { Loader };
 export default Loader;
