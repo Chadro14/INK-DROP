@@ -5,14 +5,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Search, User, Trophy } from "lucide-react";
 
-// 🎬 SVG REEL MODERN
+// 🎬 SVG REELS — STYLE INSTAGRAM
 const ReelIcon = ({ className = "w-5 h-5", active = false }: { className?: string; active?: boolean }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="2" y="2" width="20" height="20" rx="4" stroke="currentColor" strokeWidth="1.8" />
-    <rect x="6" y="2" width="4" height="20" rx="1" fill="currentColor" opacity={active ? "0.8" : "0.4"} />
-    <rect x="14" y="2" width="4" height="20" rx="1" fill="currentColor" opacity={active ? "0.8" : "0.4"} />
-    <circle cx="12" cy="12" r="4" fill="currentColor" opacity={active ? "0.6" : "0.2"} />
-    <circle cx="12" cy="12" r="2" fill="currentColor" opacity={active ? "1" : "0.5"} />
+    {/* Carré avec coins arrondis */}
+    <rect 
+      x="2.5" 
+      y="2.5" 
+      width="19" 
+      height="19" 
+      rx="4.5" 
+      stroke="currentColor" 
+      strokeWidth="1.8"
+      fill={active ? "currentColor" : "none"}
+      fillOpacity={active ? "0.12" : "0"}
+    />
+    
+    {/* Triangle de lecture (play) */}
+    <polygon 
+      points="9.5,7.5 16.5,12 9.5,16.5" 
+      fill="currentColor" 
+      opacity={active ? "1" : "0.7"} 
+    />
   </svg>
 );
 
@@ -36,7 +50,6 @@ export function BottomNav({
 
   const isActive = (path: string) => pathname === path;
 
-  // 🔥 STYLES DYNAMIQUES SELON LE THÈME
   const navBg =
     theme === "dark"
       ? "bg-zinc-950/90 backdrop-blur-xl border-t border-zinc-800/60"
@@ -47,7 +60,7 @@ export function BottomNav({
 
   const activeStyle = (color: string) => ({
     color: color,
-    filter: `drop-shadow(0 0 10px ${color}60)`,
+    filter: `drop-shadow(0 0 12px ${color}70)`,
   });
 
   return (
@@ -78,7 +91,7 @@ export function BottomNav({
           <span className="text-[10px] font-medium">Découvrir</span>
         </Link>
 
-        {/* REELS — AVEC NOUVEAU SVG */}
+        {/* REELS — STYLE INSTAGRAM */}
         <Link
           href="/reels"
           className={`flex flex-col items-center gap-1 transition-all duration-200 ${
