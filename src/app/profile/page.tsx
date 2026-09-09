@@ -261,7 +261,7 @@ export default function ProfilePage() {
         <p className="text-muted-foreground text-center">{error || "Profil non trouvé"}</p>
         <button
           onClick={() => router.push("/login")}
-          className="mt-4 px-6 py-2.5 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
+          className="mt-4 px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all shadow-lg shadow-blue-600/20"
         >
           Se connecter
         </button>
