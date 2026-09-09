@@ -35,33 +35,65 @@ export default function CreateMangaPage() {
     "Tranche de vie", "Thriller"
   ];
 
-  // ✅ Upload de la couverture APRÈS la création du manga
-  const uploadCover = async (mangaId: string, file: File): Promise<string | null> => {
+  // ✅ Upload de la couverture APRÈS la création du manga - CORRIGÉ
+  const uploadCover = async (mangaId: string, file: File): Promise<boolean> => {
     const token = localStorage.getItem("token");
-    if (!token) return null;
+    if (!token) return false;
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch(`${API_URL}/mangas/${mangaId}/cover/upload-url`, {
+      // 1. Obtenir l'URL d'upload pré-signée
+      const uploadUrlRes = await fetch(`${API_URL}/mangas/${mangaId}/cover/upload-url`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        body: formData,
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur upload couverture");
+      if (!uploadUrlRes.ok) {
+        const errorData = await uploadUrlRes.json().catch(() => ({}));
+        throw new Error(errorData.message || "Erreur lors de la génération de l'URL d'upload");
       }
 
-      const data = await res.json();
-      return data.data?.coverUrl || data.coverUrl;
+      const uploadData = await uploadUrlRes.json();
+      const { uploadUrl, key } = uploadData.data;
+
+      if (!uploadUrl || !key) {
+        throw new Error("URL d'upload ou clé manquante");
+      }
+
+      // 2. Uploader le fichier vers l'URL pré-signée (PUT)
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type,
+        },
+        body: file,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error(`Échec de l'upload: ${uploadRes.status}`);
+      }
+
+      // 3. Finaliser la couverture
+      const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/cover/finalize`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ key }),
+      });
+
+      if (!finalizeRes.ok) {
+        const errorData = await finalizeRes.json().catch(() => ({}));
+        throw new Error(errorData.message || "Erreur lors de la finalisation de la couverture");
+      }
+
+      return true;
     } catch (error: any) {
       console.error("❌ Erreur upload couverture:", error.message);
-      return null;
+      setError(`Erreur d'upload: ${error.message}`);
+      return false;
     }
   };
 
@@ -111,13 +143,18 @@ export default function CreateMangaPage() {
 
       // 2. Uploader la couverture si présente
       if (coverFile) {
-        await uploadCover(mangaId, coverFile);
+        const uploadSuccess = await uploadCover(mangaId, coverFile);
+        if (!uploadSuccess) {
+          // L'upload a échoué mais le manga est créé
+          // On continue quand même (l'utilisateur pourra réessayer plus tard)
+          setError("⚠️ Manga créé mais l'upload de la couverture a échoué. Vous pourrez l'ajouter plus tard.");
+        }
       }
 
       setSuccess(true);
       setTimeout(() => {
         router.push(`/manga/${mangaId}`);
-      }, 1500);
+      }, 2000);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -154,16 +191,16 @@ export default function CreateMangaPage() {
         <form onSubmit={handleSubmit} className="bg-card/40 border border-border/80 rounded-2xl p-6 space-y-6">
 
           {error && (
-            <div className="flex items-center gap-2 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-sm">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-              <span>{error}</span>
+            <div className="flex items-start gap-2 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              <span className="whitespace-pre-wrap">{error}</span>
             </div>
           )}
 
           {success && (
             <div className="flex items-center gap-2 p-3.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-emerald-300 text-sm">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-              <span>Manga créé ! Redirection...</span>
+              <span>Manga créé avec succès ! Redirection...</span>
             </div>
           )}
 
@@ -235,6 +272,11 @@ export default function CreateMangaPage() {
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
+                      // Vérifier la taille (max 2MB)
+                      if (file.size > 2 * 1024 * 1024) {
+                        setError("L'image ne doit pas dépasser 2MB");
+                        return;
+                      }
                       setCoverFile(file);
                       setCoverPreview(URL.createObjectURL(file));
                     }
