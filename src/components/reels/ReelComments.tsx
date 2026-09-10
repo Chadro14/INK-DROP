@@ -40,9 +40,15 @@ interface Props {
   reelId: string;
   initialCount?: number;
   onClose?: () => void;
+  onCommentAdded?: (delta: number) => void; // ✅ NOUVELLE PROP
 }
 
-export function ReelComments({ reelId, initialCount = 0, onClose }: Props) {
+export function ReelComments({
+  reelId,
+  initialCount = 0,
+  onClose,
+  onCommentAdded, // ✅ NOUVELLE PROP
+}: Props) {
   const router = useRouter();
   const [comments, setComments] = useState<ReelComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,9 +58,23 @@ export function ReelComments({ reelId, initialCount = 0, onClose }: Props) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [totalComments, setTotalComments] = useState(initialCount);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [replyTo, setReplyTo] = useState<ReelComment | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // ✅ Récupérer l'ID utilisateur au montage
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        setCurrentUserId(parsed?.id || null);
+      }
+    } catch (err) {
+      console.error("Erreur parsing user:", err);
+    }
+  }, []);
 
   // ============================================
   // CHARGER LES COMMENTAIRES
@@ -132,7 +152,6 @@ export function ReelComments({ reelId, initialCount = 0, onClose }: Props) {
 
       const newComment = data.data;
 
-      // Si réponse → ajouter aux replies
       if (replyTo) {
         setComments((prev) =>
           prev.map((c) =>
@@ -146,13 +165,15 @@ export function ReelComments({ reelId, initialCount = 0, onClose }: Props) {
           )
         );
       } else {
-        // Sinon → ajouter en haut
         setComments((prev) => [newComment, ...prev]);
       }
 
       setContent("");
       setReplyTo(null);
       setTotalComments((prev) => prev + 1);
+
+      // ✅ NOTIFIER LE PARENT
+      onCommentAdded?.(1);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -183,7 +204,9 @@ export function ReelComments({ reelId, initialCount = 0, onClose }: Props) {
             ? {
                 ...c,
                 isLiked: data.liked,
-                likesCount: data.likesCount ?? (data.liked ? c.likesCount + 1 : c.likesCount - 1),
+                likesCount:
+                  data.likesCount ??
+                  (data.liked ? c.likesCount + 1 : c.likesCount - 1),
               }
             : {
                 ...c,
@@ -200,7 +223,11 @@ export function ReelComments({ reelId, initialCount = 0, onClose }: Props) {
   // ============================================
   // SUPPRIMER UN COMMENTAIRE
   // ============================================
-  const handleDelete = async (commentId: string, isReply = false, parentId?: string) => {
+  const handleDelete = async (
+    commentId: string,
+    isReply = false,
+    parentId?: string
+  ) => {
     if (!confirm("Supprimer ce commentaire ?")) return;
 
     const token = localStorage.getItem("token");
@@ -229,6 +256,9 @@ export function ReelComments({ reelId, initialCount = 0, onClose }: Props) {
           setComments((prev) => prev.filter((c) => c.id !== commentId));
         }
         setTotalComments((prev) => Math.max(0, prev - 1));
+
+        // ✅ NOTIFIER LE PARENT
+        onCommentAdded?.(-1);
       }
     } catch (err) {
       console.error("Erreur suppression:", err);
@@ -253,86 +283,100 @@ export function ReelComments({ reelId, initialCount = 0, onClose }: Props) {
   // ============================================
   // RENDU COMMENTAIRE
   // ============================================
-  const renderComment = (comment: ReelComment, isReply = false) => (
-    <div
-      key={comment.id}
-      className={`flex gap-3 ${isReply ? "ml-10 mt-3" : "py-3"}`}
-    >
-      {/* Avatar */}
+  const renderComment = (comment: ReelComment, isReply = false) => {
+    // ✅ Vérification propre du propriétaire
+    const isOwner = currentUserId && comment.user.id === currentUserId;
+
+    return (
       <div
-        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden"
-        style={{ backgroundColor: comment.user.avatarColor || "#8B5CF6" }}
+        key={comment.id}
+        className={`flex gap-3 ${isReply ? "ml-10 mt-3" : "py-3"}`}
       >
-        {comment.user.avatarUrl ? (
-          <img
-            src={comment.user.avatarUrl}
-            alt={comment.user.username}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          comment.user.username.charAt(0).toUpperCase()
-        )}
-      </div>
-
-      {/* Contenu */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-white text-xs font-semibold">
-            @{comment.user.username}
-          </span>
-          {comment.user.isCertified && (
-            <svg className="w-3 h-3 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-            </svg>
-          )}
-          <span className="text-white/40 text-[10px]">
-            {formatDate(comment.createdAt)}
-          </span>
-        </div>
-
-        <p className="text-white/90 text-sm break-words">{comment.content}</p>
-
-        <div className="flex items-center gap-4 mt-1.5">
-          {/* Like */}
-          <button
-            onClick={() => handleLike(comment.id)}
-            className={`flex items-center gap-1 text-xs transition-all ${
-              comment.isLiked ? "text-rose-500" : "text-white/50 hover:text-white"
-            }`}
-          >
-            <Heart
-              className={`w-3.5 h-3.5 ${comment.isLiked ? "fill-rose-500" : ""}`}
+        {/* Avatar */}
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden"
+          style={{ backgroundColor: comment.user.avatarColor || "#8B5CF6" }}
+        >
+          {comment.user.avatarUrl ? (
+            <img
+              src={comment.user.avatarUrl}
+              alt={comment.user.username}
+              className="w-full h-full object-cover"
             />
-            <span>{comment.likesCount || 0}</span>
-          </button>
-
-          {/* Répondre (seulement si pas une réponse) */}
-          {!isReply && (
-            <button
-              onClick={() => {
-                setReplyTo(comment);
-                inputRef.current?.focus();
-              }}
-              className="text-xs text-white/50 hover:text-white transition-all"
-            >
-              Répondre
-            </button>
-          )}
-
-          {/* Supprimer (si l'utilisateur est l'auteur) */}
-          {comment.user.id ===
-            JSON.parse(localStorage.getItem("user") || "{}")?.id && (
-            <button
-              onClick={() => handleDelete(comment.id, isReply, comment.parentId || undefined)}
-              className="text-xs text-rose-400/60 hover:text-rose-400 transition-all"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+          ) : (
+            comment.user.username.charAt(0).toUpperCase()
           )}
         </div>
+
+        {/* Contenu */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-white text-xs font-semibold">
+              @{comment.user.username}
+            </span>
+            {comment.user.isCertified && (
+              <svg
+                className="w-3 h-3 text-blue-400"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+              </svg>
+            )}
+            <span className="text-white/40 text-[10px]">
+              {formatDate(comment.createdAt)}
+            </span>
+          </div>
+
+          <p className="text-white/90 text-sm break-words">{comment.content}</p>
+
+          <div className="flex items-center gap-4 mt-1.5">
+            {/* Like */}
+            <button
+              onClick={() => handleLike(comment.id)}
+              className={`flex items-center gap-1 text-xs transition-all ${
+                comment.isLiked
+                  ? "text-rose-500"
+                  : "text-white/50 hover:text-white"
+              }`}
+            >
+              <Heart
+                className={`w-3.5 h-3.5 ${
+                  comment.isLiked ? "fill-rose-500" : ""
+                }`}
+              />
+              <span>{comment.likesCount || 0}</span>
+            </button>
+
+            {/* Répondre */}
+            {!isReply && (
+              <button
+                onClick={() => {
+                  setReplyTo(comment);
+                  inputRef.current?.focus();
+                }}
+                className="text-xs text-white/50 hover:text-white transition-all"
+              >
+                Répondre
+              </button>
+            )}
+
+            {/* Supprimer */}
+            {isOwner && (
+              <button
+                onClick={() =>
+                  handleDelete(comment.id, isReply, comment.parentId || undefined)
+                }
+                className="text-xs text-rose-400/60 hover:text-rose-400 transition-all"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // ============================================
   // RENDU PRINCIPAL
@@ -365,7 +409,9 @@ export function ReelComments({ reelId, initialCount = 0, onClose }: Props) {
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <MessageCircle className="w-10 h-10 text-white/20 mb-3" />
             <p className="text-white/50 text-sm">Aucun commentaire</p>
-            <p className="text-white/30 text-xs mt-1">Soyez le premier à commenter</p>
+            <p className="text-white/30 text-xs mt-1">
+              Soyez le premier à commenter
+            </p>
           </div>
         ) : (
           <>
@@ -400,7 +446,8 @@ export function ReelComments({ reelId, initialCount = 0, onClose }: Props) {
       {replyTo && (
         <div className="px-4 py-2 bg-zinc-900/80 border-t border-zinc-800/60 flex items-center justify-between">
           <span className="text-white/60 text-xs">
-            Répondre à <span className="text-purple-400">@{replyTo.user.username}</span>
+            Répondre à{" "}
+            <span className="text-purple-400">@{replyTo.user.username}</span>
           </span>
           <button
             onClick={() => setReplyTo(null)}
@@ -428,7 +475,11 @@ export function ReelComments({ reelId, initialCount = 0, onClose }: Props) {
           type="text"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder={replyTo ? `Répondre à @${replyTo.user.username}...` : "Ajouter un commentaire..."}
+          placeholder={
+            replyTo
+              ? `Répondre à @${replyTo.user.username}...`
+              : "Ajouter un commentaire..."
+          }
           className="flex-1 px-4 py-2.5 rounded-full bg-zinc-900 border border-zinc-800 text-white placeholder-white/40 focus:border-purple-500 outline-none text-sm"
           maxLength={500}
         />
