@@ -15,6 +15,7 @@ import {
   User as UserIcon,
   Trophy,
   Sparkles,
+  BadgeCheck,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -75,6 +76,25 @@ type Reel = {
   event?: EventItem | null;
   featuredCreator?: Author | null;
 };
+
+// ============================================
+// ✅ COMPOSANT BADGE CERTIFIÉ
+// ============================================
+function CertifiedBadge({ author, size = "sm" }: { author: Author; size?: "sm" | "md" }) {
+  if (!author?.isCertified) return null;
+
+  const badgeColor = author.badgeColor || author.avatarColor || "#3B82F6";
+  const className = size === "sm" ? "w-4 h-4" : "w-5 h-5";
+
+  return (
+    <BadgeCheck
+      className={className}
+      fill={badgeColor}
+      color="black"
+      strokeWidth={1.5}
+    />
+  );
+}
 
 // ============================================
 // ✅ COMPOSANT CTA
@@ -146,7 +166,6 @@ export default function ReelsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // ✅ NOUVEAU : modal commentaires
   const [commentModalReelId, setCommentModalReelId] = useState<string | null>(null);
   const [commentModalCount, setCommentModalCount] = useState(0);
 
@@ -303,9 +322,7 @@ export default function ReelsPage() {
           text: reel.description || "Regarde ce reel sur INKDROP !",
           url: shareUrl,
         });
-      } catch (e) {
-        // User cancelled
-      }
+      } catch (e) {}
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
@@ -329,22 +346,14 @@ export default function ReelsPage() {
         headers,
         body: JSON.stringify({ sessionId: localStorage.getItem("sessionId") }),
       });
-    } catch (error) {
-      // Silence
-    }
+    } catch (error) {}
   };
 
-  // ============================================
-  // ✅ OUVRIR MODAL COMMENTAIRES
-  // ============================================
   const openCommentModal = (reelId: string, count: number) => {
     setCommentModalReelId(reelId);
     setCommentModalCount(count);
   };
 
-  // ============================================
-  // ✅ METTRE À JOUR LE COMPTEUR DE COMMENTAIRES
-  // ============================================
   const incrementCommentCount = (reelId: string, delta: number) => {
     setReels((prev) =>
       prev.map((reel) =>
@@ -429,7 +438,7 @@ export default function ReelsPage() {
               key={reel.id}
               className="relative h-screen w-full snap-start snap-always flex items-center justify-center bg-black"
             >
-              {/* ✅ VIDÉO CLIQUABLE → PAGE DÉTAIL */}
+              {/* VIDÉO CLIQUABLE → PAGE DÉTAIL */}
               <video
                 ref={(el) => {
                   videoRefs.current[reel.id] = el;
@@ -450,7 +459,7 @@ export default function ReelsPage() {
 
               {/* INFO EN BAS À GAUCHE */}
               <div className="absolute bottom-28 left-4 z-10 max-w-[70%]">
-                {/* ✅ AUTEUR CLIQUABLE */}
+                {/* AUTEUR CLIQUABLE + BADGE CERTIFIÉ */}
                 <Link
                   href={`/creator/${reel.author?.username || ""}`}
                   onClick={(e) => e.stopPropagation()}
@@ -470,11 +479,7 @@ export default function ReelsPage() {
                   <span className="text-white font-semibold text-sm">
                     @{reel.author?.username || "utilisateur"}
                   </span>
-                  {reel.author?.isCertified && (
-                    <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                    </svg>
-                  )}
+                  <CertifiedBadge author={reel.author} size="sm" />
                 </Link>
 
                 <h2 className="text-white font-bold text-lg leading-tight">{reel.title}</h2>
@@ -482,7 +487,6 @@ export default function ReelsPage() {
                   <p className="text-white/80 text-sm mt-1 line-clamp-2">{reel.description}</p>
                 )}
 
-                {/* ✅ CTA */}
                 <CtaButton reel={reel} />
 
                 {reel.musicTitle && (
@@ -500,7 +504,6 @@ export default function ReelsPage() {
 
               {/* ACTIONS À DROITE */}
               <div className="absolute bottom-28 right-4 z-10 flex flex-col items-center gap-5">
-                {/* Like */}
                 <button
                   onClick={() => handleLike(reel.id, index)}
                   className="flex flex-col items-center gap-1 group"
@@ -515,7 +518,6 @@ export default function ReelsPage() {
                   <span className="text-white/80 text-xs font-medium">{reel.likesCount || 0}</span>
                 </button>
 
-                {/* ✅ COMMENTAIRES — OUVRE LA MODAL */}
                 <button
                   onClick={() => openCommentModal(reel.id, reel.commentsCount)}
                   className="flex flex-col items-center gap-1 group"
@@ -528,7 +530,6 @@ export default function ReelsPage() {
                   <span className="text-white/80 text-xs font-medium">{reel.commentsCount || 0}</span>
                 </button>
 
-                {/* Bookmark */}
                 <button
                   onClick={() => handleBookmark(reel.id, index)}
                   className="flex flex-col items-center gap-1 group"
@@ -543,7 +544,6 @@ export default function ReelsPage() {
                   <span className="text-white/80 text-xs font-medium">Sauvegarder</span>
                 </button>
 
-                {/* Partager */}
                 <button
                   onClick={() => handleShare(reel)}
                   className="flex flex-col items-center gap-1 group"
@@ -555,7 +555,6 @@ export default function ReelsPage() {
                 </button>
               </div>
 
-              {/* INDICATEUR DE PROGRESSION */}
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10">
                 <div
                   className="h-full bg-purple-500 transition-all duration-300"
@@ -565,7 +564,6 @@ export default function ReelsPage() {
             </div>
           ))}
 
-          {/* LOADER INFINI */}
           {loadingMore && (
             <div className="h-20 flex items-center justify-center bg-black">
               <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
@@ -576,7 +574,7 @@ export default function ReelsPage() {
         <BottomNav />
       </div>
 
-      {/* ✅ MODAL COMMENTAIRES */}
+      {/* MODAL COMMENTAIRES */}
       {commentModalReelId && (
         <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-black/60 backdrop-blur-sm">
           <div className="h-[75vh] rounded-t-3xl overflow-hidden border-t border-zinc-800">
