@@ -62,7 +62,6 @@ export default function UploadReelPage() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
 
-  // ✅ Type + liaison + CTA
   const [type, setType] = useState("OTHER");
   const [mangaId, setMangaId] = useState("");
   const [chapterId, setChapterId] = useState("");
@@ -70,7 +69,6 @@ export default function UploadReelPage() {
   const [featuredCreatorId, setFeaturedCreatorId] = useState("");
   const [ctaLabel, setCtaLabel] = useState("");
 
-  // ✅ Listes pour les sélections
   const [mangas, setMangas] = useState<Manga[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -94,7 +92,6 @@ export default function UploadReelPage() {
       try {
         const headers = { Authorization: `Bearer ${token}` };
 
-        // 1. Récupérer l'utilisateur connecté
         const meRes = await fetch(`${API_URL}/users/me`, { headers });
 
         if (!meRes.ok) {
@@ -108,19 +105,16 @@ export default function UploadReelPage() {
           throw new Error("ID utilisateur introuvable");
         }
 
-        // 2. Récupérer les mangas de l'utilisateur
         const mangasRes = await fetch(`${API_URL}/mangas/creator/${userId}`, { headers });
 
         if (mangasRes.ok) {
           const mangasData = await mangasRes.json();
-          // Le controller retourne { success, data, totals }
           const list = mangasData.data || [];
           setMangas(Array.isArray(list) ? list : []);
         } else {
           setMangasError("Impossible de charger vos mangas");
         }
 
-        // 3. Récupérer les événements actifs
         const eventsRes = await fetch(`${API_URL}/events?isActive=true`);
         if (eventsRes.ok) {
           const eventsData = await eventsRes.json();
@@ -192,8 +186,9 @@ export default function UploadReelPage() {
     video.onloadedmetadata = () => {
       const durationInSeconds = Math.round(video.duration);
       setDuration(durationInSeconds);
-      if (durationInSeconds < 20 || durationInSeconds > 30) {
-        setError("⚠️ La vidéo doit durer entre 20 et 30 secondes");
+      // ✅ RÈGLE : max 30 secondes (pas de minimum)
+      if (durationInSeconds > 30) {
+        setError("⚠️ La vidéo ne doit pas dépasser 30 secondes");
       } else {
         setError("");
       }
@@ -330,8 +325,9 @@ export default function UploadReelPage() {
       return;
     }
 
-    if (duration && (duration < 20 || duration > 30)) {
-      setError("⚠️ La vidéo doit durer entre 20 et 30 secondes");
+    // ✅ RÈGLE : max 30 secondes
+    if (duration && duration > 30) {
+      setError("⚠️ La vidéo ne doit pas dépasser 30 secondes");
       setUploading(false);
       return;
     }
@@ -368,7 +364,6 @@ export default function UploadReelPage() {
         duration: duration || undefined,
         tags: tags.length > 0 ? tags : undefined,
         isPrivate,
-        // ✅ NOUVEAU
         type,
         ctaLabel: ctaLabel.trim() || undefined,
         mangaId: mangaId || undefined,
@@ -472,7 +467,6 @@ export default function UploadReelPage() {
                 Contenu lié
               </p>
 
-              {/* Manga */}
               {(linksTo === "manga" || linksTo === "chapter") && (
                 <div>
                   <label className="block text-xs font-medium text-foreground mb-1">
@@ -511,7 +505,6 @@ export default function UploadReelPage() {
                 </div>
               )}
 
-              {/* Chapitre */}
               {linksTo === "chapter" && mangaId && (
                 <div>
                   <label className="block text-xs font-medium text-foreground mb-1">
@@ -532,7 +525,6 @@ export default function UploadReelPage() {
                 </div>
               )}
 
-              {/* Événement */}
               {linksTo === "event" && (
                 <div>
                   <label className="block text-xs font-medium text-foreground mb-1">
@@ -558,7 +550,6 @@ export default function UploadReelPage() {
                 </div>
               )}
 
-              {/* Créateur */}
               {linksTo === "creator" && (
                 <div>
                   <label className="block text-xs font-medium text-foreground mb-1">
@@ -627,7 +618,7 @@ export default function UploadReelPage() {
           {/* VIDÉO */}
           <div>
             <label className="block text-sm font-bold text-foreground mb-1.5">
-              Vidéo * <span className="text-xs text-muted-foreground font-normal">(20-30 secondes)</span>
+              Vidéo * <span className="text-xs text-muted-foreground font-normal">(max 30 secondes)</span>
             </label>
             {videoPreview ? (
               <div className="relative rounded-xl overflow-hidden border border-border/80 bg-black/40 aspect-[9/16] max-h-[400px] mx-auto">
@@ -654,7 +645,7 @@ export default function UploadReelPage() {
                 {duration && (
                   <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 text-white text-xs font-medium flex items-center gap-1">
                     {Math.floor(duration / 60)}:{String(duration % 60).padStart(2, "0")}
-                    {duration >= 20 && duration <= 30 ? (
+                    {duration <= 30 ? (
                       <span className="text-emerald-400">✅</span>
                     ) : (
                       <span className="text-rose-400">⚠️</span>
@@ -668,7 +659,7 @@ export default function UploadReelPage() {
                   <Upload className="w-8 h-8" />
                 </div>
                 <p className="text-sm font-medium text-foreground">Ajouter une vidéo</p>
-                <p className="text-xs text-muted-foreground mt-1">MP4, MOV, WEBM • Max 100MB • 20-30s</p>
+                <p className="text-xs text-muted-foreground mt-1">MP4, MOV, WEBM • Max 100MB • Max 30s</p>
                 <p className="text-[10px] text-muted-foreground/50 mt-0.5">
                   Format vertical recommandé (9:16)
                 </p>
