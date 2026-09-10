@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { useThemeColor } from "@/hooks/useThemeColor";
+import { useTheme } from "@/components/providers/ThemeProvider";
 import {
   ArrowLeft,
   Shield,
@@ -27,6 +27,8 @@ import {
   Key,
   ShieldCheck,
   Settings as SettingsIcon,
+  Sparkles,
+  Languages,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -42,13 +44,25 @@ type NotificationSettings = {
 type Preferences = {
   theme: "light" | "dark" | "system";
   language: "fr" | "en";
-  accentColor?: string;
 };
 
 type Tab = "account" | "security" | "notifications" | "preferences" | "advanced";
 
+// ============================================
+// ✅ LISTE DES TABS
+// ============================================
+const TABS: { id: Tab; icon: any; label: string }[] = [
+  { id: "account", icon: User, label: "Compte" },
+  { id: "security", icon: Shield, label: "Sécurité" },
+  { id: "notifications", icon: Bell, label: "Notifs" },
+  { id: "preferences", icon: Palette, label: "Apparence" },
+  { id: "advanced", icon: SettingsIcon, label: "Avancé" },
+];
+
 export default function SettingsPage() {
   const router = useRouter();
+  const { theme: currentTheme, setTheme: setGlobalTheme } = useTheme();
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -80,33 +94,11 @@ export default function SettingsPage() {
   const [preferences, setPreferences] = useState<Preferences>({
     theme: "system",
     language: "fr",
-    accentColor: "#f97316",
   });
 
-  // Accent color state
-  const [accentColor, setAccentColor] = useState("#f97316");
-
-  // ===== APPLY THEME =====
-  const applyTheme = (theme: string) => {
-    const root = document.documentElement;
-    if (theme === "light") {
-      root.classList.add("light-theme");
-    } else {
-      root.classList.remove("light-theme");
-    }
-  };
-
-  // ===== APPLY COLOR =====
-  const applyColor = (color: string) => {
-    if (color) {
-      document.documentElement.style.setProperty("--primary", color);
-    }
-  };
-
-  // ===== APPLY COLOR WITH HOOK =====
-  useThemeColor(accentColor);
-
-  // ===== LOAD USER DATA =====
+  // ============================================
+  // LOAD USER DATA
+  // ============================================
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -128,51 +120,60 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setUser(data);
+
         if (data.notificationSettings) {
           setNotifSettings(data.notificationSettings);
         }
+
         if (data.preferences) {
-          setPreferences(data.preferences);
-          if (data.preferences.theme) {
-            applyTheme(data.preferences.theme);
-          }
-          if (data.preferences.accentColor) {
-            setAccentColor(data.preferences.accentColor);
-            applyColor(data.preferences.accentColor);
-          }
+          setPreferences({
+            theme: data.preferences.theme || "system",
+            language: data.preferences.language || "fr",
+          });
         }
       }
     } catch (error) {
-      console.error("Error loading preferences:", error);
+      console.error("Error loading user:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // ===== CHANGE PASSWORD =====
+  // ============================================
+  // HELPERS
+  // ============================================
+  const clearMessages = () => {
+    setError("");
+    setSuccess("");
+  };
+
+  const showSuccess = (msg: string) => {
+    setSuccess(msg);
+    setTimeout(() => setSuccess(""), 3000);
+  };
+
+  // ============================================
+  // CHANGE PASSWORD
+  // ============================================
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError("");
-    setSuccess("");
+    clearMessages();
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("Les mots de passe ne correspondent pas");
       setSaving(false);
       return;
     }
 
     if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError("Le mot de passe doit faire au moins 8 caractères");
       setSaving(false);
       return;
     }
 
     const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (!token) return;
 
     try {
       const res = await fetch(`${API_URL}/users/change-password`, {
@@ -185,12 +186,9 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Erreur");
 
-      if (!res.ok) {
-        throw new Error(data.message || "Error");
-      }
-
-      setSuccess("Password updated successfully");
+      showSuccess("Mot de passe mis à jour");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
@@ -200,15 +198,16 @@ export default function SettingsPage() {
     }
   };
 
-  // ===== CHANGE EMAIL =====
+  // ============================================
+  // CHANGE EMAIL
+  // ============================================
   const handleRequestEmailChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError("");
-    setSuccess("");
+    clearMessages();
 
     if (!newEmail || !emailPassword) {
-      setError("Please fill in all fields");
+      setError("Veuillez remplir tous les champs");
       setSaving(false);
       return;
     }
@@ -227,12 +226,9 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Erreur");
 
-      if (!res.ok) {
-        throw new Error(data.message || "Error");
-      }
-
-      setSuccess("Verification email sent");
+      showSuccess("Email de vérification envoyé");
       setShowEmailConfirm(true);
       setNewEmail("");
       setEmailPassword("");
@@ -246,11 +242,10 @@ export default function SettingsPage() {
   const handleConfirmEmailChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError("");
-    setSuccess("");
+    clearMessages();
 
     if (!emailToken) {
-      setError("Token required");
+      setError("Token requis");
       setSaving(false);
       return;
     }
@@ -263,12 +258,9 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Token invalide");
 
-      if (!res.ok) {
-        throw new Error(data.message || "Invalid token");
-      }
-
-      setSuccess("Email updated successfully");
+      showSuccess("Email mis à jour");
       setEmailToken("");
       setShowEmailConfirm(false);
     } catch (err: any) {
@@ -278,11 +270,12 @@ export default function SettingsPage() {
     }
   };
 
-  // ===== UPDATE NOTIFICATIONS =====
+  // ============================================
+  // UPDATE NOTIFICATIONS
+  // ============================================
   const handleUpdateNotifications = async () => {
     setSaving(true);
-    setError("");
-    setSuccess("");
+    clearMessages();
 
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -298,12 +291,9 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Erreur");
 
-      if (!res.ok) {
-        throw new Error(data.message || "Error");
-      }
-
-      setSuccess("Notifications updated");
+      showSuccess("Notifications mises à jour");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -311,11 +301,12 @@ export default function SettingsPage() {
     }
   };
 
-  // ===== UPDATE PREFERENCES =====
+  // ============================================
+  // UPDATE PREFERENCES
+  // ============================================
   const handleUpdatePreferences = async () => {
     setSaving(true);
-    setError("");
-    setSuccess("");
+    clearMessages();
 
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -327,24 +318,16 @@ export default function SettingsPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(preferences),
+        body: JSON.stringify({
+          theme: preferences.theme,
+          language: preferences.language,
+        }),
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Erreur");
 
-      if (!res.ok) {
-        throw new Error(data.message || "Error");
-      }
-
-      if (preferences.theme) {
-        applyTheme(preferences.theme);
-      }
-      if (preferences.accentColor) {
-        setAccentColor(preferences.accentColor);
-        applyColor(preferences.accentColor);
-      }
-
-      setSuccess("Preferences updated");
+      showSuccess("Préférences mises à jour");
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -352,39 +335,23 @@ export default function SettingsPage() {
     }
   };
 
-  // ===== CHANGE THEME =====
+  // ============================================
+  // CHANGE THEME (via provider global)
+  // ============================================
   const handleThemeChange = async (theme: "light" | "dark" | "system") => {
     setSaving(true);
-    setError("");
-    setSuccess("");
-
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    clearMessages();
 
     try {
-      const updatedPreferences = {
-        ...preferences,
-        theme: theme,
-      };
-
-      const res = await fetch(`${API_URL}/users/preferences`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updatedPreferences),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Error");
-      }
-
-      setPreferences(updatedPreferences);
-      applyTheme(theme === "light" ? "light" : "dark");
-      setSuccess(`Theme ${theme === "light" ? "light" : "dark"} activated`);
+      await setGlobalTheme(theme);
+      setPreferences({ ...preferences, theme });
+      showSuccess(
+        theme === "light"
+          ? "Thème clair activé"
+          : theme === "dark"
+          ? "Thème sombre activé"
+          : "Thème système activé"
+      );
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -392,59 +359,17 @@ export default function SettingsPage() {
     }
   };
 
-  // ===== CHANGE COLOR =====
-  const handleColorChange = async (color: string) => {
-    setSaving(true);
-    setError("");
-    setSuccess("");
-
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      const updatedPreferences = {
-        ...preferences,
-        accentColor: color,
-      };
-
-      const res = await fetch(`${API_URL}/users/preferences`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updatedPreferences),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Error");
-      }
-
-      setPreferences(updatedPreferences);
-      setAccentColor(color);
-      applyColor(color);
-      setSuccess("Color updated successfully");
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // ===== DELETE ACCOUNT =====
+  // ============================================
+  // DELETE ACCOUNT
+  // ============================================
   const handleDeleteAccount = async () => {
-    const password = prompt("Enter your password to confirm:");
+    const password = prompt("Entrez votre mot de passe pour confirmer :");
     if (!password) return;
 
-    if (!confirm("Are you sure you want to delete your account? This action is irreversible.")) {
-      return;
-    }
+    if (!confirm("Êtes-vous sûr ? Cette action est irréversible.")) return;
 
     setSaving(true);
-    setError("");
-    setSuccess("");
+    clearMessages();
 
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -460,13 +385,10 @@ export default function SettingsPage() {
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Error");
-      }
+      if (!res.ok) throw new Error(data.message || "Erreur");
 
       localStorage.removeItem("token");
-      setSuccess("Account deleted");
+      showSuccess("Compte supprimé");
       setTimeout(() => router.push("/login"), 2000);
     } catch (err: any) {
       setError(err.message);
@@ -474,13 +396,17 @@ export default function SettingsPage() {
     }
   };
 
-  // ===== LOGOUT =====
+  // ============================================
+  // LOGOUT
+  // ============================================
   const handleLogout = () => {
     localStorage.removeItem("token");
     router.push("/login");
   };
 
-  // ===== EXPORT DATA =====
+  // ============================================
+  // EXPORT DATA
+  // ============================================
   const handleExportData = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -492,9 +418,7 @@ export default function SettingsPage() {
       });
       const data = await res.json();
 
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json",
-      });
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -502,15 +426,17 @@ export default function SettingsPage() {
       a.click();
       URL.revokeObjectURL(url);
 
-      setSuccess("Data exported");
+      showSuccess("Données exportées");
     } catch {
-      setError("Export error");
+      setError("Erreur d'export");
     } finally {
       setSaving(false);
     }
   };
 
-  // ===== TOGGLE COMPONENT =====
+  // ============================================
+  // TOGGLE COMPONENT
+  // ============================================
   const Toggle = ({
     value,
     onChange,
@@ -522,10 +448,12 @@ export default function SettingsPage() {
     label: string;
     description?: string;
   }) => (
-    <div className="flex items-center justify-between py-3 border-b border-border last:border-0">
-      <div>
+    <div className="flex items-center justify-between py-3.5 border-b border-border/40 last:border-0">
+      <div className="flex-1 pr-4">
         <p className="text-sm font-medium text-foreground">{label}</p>
-        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        )}
       </div>
       <button
         onClick={onChange}
@@ -561,9 +489,11 @@ export default function SettingsPage() {
             className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-sm font-medium"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back</span>
+            <span>Retour</span>
           </Link>
-          <span className="text-base font-bold text-foreground tracking-tight">Settings</span>
+          <span className="text-base font-bold text-foreground tracking-tight">
+            Paramètres
+          </span>
           <div className="w-12" />
         </div>
       </header>
@@ -572,36 +502,31 @@ export default function SettingsPage() {
 
         {/* ===== ALERTS ===== */}
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-sm flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="mb-4 p-3.5 rounded-2xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-sm flex items-start gap-2 animate-in">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{error}</span>
           </div>
         )}
         {success && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-sm flex items-center gap-2">
+          <div className="mb-4 p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-sm flex items-center gap-2 animate-in">
             <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{success}</span>
           </div>
         )}
 
-        {/* ===== TAB MENU ===== */}
-        <div className="grid grid-cols-5 gap-1 mb-6 bg-card/40 rounded-xl p-1 border border-border/60">
-          {[
-            { id: "account", icon: User, label: "Account" },
-            { id: "security", icon: Shield, label: "Security" },
-            { id: "notifications", icon: Bell, label: "Notifications" },
-            { id: "preferences", icon: Palette, label: "Appearance" },
-            { id: "advanced", icon: SettingsIcon, label: "Advanced" },
-          ].map((tab) => {
+        {/* ===== TABS ===== */}
+        <div className="grid grid-cols-5 gap-1.5 mb-6 bg-card/30 rounded-2xl p-1.5 border border-border/60 backdrop-blur-sm">
+          {TABS.map((tab) => {
             const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as Tab)}
-                className={`py-2 rounded-lg text-xs font-medium transition-all flex flex-col items-center gap-0.5 ${
-                  activeTab === tab.id
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-2.5 rounded-xl text-[11px] font-semibold transition-all flex flex-col items-center gap-1 ${
+                  isActive
+                    ? "bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-600/30"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/60"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -612,44 +537,71 @@ export default function SettingsPage() {
         </div>
 
         {/* ========================================== */}
-        {/* TAB 1 : ACCOUNT */}
+        {/* TAB : ACCOUNT */}
         {/* ========================================== */}
         {activeTab === "account" && (
-          <div className="space-y-3">
-            <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                <User className="w-4 h-4 text-blue-400" />
-                Account Information
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between py-2 border-b border-border/40">
-                  <span className="text-muted-foreground text-sm">Email</span>
-                  <span className="text-foreground text-sm font-medium">
-                    {user?.email || "Not set"}
-                  </span>
+          <div className="space-y-4 animate-in">
+            {/* Profile card */}
+            <div className="bg-gradient-to-br from-card/80 to-card/40 border border-border/80 rounded-2xl p-5 backdrop-blur-sm">
+              <div className="flex items-center gap-4 mb-5">
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center text-lg font-black text-white shrink-0 overflow-hidden ring-2 ring-blue-500/30"
+                  style={{ backgroundColor: user?.avatarColor || "#3B82F6" }}
+                >
+                  {user?.avatarUrl ? (
+                    <img
+                      src={user.avatarUrl}
+                      alt={user.username}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    user?.username?.charAt(0).toUpperCase() || "?"
+                  )}
                 </div>
-                <div className="flex justify-between py-2 border-b border-border/40">
-                  <span className="text-muted-foreground text-sm">Username</span>
-                  <span className="text-foreground text-sm font-medium">
-                    {user?.username || "Not set"}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-border/40">
-                  <span className="text-muted-foreground text-sm">Role</span>
-                  <span className="text-foreground text-sm font-medium">
-                    {user?.role === "ADMIN"
-                      ? "Administrator"
-                      : user?.role === "CREATOR"
-                      ? "Creator"
-                      : "Reader"}
-                  </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-base font-bold text-foreground truncate">
+                    {user?.username || "Utilisateur"}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user?.email || "—"}
+                  </p>
                 </div>
                 {user?.isCertified && (
-                  <div className="flex justify-between py-2 border-b border-border/40">
-                    <span className="text-muted-foreground text-sm">Certified</span>
-                    <span className="text-blue-400 text-sm font-medium flex items-center gap-1">
-                      <ShieldCheck className="w-4 h-4" />
-                      Yes
+                  <span className="px-2.5 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[10px] font-bold flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" />
+                    Certifié
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center py-2 border-b border-border/40">
+                  <span className="text-muted-foreground text-xs">Rôle</span>
+                  <span className="text-foreground text-xs font-semibold">
+                    {user?.role === "ADMIN"
+                      ? "Administrateur"
+                      : user?.role === "CREATOR"
+                      ? "Créateur"
+                      : "Lecteur"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-border/40">
+                  <span className="text-muted-foreground text-xs">Membre depuis</span>
+                  <span className="text-foreground text-xs font-semibold">
+                    {user?.createdAt
+                      ? new Date(user.createdAt).toLocaleDateString("fr-FR", {
+                          month: "long",
+                          year: "numeric",
+                        })
+                      : "—"}
+                  </span>
+                </div>
+                {user?.premiumActive && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted-foreground text-xs">Premium</span>
+                    <span className="text-violet-400 text-xs font-bold flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      Actif
                     </span>
                   </div>
                 )}
@@ -659,19 +611,23 @@ export default function SettingsPage() {
         )}
 
         {/* ========================================== */}
-        {/* TAB 2 : SECURITY */}
+        {/* TAB : SECURITY */}
         {/* ========================================== */}
         {activeTab === "security" && (
-          <div className="space-y-3">
-            <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Key className="w-4 h-4 text-blue-400" />
-                Change Password
-              </h3>
+          <div className="space-y-4 animate-in">
+            {/* Password */}
+            <div className="bg-card/40 border border-border/80 rounded-2xl p-5 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-xl bg-blue-500/15 border border-blue-500/30">
+                  <Key className="w-4 h-4 text-blue-400" />
+                </div>
+                <h3 className="text-sm font-bold text-foreground">Changer le mot de passe</h3>
+              </div>
+
               <form onSubmit={handlePasswordChange} className="space-y-3">
                 <div>
-                  <label className="block text-muted-foreground text-xs font-medium mb-1">
-                    New Password
+                  <label className="block text-muted-foreground text-xs font-medium mb-1.5">
+                    Nouveau mot de passe
                   </label>
                   <div className="relative">
                     <input
@@ -681,7 +637,7 @@ export default function SettingsPage() {
                       className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
                       required
                       minLength={8}
-                      placeholder="New password"
+                      placeholder="Minimum 8 caractères"
                     />
                     <button
                       type="button"
@@ -692,9 +648,10 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 </div>
+
                 <div>
-                  <label className="block text-muted-foreground text-xs font-medium mb-1">
-                    Confirm Password
+                  <label className="block text-muted-foreground text-xs font-medium mb-1.5">
+                    Confirmer
                   </label>
                   <input
                     type={showPassword ? "text" : "password"}
@@ -702,42 +659,48 @@ export default function SettingsPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
                     required
-                    placeholder="Confirm password"
+                    placeholder="Confirmer"
                   />
                 </div>
+
                 <button
                   type="submit"
                   disabled={saving}
-                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
                 >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update"}
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Mettre à jour"}
                 </button>
               </form>
             </div>
 
-            <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                <Mail className="w-4 h-4 text-blue-400" />
-                Change Email
-              </h3>
+            {/* Email */}
+            <div className="bg-card/40 border border-border/80 rounded-2xl p-5 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-xl bg-purple-500/15 border border-purple-500/30">
+                  <Mail className="w-4 h-4 text-purple-400" />
+                </div>
+                <h3 className="text-sm font-bold text-foreground">Changer l'email</h3>
+              </div>
+
               {!showEmailConfirm ? (
                 <form onSubmit={handleRequestEmailChange} className="space-y-3">
                   <div>
-                    <label className="block text-muted-foreground text-xs font-medium mb-1">
-                      New Email
+                    <label className="block text-muted-foreground text-xs font-medium mb-1.5">
+                      Nouvel email
                     </label>
                     <input
                       type="email"
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
-                      placeholder="new@email.com"
+                      placeholder="nouveau@email.com"
                       required
                     />
                   </div>
+
                   <div>
-                    <label className="block text-muted-foreground text-xs font-medium mb-1">
-                      Current Password
+                    <label className="block text-muted-foreground text-xs font-medium mb-1.5">
+                      Mot de passe actuel
                     </label>
                     <input
                       type="password"
@@ -748,45 +711,48 @@ export default function SettingsPage() {
                       required
                     />
                   </div>
+
                   <button
                     type="submit"
                     disabled={saving}
-                    className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Request"}
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Envoyer la demande"}
                   </button>
                 </form>
               ) : (
                 <form onSubmit={handleConfirmEmailChange} className="space-y-3">
                   <div>
-                    <label className="block text-muted-foreground text-xs font-medium mb-1">
-                      Verification Token
+                    <label className="block text-muted-foreground text-xs font-medium mb-1.5">
+                      Token de vérification
                     </label>
                     <input
                       type="text"
                       value={emailToken}
                       onChange={(e) => setEmailToken(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
-                      placeholder="Enter the token received by email"
+                      className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm font-mono"
+                      placeholder="Entrez le token reçu"
                       required
                     />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      A token has been sent to your new email address.
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Un token a été envoyé à votre nouvel email.
                     </p>
                   </div>
+
                   <button
                     type="submit"
                     disabled={saving}
-                    className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirm"}
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer"}
                   </button>
+
                   <button
                     type="button"
                     onClick={() => setShowEmailConfirm(false)}
                     className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Cancel
+                    Annuler
                   </button>
                 </form>
               )}
@@ -795,40 +761,36 @@ export default function SettingsPage() {
         )}
 
         {/* ========================================== */}
-        {/* TAB 3 : NOTIFICATIONS */}
+        {/* TAB : NOTIFICATIONS */}
         {/* ========================================== */}
         {activeTab === "notifications" && (
-          <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-              <Bell className="w-4 h-4 text-blue-400" />
-              Notifications
-            </h3>
+          <div className="bg-card/40 border border-border/80 rounded-2xl p-5 backdrop-blur-sm animate-in">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30">
+                <Bell className="w-4 h-4 text-amber-400" />
+              </div>
+              <h3 className="text-sm font-bold text-foreground">Notifications</h3>
+            </div>
             <p className="text-xs text-muted-foreground mb-4">
-              Manage the notifications you receive
+              Gérez les notifications que vous recevez
             </p>
 
-            <div className="divide-y divide-border/40">
+            <div>
               <Toggle
                 value={notifSettings.newChapter}
                 onChange={() =>
-                  setNotifSettings({
-                    ...notifSettings,
-                    newChapter: !notifSettings.newChapter,
-                  })
+                  setNotifSettings({ ...notifSettings, newChapter: !notifSettings.newChapter })
                 }
-                label="New Chapter"
-                description="When a followed manga publishes a chapter"
+                label="Nouveau chapitre"
+                description="Quand un manga suivi publie un chapitre"
               />
               <Toggle
                 value={notifSettings.newComment}
                 onChange={() =>
-                  setNotifSettings({
-                    ...notifSettings,
-                    newComment: !notifSettings.newComment,
-                  })
+                  setNotifSettings({ ...notifSettings, newComment: !notifSettings.newComment })
                 }
-                label="New Comment"
-                description="When someone comments on your mangas"
+                label="Nouveau commentaire"
+                description="Quand quelqu'un commente vos mangas"
               />
               <Toggle
                 value={notifSettings.newSubscriber}
@@ -838,241 +800,181 @@ export default function SettingsPage() {
                     newSubscriber: !notifSettings.newSubscriber,
                   })
                 }
-                label="New Subscriber"
-                description="When someone subscribes to you"
+                label="Nouvel abonné"
+                description="Quand quelqu'un s'abonne à vous"
               />
               <Toggle
                 value={notifSettings.earning}
                 onChange={() =>
-                  setNotifSettings({
-                    ...notifSettings,
-                    earning: !notifSettings.earning,
-                  })
+                  setNotifSettings({ ...notifSettings, earning: !notifSettings.earning })
                 }
-                label="Earnings"
-                description="When you earn money"
+                label="Revenus"
+                description="Quand vous gagnez de l'argent"
               />
               <Toggle
                 value={notifSettings.system}
                 onChange={() =>
-                  setNotifSettings({
-                    ...notifSettings,
-                    system: !notifSettings.system,
-                  })
+                  setNotifSettings({ ...notifSettings, system: !notifSettings.system })
                 }
-                label="System"
-                description="Important notifications"
+                label="Système"
+                description="Notifications importantes"
               />
             </div>
 
             <button
               onClick={handleUpdateNotifications}
               disabled={saving}
-              className="w-full mt-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full mt-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer"}
             </button>
           </div>
         )}
 
         {/* ========================================== */}
-        {/* TAB 4 : PREFERENCES */}
+        {/* TAB : PREFERENCES */}
         {/* ========================================== */}
         {activeTab === "preferences" && (
-          <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-              <Palette className="w-4 h-4 text-blue-400" />
-              Appearance & Language
-            </h3>
-            <p className="text-xs text-muted-foreground mb-4">
-              Customize the application display
-            </p>
+          <div className="space-y-4 animate-in">
+            {/* Theme */}
+            <div className="bg-card/40 border border-border/80 rounded-2xl p-5 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-blue-500/15 border border-blue-500/30">
+                  <Palette className="w-4 h-4 text-blue-400" />
+                </div>
+                <h3 className="text-sm font-bold text-foreground">Thème</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Choisissez l'apparence de l'application
+              </p>
 
-            <div className="space-y-4">
-              {/* Theme */}
-              <div>
-                <label className="block text-muted-foreground text-xs font-medium mb-2">Theme</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: "light", label: "Light", icon: Sun },
-                    { value: "dark", label: "Dark", icon: Moon },
-                    { value: "system", label: "System", icon: Laptop },
-                  ].map(({ value, label, icon: Icon }) => (
+              <div className="grid grid-cols-3 gap-2.5">
+                {[
+                  { value: "light", label: "Clair", icon: Sun, color: "amber" },
+                  { value: "dark", label: "Sombre", icon: Moon, color: "blue" },
+                  { value: "system", label: "Système", icon: Laptop, color: "purple" },
+                ].map(({ value, label, icon: Icon, color }) => {
+                  const isActive = preferences.theme === value;
+                  return (
                     <button
                       key={value}
                       onClick={() => handleThemeChange(value as "light" | "dark" | "system")}
-                      className={`py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 border ${
-                        preferences.theme === value
-                          ? "bg-blue-600 text-white border-blue-500"
-                          : "bg-card/90 text-muted-foreground border-border hover:border-border/80"
+                      disabled={saving}
+                      className={`py-4 rounded-2xl text-xs font-bold transition-all flex flex-col items-center gap-2 border-2 ${
+                        isActive
+                          ? `bg-${color}-500/15 border-${color}-500/50 text-${color}-400 shadow-lg`
+                          : "bg-card/60 border-border text-muted-foreground hover:border-foreground/20 hover:bg-card/80"
                       }`}
                     >
-                      <Icon className="w-3.5 h-3.5" />
+                      <Icon className="w-5 h-5" />
                       {label}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
+            </div>
 
-              {/* Language */}
-              <div>
-                <label className="block text-muted-foreground text-xs font-medium mb-2">Language</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: "fr", label: "Francais" },
-                    { value: "en", label: "English" },
-                  ].map(({ value, label }) => (
+            {/* Language */}
+            <div className="bg-card/40 border border-border/80 rounded-2xl p-5 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30">
+                  <Languages className="w-4 h-4 text-emerald-400" />
+                </div>
+                <h3 className="text-sm font-bold text-foreground">Langue</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">
+                Choisissez la langue de l'application
+              </p>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {[
+                  { value: "fr", label: "Français", flag: "🇫🇷" },
+                  { value: "en", label: "English", flag: "🇬🇧" },
+                ].map(({ value, label, flag }) => {
+                  const isActive = preferences.language === value;
+                  return (
                     <button
                       key={value}
-                      onClick={() =>
-                        setPreferences({
-                          ...preferences,
-                          language: value as Preferences["language"],
-                        })
-                      }
-                      className={`py-2.5 rounded-xl text-xs font-medium transition-all border ${
-                        preferences.language === value
-                          ? "bg-blue-600 text-white border-blue-500"
-                          : "bg-card/90 text-muted-foreground border-border hover:border-border/80"
+                      onClick={() => setPreferences({ ...preferences, language: value as "fr" | "en" })}
+                      className={`py-4 rounded-2xl text-sm font-bold transition-all flex flex-col items-center gap-1.5 border-2 ${
+                        isActive
+                          ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-400"
+                          : "bg-card/60 border-border text-muted-foreground hover:border-foreground/20 hover:bg-card/80"
                       }`}
                     >
+                      <span className="text-2xl">{flag}</span>
                       {label}
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
 
-              {/* Color Picker */}
-              <div className="mt-6 pt-4 border-t border-border/40">
-                <label className="block text-muted-foreground text-xs font-medium mb-2">Primary Color</label>
-
-                <div className="flex flex-wrap gap-3">
-                  {[
-                    { color: "#f97316", label: "Orange" },
-                    { color: "#10b981", label: "Emerald" },
-                    { color: "#8b5cf6", label: "Purple" },
-                    { color: "#ec4899", label: "Pink" },
-                    { color: "#06b6d4", label: "Cyan" },
-                    { color: "#ef4444", label: "Red" },
-                    { color: "#3b82f6", label: "Blue" },
-                    { color: "#f59e0b", label: "Amber" },
-                  ].map(({ color, label }) => (
-                    <button
-                      key={color}
-                      onClick={() => handleColorChange(color)}
-                      className={`w-10 h-10 rounded-full border-2 transition-all ${
-                        accentColor === color
-                          ? "border-white scale-110 shadow-lg shadow-white/20"
-                          : "border-transparent hover:scale-105"
-                      }`}
-                      style={{ backgroundColor: color }}
-                      title={label}
-                    />
-                  ))}
-                </div>
-
-                <div className="mt-3 flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={accentColor}
-                    onChange={(e) => handleColorChange(e.target.value)}
-                    className="w-12 h-12 rounded-xl cursor-pointer bg-transparent border-2 border-border hover:border-foreground transition-colors"
-                  />
-                  <input
-                    type="text"
-                    value={accentColor}
-                    onChange={(e) => handleColorChange(e.target.value)}
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground text-sm font-mono focus:border-blue-500 outline-none transition-all"
-                    placeholder="#f97316"
-                  />
-                </div>
-
-                <div className="mt-3 pt-3 border-t border-border/40">
-                  <label className="block text-muted-foreground text-xs font-medium mb-2">Preview</label>
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      className="px-4 py-2 rounded-xl text-white text-sm font-medium transition-all"
-                      style={{ backgroundColor: accentColor }}
-                    >
-                      Primary Button
-                    </button>
-                    <span
-                      className="px-3 py-1 rounded-full text-white text-xs font-medium"
-                      style={{ backgroundColor: accentColor + "33" }}
-                    >
-                      Badge
-                    </span>
-                    <div
-                      className="w-8 h-8 rounded-full border-2"
-                      style={{ borderColor: accentColor }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Save Button */}
               <button
                 onClick={handleUpdatePreferences}
                 disabled={saving}
-                className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full mt-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 text-white text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Enregistrer les préférences"}
               </button>
             </div>
           </div>
         )}
 
         {/* ========================================== */}
-        {/* TAB 5 : ADVANCED */}
+        {/* TAB : ADVANCED */}
         {/* ========================================== */}
         {activeTab === "advanced" && (
-          <div className="space-y-3">
-            <div className="bg-card/40 border border-border/80 rounded-2xl p-5">
-              <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                <SettingsIcon className="w-4 h-4 text-blue-400" />
-                Advanced Actions
-              </h3>
+          <div className="space-y-4 animate-in">
+            <div className="bg-card/40 border border-border/80 rounded-2xl p-5 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="p-2 rounded-xl bg-muted border border-border">
+                  <SettingsIcon className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <h3 className="text-sm font-bold text-foreground">Actions avancées</h3>
+              </div>
 
               <div className="space-y-2">
                 <button
                   onClick={handleExportData}
                   disabled={saving}
-                  className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-card/60 hover:bg-card/80 transition-all border border-border/40"
+                  className="w-full flex items-center justify-between py-3.5 px-4 rounded-xl bg-card/60 hover:bg-card/80 transition-all border border-border/40 group"
                 >
-                  <span className="text-sm text-foreground flex items-center gap-2">
-                    <Download className="w-4 h-4 text-muted-foreground" />
-                    Export My Data
+                  <span className="text-sm text-foreground flex items-center gap-2.5">
+                    <Download className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    Exporter mes données
                   </span>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                 </button>
 
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-card/60 hover:bg-card/80 transition-all border border-border/40"
+                  className="w-full flex items-center justify-between py-3.5 px-4 rounded-xl bg-card/60 hover:bg-card/80 transition-all border border-border/40 group"
                 >
-                  <span className="text-sm text-foreground flex items-center gap-2">
-                    <LogOut className="w-4 h-4 text-muted-foreground" />
-                    Log Out
+                  <span className="text-sm text-foreground flex items-center gap-2.5">
+                    <LogOut className="w-4 h-4 text-muted-foreground group-hover:text-rose-400 transition-colors" />
+                    Se déconnecter
                   </span>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                 </button>
 
                 <button
                   onClick={handleDeleteAccount}
                   disabled={saving}
-                  className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-rose-950/30 hover:bg-rose-900/30 transition-all border border-rose-500/20"
+                  className="w-full flex items-center justify-between py-3.5 px-4 rounded-xl bg-rose-950/20 hover:bg-rose-900/30 transition-all border border-rose-500/20 group"
                 >
-                  <span className="text-sm text-rose-400 flex items-center gap-2">
+                  <span className="text-sm text-rose-400 flex items-center gap-2.5">
                     <Trash2 className="w-4 h-4" />
-                    Delete My Account
+                    Supprimer mon compte
                   </span>
-                  <ChevronRight className="w-4 h-4 text-rose-400/50" />
+                  <ChevronRight className="w-4 h-4 text-rose-400/50 group-hover:translate-x-1 transition-transform" />
                 </button>
               </div>
 
-              <p className="text-xs text-muted-foreground mt-4 text-center">
-                Account deletion is irreversible. All your data will be lost.
-              </p>
+              <div className="mt-5 p-3 rounded-xl bg-amber-950/20 border border-amber-500/20">
+                <p className="text-xs text-amber-300/80 text-center">
+                  ⚠️ La suppression du compte est irréversible. Toutes vos données seront perdues.
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -1080,6 +982,23 @@ export default function SettingsPage() {
       </main>
 
       <BottomNav />
+
+      {/* ===== ANIMATIONS ===== */}
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-in {
+          animation: slideIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
