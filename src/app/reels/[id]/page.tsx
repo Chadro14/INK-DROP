@@ -17,6 +17,7 @@ import {
   User as UserIcon,
   Trophy,
   Sparkles,
+  BadgeCheck,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -61,6 +62,23 @@ type Reel = {
   featuredCreator?: Author | null;
 };
 
+// ✅ COMPOSANT BADGE CERTIFIÉ
+function CertifiedBadge({ author, size = "sm" }: { author: Author; size?: "sm" | "md" }) {
+  if (!author?.isCertified) return null;
+
+  const badgeColor = author.badgeColor || author.avatarColor || "#3B82F6";
+  const className = size === "sm" ? "w-4 h-4" : "w-5 h-5";
+
+  return (
+    <BadgeCheck
+      className={className}
+      fill={badgeColor}
+      color="black"
+      strokeWidth={1.5}
+    />
+  );
+}
+
 export default function ReelDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -73,9 +91,6 @@ export default function ReelDetailPage() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // ============================================
-  // CHARGER LE REEL
-  // ============================================
   useEffect(() => {
     if (!reelId) return;
 
@@ -103,18 +118,12 @@ export default function ReelDetailPage() {
     fetchReel();
   }, [reelId]);
 
-  // ============================================
-  // AUTOPLAY
-  // ============================================
   useEffect(() => {
     if (videoRef.current && reel) {
       videoRef.current.play().catch(() => {});
     }
   }, [reel]);
 
-  // ============================================
-  // INTERACTIONS
-  // ============================================
   const handleLike = async () => {
     if (!reel) return;
 
@@ -195,9 +204,6 @@ export default function ReelDetailPage() {
     }
   };
 
-  // ============================================
-  // CTA
-  // ============================================
   const getCtaDestination = (): string | null => {
     if (!reel) return null;
     if (reel.chapter && reel.manga) {
@@ -229,9 +235,6 @@ export default function ReelDetailPage() {
 
   const ctaDestination = getCtaDestination();
 
-  // ============================================
-  // RENDU
-  // ============================================
   if (loading) return <Loader label="Chargement du reel..." />;
 
   if (error || !reel) {
@@ -251,7 +254,6 @@ export default function ReelDetailPage() {
   return (
     <>
       <div className="flex flex-col h-screen bg-black relative">
-        {/* HEADER */}
         <header className="absolute top-0 left-0 right-0 z-20 px-4 py-3 bg-gradient-to-b from-black/80 to-transparent flex items-center justify-between">
           <button
             onClick={() => router.back()}
@@ -263,7 +265,6 @@ export default function ReelDetailPage() {
           <div className="w-9" />
         </header>
 
-        {/* VIDÉO */}
         <div className="flex-1 relative flex items-center justify-center">
           <video
             ref={videoRef}
@@ -283,7 +284,6 @@ export default function ReelDetailPage() {
             }}
           />
 
-          {/* INFO À GAUCHE */}
           <div className="absolute bottom-4 left-4 right-20 z-10">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden shrink-0">
@@ -300,11 +300,7 @@ export default function ReelDetailPage() {
               <span className="text-white font-semibold text-sm">
                 @{reel.author?.username}
               </span>
-              {reel.author?.isCertified && (
-                <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                </svg>
-              )}
+              <CertifiedBadge author={reel.author} size="sm" />
             </div>
 
             <h2 className="text-white font-bold text-lg leading-tight">{reel.title}</h2>
@@ -312,7 +308,6 @@ export default function ReelDetailPage() {
               <p className="text-white/80 text-sm mt-1 line-clamp-3">{reel.description}</p>
             )}
 
-            {/* CTA */}
             {ctaDestination && (
               <button
                 onClick={() => router.push(ctaDestination)}
@@ -332,12 +327,8 @@ export default function ReelDetailPage() {
             )}
           </div>
 
-          {/* ACTIONS À DROITE */}
           <div className="absolute bottom-4 right-4 z-10 flex flex-col items-center gap-4">
-            <button
-              onClick={handleLike}
-              className="flex flex-col items-center gap-1"
-            >
+            <button onClick={handleLike} className="flex flex-col items-center gap-1">
               <div
                 className={`p-3 rounded-full transition-all ${
                   reel.isLiked
@@ -350,20 +341,14 @@ export default function ReelDetailPage() {
               <span className="text-white/80 text-xs font-medium">{reel.likesCount || 0}</span>
             </button>
 
-            <button
-              onClick={() => setShowComments(true)}
-              className="flex flex-col items-center gap-1"
-            >
+            <button onClick={() => setShowComments(true)} className="flex flex-col items-center gap-1">
               <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
                 <MessageCircle className="w-6 h-6" />
               </div>
               <span className="text-white/80 text-xs font-medium">{reel.commentsCount || 0}</span>
             </button>
 
-            <button
-              onClick={handleBookmark}
-              className="flex flex-col items-center gap-1"
-            >
+            <button onClick={handleBookmark} className="flex flex-col items-center gap-1">
               <div
                 className={`p-3 rounded-full transition-all ${
                   reel.isBookmarked
@@ -376,10 +361,7 @@ export default function ReelDetailPage() {
               <span className="text-white/80 text-xs font-medium">Sauvegarder</span>
             </button>
 
-            <button
-              onClick={handleShare}
-              className="flex flex-col items-center gap-1"
-            >
+            <button onClick={handleShare} className="flex flex-col items-center gap-1">
               <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
                 <Share2 className="w-6 h-6" />
               </div>
@@ -388,13 +370,11 @@ export default function ReelDetailPage() {
           </div>
         </div>
 
-        {/* BARRE DE PROGRESSION */}
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10">
           <div className="h-full bg-purple-500" style={{ width: "100%" }} />
         </div>
       </div>
 
-      {/* MODAL COMMENTAIRES */}
       {showComments && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
           <div className="h-[75vh] rounded-t-3xl overflow-hidden border-t border-zinc-800">
