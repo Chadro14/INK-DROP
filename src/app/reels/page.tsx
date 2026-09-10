@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Loader } from "@/components/ui/loader";
+import { ReelComments } from "@/components/reels/ReelComments";
 import {
   Heart,
   Bookmark,
@@ -67,8 +68,6 @@ type Reel = {
   isLiked: boolean;
   isBookmarked: boolean;
   createdAt: string;
-
-  // ✅ NOUVEAU : Type + CTA + relations
   type?: string;
   ctaLabel?: string | null;
   manga?: Manga | null;
@@ -83,7 +82,6 @@ type Reel = {
 function CtaButton({ reel }: { reel: Reel }) {
   const router = useRouter();
 
-  // Déterminer la destination selon le contenu lié
   const getDestination = (): string | null => {
     if (reel.chapter && reel.manga) {
       const mangaSlug = reel.manga.slug || reel.manga.id;
@@ -102,7 +100,6 @@ function CtaButton({ reel }: { reel: Reel }) {
     return null;
   };
 
-  // Déterminer l'icône selon le type
   const getIcon = () => {
     const type = reel.type || "";
     if (type.startsWith("MANGA")) return <BookOpen className="w-4 h-4" />;
@@ -112,7 +109,6 @@ function CtaButton({ reel }: { reel: Reel }) {
     return <Sparkles className="w-4 h-4" />;
   };
 
-  // Label par défaut si non fourni
   const getDefaultLabel = (): string => {
     if (reel.chapter) return "Lire le chapitre";
     if (reel.manga) return "Lire le manga";
@@ -149,6 +145,10 @@ export default function ReelsPage() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // ✅ NOUVEAU : modal commentaires
+  const [commentModalReelId, setCommentModalReelId] = useState<string | null>(null);
+  const [commentModalCount, setCommentModalCount] = useState(0);
 
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
   const containerRef = useRef<HTMLDivElement>(null);
@@ -335,6 +335,27 @@ export default function ReelsPage() {
   };
 
   // ============================================
+  // ✅ OUVRIR MODAL COMMENTAIRES
+  // ============================================
+  const openCommentModal = (reelId: string, count: number) => {
+    setCommentModalReelId(reelId);
+    setCommentModalCount(count);
+  };
+
+  // ============================================
+  // ✅ METTRE À JOUR LE COMPTEUR DE COMMENTAIRES
+  // ============================================
+  const incrementCommentCount = (reelId: string, delta: number) => {
+    setReels((prev) =>
+      prev.map((reel) =>
+        reel.id === reelId
+          ? { ...reel, commentsCount: Math.max(0, reel.commentsCount + delta) }
+          : reel
+      )
+    );
+  };
+
+  // ============================================
   // RENDU
   // ============================================
   if (loading) {
@@ -408,17 +429,18 @@ export default function ReelsPage() {
               key={reel.id}
               className="relative h-screen w-full snap-start snap-always flex items-center justify-center bg-black"
             >
-              {/* VIDÉO */}
+              {/* ✅ VIDÉO CLIQUABLE → PAGE DÉTAIL */}
               <video
                 ref={(el) => {
                   videoRefs.current[reel.id] = el;
                 }}
                 src={reel.videoUrl}
                 poster={reel.thumbnailUrl || undefined}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain cursor-pointer"
                 loop
                 playsInline
                 muted
+                onClick={() => router.push(`/reels/${reel.id}`)}
                 onPlay={() => {
                   if (index === currentIndex) {
                     handleView(reel.id);
@@ -428,7 +450,12 @@ export default function ReelsPage() {
 
               {/* INFO EN BAS À GAUCHE */}
               <div className="absolute bottom-28 left-4 z-10 max-w-[70%]">
-                <div className="flex items-center gap-2 mb-2">
+                {/* ✅ AUTEUR CLIQUABLE */}
+                <Link
+                  href={`/creator/${reel.author?.username || ""}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-2 mb-2 hover:opacity-80 transition-all"
+                >
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden shrink-0">
                     {reel.author?.avatarUrl ? (
                       <img
@@ -448,7 +475,7 @@ export default function ReelsPage() {
                       <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
                     </svg>
                   )}
-                </div>
+                </Link>
 
                 <h2 className="text-white font-bold text-lg leading-tight">{reel.title}</h2>
                 {reel.description && (
@@ -488,9 +515,9 @@ export default function ReelsPage() {
                   <span className="text-white/80 text-xs font-medium">{reel.likesCount || 0}</span>
                 </button>
 
-                {/* Commentaires */}
+                {/* ✅ COMMENTAIRES — OUVRE LA MODAL */}
                 <button
-                  onClick={() => router.push(`/reels/${reel.id}`)}
+                  onClick={() => openCommentModal(reel.id, reel.commentsCount)}
                   className="flex flex-col items-center gap-1 group"
                 >
                   <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
@@ -548,6 +575,20 @@ export default function ReelsPage() {
 
         <BottomNav />
       </div>
+
+      {/* ✅ MODAL COMMENTAIRES */}
+      {commentModalReelId && (
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+          <div className="h-[75vh] rounded-t-3xl overflow-hidden border-t border-zinc-800">
+            <ReelComments
+              reelId={commentModalReelId}
+              initialCount={commentModalCount}
+              onClose={() => setCommentModalReelId(null)}
+              onCommentAdded={(delta) => incrementCommentCount(commentModalReelId, delta)}
+            />
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         .hide-scrollbar::-webkit-scrollbar {
