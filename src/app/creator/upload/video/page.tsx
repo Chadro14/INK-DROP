@@ -12,7 +12,6 @@ import {
   AlertCircle,
   Play,
   X,
-  Music,
   Tag,
   Eye,
   Lock,
@@ -23,7 +22,6 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 
-// ✅ Types de Reels avec leur cible
 const REEL_TYPES = [
   { value: "MANGA_TEASER", label: "Teaser de manga", icon: "🎬", linksTo: "manga" },
   { value: "MANGA_CHARACTER", label: "Présentation de personnage", icon: "👤", linksTo: "manga" },
@@ -49,7 +47,6 @@ type EventItem = { id: string; title: string; type: string };
 
 export default function UploadReelPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -60,14 +57,12 @@ export default function UploadReelPage() {
   const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
-  const [musicTitle, setMusicTitle] = useState("");
-  const [musicArtist, setMusicArtist] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
 
-  // ✅ NOUVEAU : Type + liaison + CTA
+  // ✅ Type + liaison + CTA
   const [type, setType] = useState("OTHER");
   const [mangaId, setMangaId] = useState("");
   const [chapterId, setChapterId] = useState("");
@@ -80,40 +75,61 @@ export default function UploadReelPage() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loadingData, setLoadingData] = useState(false);
+  const [mangasError, setMangasError] = useState("");
 
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // ✅ Type sélectionné et cible
   const selectedType = REEL_TYPES.find((t) => t.value === type);
   const linksTo = selectedType?.linksTo || "none";
 
-  // ✅ Charger les données au démarrage
+  // ✅ Charger les mangas de l'utilisateur connecté
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
 
       setLoadingData(true);
+      setMangasError("");
+
       try {
         const headers = { Authorization: `Bearer ${token}` };
 
-        // Mangas de l'utilisateur
-        const mangasRes = await fetch(`${API_URL}/mangas?authorId=me&limit=50`, { headers });
-        if (mangasRes.ok) {
-          const mangasData = await mangasRes.json();
-          const list = mangasData.data || mangasData || [];
-          setMangas(Array.isArray(list) ? list : []);
+        // 1. Récupérer l'utilisateur connecté
+        const meRes = await fetch(`${API_URL}/users/me`, { headers });
+
+        if (!meRes.ok) {
+          throw new Error("Impossible de récupérer votre profil");
         }
 
-        // Événements actifs
+        const meData = await meRes.json();
+        const userId = meData.id || meData.data?.id;
+
+        if (!userId) {
+          throw new Error("ID utilisateur introuvable");
+        }
+
+        // 2. Récupérer les mangas de l'utilisateur
+        const mangasRes = await fetch(`${API_URL}/mangas/creator/${userId}`, { headers });
+
+        if (mangasRes.ok) {
+          const mangasData = await mangasRes.json();
+          // Le controller retourne { success, data, totals }
+          const list = mangasData.data || [];
+          setMangas(Array.isArray(list) ? list : []);
+        } else {
+          setMangasError("Impossible de charger vos mangas");
+        }
+
+        // 3. Récupérer les événements actifs
         const eventsRes = await fetch(`${API_URL}/events?isActive=true`);
         if (eventsRes.ok) {
           const eventsData = await eventsRes.json();
           const list = eventsData.data || eventsData || [];
           setEvents(Array.isArray(list) ? list : []);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Erreur chargement données:", err);
+        setMangasError(err.message || "Erreur de chargement");
       } finally {
         setLoadingData(false);
       }
@@ -124,12 +140,10 @@ export default function UploadReelPage() {
 
   // ✅ Charger les chapitres quand un manga est sélectionné
   useEffect(() => {
-    if (!mangaId || (linksTo !== "chapter" && linksTo !== "manga")) {
+    if (!mangaId || linksTo !== "chapter") {
       setChapters([]);
       return;
     }
-
-    if (linksTo !== "chapter") return;
 
     const fetchChapters = async () => {
       try {
@@ -322,7 +336,6 @@ export default function UploadReelPage() {
       return;
     }
 
-    // ✅ Vérifier les liaisons obligatoires
     if (linksTo === "manga" && !mangaId) {
       setError("Veuillez sélectionner un manga");
       setUploading(false);
@@ -353,8 +366,6 @@ export default function UploadReelPage() {
         videoUrl: videoKey,
         thumbnailUrl: thumbnailKey || undefined,
         duration: duration || undefined,
-        musicTitle: musicTitle || undefined,
-        musicArtist: musicArtist || undefined,
         tags: tags.length > 0 ? tags : undefined,
         isPrivate,
         // ✅ NOUVEAU
@@ -467,23 +478,35 @@ export default function UploadReelPage() {
                   <label className="block text-xs font-medium text-foreground mb-1">
                     Manga *
                   </label>
-                  <select
-                    value={mangaId}
-                    onChange={(e) => setMangaId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
-                    disabled={loadingData}
-                  >
-                    <option value="">-- Sélectionner --</option>
-                    {mangas.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.title}
-                      </option>
-                    ))}
-                  </select>
-                  {mangas.length === 0 && !loadingData && (
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Aucun manga trouvé. Publiez d'abord un manga.
-                    </p>
+                  {mangasError ? (
+                    <div className="text-xs text-rose-400 p-2 rounded bg-rose-950/30 border border-rose-500/30">
+                      {mangasError}
+                    </div>
+                  ) : loadingData ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Chargement de vos mangas...
+                    </div>
+                  ) : mangas.length === 0 ? (
+                    <div className="text-xs text-amber-400 p-2 rounded bg-amber-950/30 border border-amber-500/30">
+                      Vous n'avez pas encore de manga.{" "}
+                      <Link href="/creator/upload" className="underline font-bold">
+                        Publier un manga
+                      </Link>
+                    </div>
+                  ) : (
+                    <select
+                      value={mangaId}
+                      onChange={(e) => setMangaId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
+                    >
+                      <option value="">-- Sélectionner --</option>
+                      {mangas.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.title}
+                        </option>
+                      ))}
+                    </select>
                   )}
                 </div>
               )}
@@ -570,9 +593,6 @@ export default function UploadReelPage() {
               className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none transition-all text-sm"
               maxLength={50}
             />
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Ce texte apparaîtra sur le bouton sous votre Reel
-            </p>
           </div>
 
           {/* TITRE */}
@@ -698,35 +718,6 @@ export default function UploadReelPage() {
                 />
               </label>
             )}
-          </div>
-
-          {/* MUSIQUE */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-bold text-foreground mb-1.5">
-                <Music className="w-3.5 h-3.5 inline mr-1 text-purple-400" />
-                Titre de la musique
-              </label>
-              <input
-                type="text"
-                value={musicTitle}
-                onChange={(e) => setMusicTitle(e.target.value)}
-                placeholder="Titre"
-                className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none transition-all text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-foreground mb-1.5">
-                Artiste
-              </label>
-              <input
-                type="text"
-                value={musicArtist}
-                onChange={(e) => setMusicArtist(e.target.value)}
-                placeholder="Artiste"
-                className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none transition-all text-sm"
-              />
-            </div>
           </div>
 
           {/* TAGS */}
