@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Outfit } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import AiChatbot from '@/components/ai/AiChatbot';
 import { SocketProvider } from '@/providers/SocketProvider';
-import { useThemeColor } from '@/hooks/useThemeColor';
+import { ThemeProvider } from '@/components/providers/ThemeProvider';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -14,63 +13,11 @@ const outfit = Outfit({
   variable: '--font-outfit',
 });
 
-const API_URL = "https://ink-backend.vercel.app";
-
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [accentColor, setAccentColor] = useState("#f97316");
-
-  // ===== APPLIQUER LA COULEUR AVEC LE HOOK =====
-  useThemeColor(accentColor);
-
-  // ===== CHARGER LA COULEUR ET LE THÈME AU DÉMARRAGE =====
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      fetch(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error("Erreur chargement utilisateur");
-          return res.json();
-        })
-        .then((data) => {
-          // ✅ Appliquer le thème (clair/sombre)
-          if (data.preferences?.theme) {
-            const root = document.documentElement;
-            if (data.preferences.theme === "light") {
-              root.classList.add("light-theme");
-            } else {
-              root.classList.remove("light-theme");
-            }
-          }
-
-          // ✅ Appliquer la couleur primaire
-          if (data.preferences?.accentColor) {
-            const color = data.preferences.accentColor;
-            setAccentColor(color);
-            document.documentElement.style.setProperty("--primary", color);
-          }
-
-          // ✅ Appliquer le thème également (pour la sauvegarde)
-          if (data.preferences?.theme) {
-            const root = document.documentElement;
-            if (data.preferences.theme === "light") {
-              root.classList.add("light-theme");
-            } else {
-              root.classList.remove("light-theme");
-            }
-          }
-        })
-        .catch((error) => {
-          console.error("❌ Erreur chargement des préférences:", error);
-        });
-    }
-  }, []);
-
   return (
     <html lang="fr" suppressHydrationWarning>
       <head>
@@ -78,6 +25,28 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <meta name="theme-color" content="#000000" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+
+        {/* ✅ SCRIPT ANTI-FLASH : applique le thème AVANT le rendu React */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme') || 'dark';
+                  var effective = theme;
+                  if (theme === 'system') {
+                    effective = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                  }
+                  if (effective === 'light') {
+                    document.documentElement.classList.add('light-theme');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+
+        {/* ✅ SERVICE WORKER */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -97,12 +66,14 @@ export default function RootLayout({
         />
       </head>
       <body className={`${outfit.variable} min-h-screen flex flex-col bg-background text-foreground`}>
-        <Providers>
-          <SocketProvider>
-            {children}
-          </SocketProvider>
-          <AiChatbot />
-        </Providers>
+        <ThemeProvider>
+          <Providers>
+            <SocketProvider>
+              {children}
+            </SocketProvider>
+            <AiChatbot />
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );
