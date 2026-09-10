@@ -7,23 +7,10 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { Loader } from "@/components/ui/loader";
 import {
   ArrowLeft,
-  Calendar,
-  Clock,
   Trophy,
-  Users,
-  Sparkles,
-  Crown,
-  Coins,
-  Ticket,
   CheckCircle2,
   AlertCircle,
   Loader2,
-  Star,
-  Flame,
-  Zap,
-  Gift,
-  Target,
-  BarChart,
   Upload,
   Image as ImageIcon,
   X,
@@ -67,24 +54,33 @@ export default function EventParticipatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Formulaire de soumission
+  // Formulaire
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  // ============================================
+  // CHARGEMENT DE L'ÉVÉNEMENT
+  // ============================================
   useEffect(() => {
     const fetchEvent = async () => {
       try {
         const token = localStorage.getItem("token");
+        if (!token) {
+          router.push("/login");
+          return;
+        }
+
         const res = await fetch(`${API_URL}/events/${eventId}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!res.ok) throw new Error("Événement non trouvé");
 
         const data = await res.json();
         setEvent(data.data);
+        setError("");
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -95,15 +91,25 @@ export default function EventParticipatePage() {
     if (eventId) {
       fetchEvent();
     }
-  }, [eventId]);
+  }, [eventId, router]);
 
+  // ============================================
+  // GESTION IMAGE
+  // ============================================
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Vérifier la taille (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError("L'image ne doit pas dépasser 5MB");
+        return;
+      }
+
       setImageFile(file);
       const reader = new FileReader();
       reader.onload = () => setImagePreview(reader.result as string);
       reader.readAsDataURL(file);
+      setError("");
     }
   };
 
@@ -112,6 +118,9 @@ export default function EventParticipatePage() {
     setImagePreview(null);
   };
 
+  // ============================================
+  // SOUMISSION
+  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -155,6 +164,10 @@ export default function EventParticipatePage() {
       const uploadData = await uploadRes.json();
       const imageUrl = uploadData.url || uploadData.data?.url;
 
+      if (!imageUrl) {
+        throw new Error("URL de l'image manquante après upload");
+      }
+
       // 2. Soumettre au backend
       const submitRes = await fetch(`${API_URL}/events/${eventId}/submit`, {
         method: "POST",
@@ -163,8 +176,8 @@ export default function EventParticipatePage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          title,
-          description: description || undefined,
+          title: title.trim(),
+          description: description.trim() || undefined,
           imageUrl,
         }),
       });
@@ -186,22 +199,26 @@ export default function EventParticipatePage() {
     }
   };
 
+  // ============================================
+  // LOADING
+  // ============================================
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <Loader label="Chargement de l'événement..." />
-      </div>
-    );
+    return <Loader label="Chargement de l'événement..." />;
   }
 
-  if (error || !event) {
+  // ============================================
+  // ✅ ERREUR UNIQUEMENT SI L'ÉVÉNEMENT N'EST PAS CHARGÉ
+  // ============================================
+  if (!event) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground px-4 text-center">
         <div className="w-20 h-20 rounded-full bg-rose-950/30 border border-rose-500/30 flex items-center justify-center mb-4">
           <AlertCircle className="w-10 h-10 text-rose-400" />
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Événement non trouvé</h2>
-        <p className="text-zinc-400 max-w-md">{error || "L'événement que vous recherchez n'existe pas."}</p>
+        <h2 className="text-xl font-bold mb-2">Événement non trouvé</h2>
+        <p className="text-muted-foreground max-w-md">
+          {error || "L'événement que vous recherchez n'existe pas."}
+        </p>
         <Link
           href="/events"
           className="mt-6 px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all shadow-lg shadow-blue-600/20"
@@ -212,22 +229,27 @@ export default function EventParticipatePage() {
     );
   }
 
+  // ============================================
+  // CALCUL DATES
+  // ============================================
   const now = new Date();
   const start = new Date(event.startDate);
   const end = new Date(event.endDate);
   const isActive = event.isActive && start <= now && end >= now;
   const isParticipating = !!event.userParticipation;
 
-  // Vérifier si l'utilisateur participe
+  // ============================================
+  // ✅ SI PAS INSCRIT → INVITER À S'INSCRIRE (pas une erreur)
+  // ============================================
   if (!isParticipating) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4 text-center">
-        <div className="w-20 h-20 rounded-full bg-amber-950/30 border border-amber-500/30 flex items-center justify-center mb-4">
-          <AlertCircle className="w-10 h-10 text-amber-400" />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground px-4 text-center">
+        <div className="w-20 h-20 rounded-full bg-blue-950/30 border border-blue-500/30 flex items-center justify-center mb-4">
+          <Trophy className="w-10 h-10 text-blue-400" />
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Vous ne participez pas</h2>
-        <p className="text-zinc-400 max-w-md">
-          Vous devez d'abord participer à l'événement pour soumettre une œuvre.
+        <h2 className="text-xl font-bold mb-2">Vous ne participez pas encore</h2>
+        <p className="text-muted-foreground max-w-md">
+          Rejoignez d'abord l'événement pour pouvoir soumettre votre œuvre.
         </p>
         <Link
           href={`/events/${eventId}`}
@@ -239,14 +261,17 @@ export default function EventParticipatePage() {
     );
   }
 
+  // ============================================
+  // ✅ SI ÉVÉNEMENT TERMINÉ
+  // ============================================
   if (!isActive) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground px-4 text-center">
         <div className="w-20 h-20 rounded-full bg-rose-950/30 border border-rose-500/30 flex items-center justify-center mb-4">
           <AlertCircle className="w-10 h-10 text-rose-400" />
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Événement terminé</h2>
-        <p className="text-zinc-400 max-w-md">
+        <h2 className="text-xl font-bold mb-2">Événement terminé</h2>
+        <p className="text-muted-foreground max-w-md">
           Cet événement est terminé. Vous ne pouvez plus soumettre d'œuvre.
         </p>
         <Link
@@ -259,17 +284,22 @@ export default function EventParticipatePage() {
     );
   }
 
+  // ============================================
+  // FORMULAIRE DE SOUMISSION
+  // ============================================
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
-      
+    <div className="flex flex-col min-h-screen bg-background text-foreground pb-24">
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <Link href={`/events/${eventId}`} className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium">
+          <Link
+            href={`/events/${eventId}`}
+            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-sm font-medium"
+          >
             <ArrowLeft className="w-4 h-4" />
             <span>Retour</span>
           </Link>
-          <span className="text-base font-bold text-white tracking-tight truncate max-w-[150px]">
+          <span className="text-base font-bold tracking-tight truncate max-w-[150px]">
             Soumettre
           </span>
           <div className="w-12" />
@@ -277,20 +307,18 @@ export default function EventParticipatePage() {
       </header>
 
       <main className="max-w-2xl mx-auto w-full px-4 md:px-8 py-6 flex flex-col gap-6">
-
         {/* INFO ÉVÉNEMENT */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4">
-          <h2 className="text-sm font-bold text-white flex items-center gap-2">
+        <div className="bg-card/40 border border-border/80 rounded-2xl p-4">
+          <h2 className="text-sm font-bold flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-400" />
             {event.title}
           </h2>
-          <p className="text-xs text-zinc-400 mt-1">
-            {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
+          <p className="text-xs text-muted-foreground mt-1">
+            {new Date(event.startDate).toLocaleDateString("fr-FR")} -{" "}
+            {new Date(event.endDate).toLocaleDateString("fr-FR")}
           </p>
           {event.theme && (
-            <p className="text-xs text-blue-400 mt-1">
-              Thème : {event.theme}
-            </p>
+            <p className="text-xs text-blue-400 mt-1">Thème : {event.theme}</p>
           )}
         </div>
 
@@ -311,10 +339,13 @@ export default function EventParticipatePage() {
         )}
 
         {/* FORMULAIRE */}
-        <form onSubmit={handleSubmit} className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 md:p-6 space-y-5">
-          
+        <form
+          onSubmit={handleSubmit}
+          className="bg-card/40 border border-border/80 rounded-2xl p-5 md:p-6 space-y-5"
+        >
+          {/* TITRE */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-300 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wider">
               Titre de l'œuvre *
             </label>
             <input
@@ -322,13 +353,15 @@ export default function EventParticipatePage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Ex: Mon dessin pour le défi"
-              className="w-full px-4 py-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm"
+              className="w-full px-4 py-2.5 rounded-xl bg-card border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm"
               required
+              maxLength={100}
             />
           </div>
 
+          {/* DESCRIPTION */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-300 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wider">
               Description
             </label>
             <textarea
@@ -336,19 +369,21 @@ export default function EventParticipatePage() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Décrivez votre œuvre..."
               rows={3}
-              className="w-full px-4 py-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm resize-none"
+              className="w-full px-4 py-2.5 rounded-xl bg-card border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm resize-none"
+              maxLength={500}
             />
           </div>
 
+          {/* IMAGE */}
           <div>
-            <label className="block text-xs font-semibold text-zinc-300 mb-1.5 uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wider">
               Image de l'œuvre *
             </label>
             <div
-              className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all bg-zinc-950/50 ${
+              className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all bg-card/30 ${
                 imagePreview
                   ? "border-blue-500/80 bg-blue-500/5"
-                  : "border-zinc-800 hover:border-zinc-700"
+                  : "border-border hover:border-border/80"
               }`}
             >
               {imagePreview ? (
@@ -356,7 +391,7 @@ export default function EventParticipatePage() {
                   <img
                     src={imagePreview}
                     alt="Aperçu"
-                    className="max-h-64 rounded-xl shadow-xl border border-zinc-800 object-cover"
+                    className="max-h-64 rounded-xl shadow-xl border border-border object-cover"
                   />
                   <button
                     type="button"
@@ -368,11 +403,11 @@ export default function EventParticipatePage() {
                 </div>
               ) : (
                 <div className="py-4">
-                  <ImageIcon className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
-                  <p className="text-zinc-300 text-sm font-medium mb-1">
+                  <ImageIcon className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-foreground text-sm font-medium mb-1">
                     Cliquez ou glissez une image
                   </p>
-                  <p className="text-zinc-500 text-xs">
+                  <p className="text-muted-foreground text-xs">
                     PNG, JPG, WEBP — Max 5MB
                   </p>
                 </div>
@@ -386,6 +421,7 @@ export default function EventParticipatePage() {
             </div>
           </div>
 
+          {/* BOUTON */}
           <button
             type="submit"
             disabled={submitting || success || !title.trim() || !imageFile}
