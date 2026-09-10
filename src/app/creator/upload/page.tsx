@@ -1,830 +1,471 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import {
-  ArrowLeft,
-  Upload,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
-  Play,
-  X,
-  Tag,
-  Eye,
-  Lock,
-  Globe,
-  Sparkles,
-  Link as LinkIcon,
-} from "lucide-react";
+import { Loader } from "@/components/ui/loader";
+import { Heart, Bookmark, Share2, Play } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
-const REEL_TYPES = [
-  { value: "MANGA_TEASER", label: "Teaser de manga", icon: "🎬", linksTo: "manga" },
-  { value: "MANGA_CHARACTER", label: "Présentation de personnage", icon: "👤", linksTo: "manga" },
-  { value: "MANGA_CHAPTER_PREVIEW", label: "Extrait de chapitre", icon: "📖", linksTo: "chapter" },
-  { value: "MANGA_ANNOUNCEMENT", label: "Annonce de nouveau chapitre", icon: "📢", linksTo: "manga" },
-  { value: "MANGA_TRAILER", label: "Bande-annonce", icon: "🎥", linksTo: "manga" },
-  { value: "CREATOR_PORTFOLIO", label: "Présentation créateur", icon: "🎨", linksTo: "creator" },
-  { value: "CREATOR_TIMELAPSE", label: "Timelapse de dessin", icon: "⏱️", linksTo: "creator" },
-  { value: "CREATOR_MAKING_OF", label: "Making-of", icon: "🎞️", linksTo: "creator" },
-  { value: "EVENT_PROMO", label: "Promotion d'événement", icon: "🎉", linksTo: "event" },
-  { value: "EVENT_BATTLE", label: "Battle de mangas", icon: "⚔️", linksTo: "event" },
-  { value: "EVENT_DRAWING_CHALLENGE", label: "Défi dessin", icon: "✏️", linksTo: "event" },
-  { value: "RISING_CREATOR", label: "Rising Creator", icon: "🚀", linksTo: "event" },
-  { value: "INKDROP_AWARDS", label: "INKdrop Awards", icon: "🏆", linksTo: "event" },
-  { value: "INKDROP_TOURNAMENT", label: "INKdrop Tournament", icon: "🥇", linksTo: "event" },
-  { value: "INKDROP_OFFICIAL", label: "Reel officiel INKdrop", icon: "✨", linksTo: "none" },
-  { value: "OTHER", label: "Autre", icon: "📹", linksTo: "none" },
-];
+type Author = {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  avatarColor: string | null;
+  isCertified: boolean;
+  badgeColor: string | null;
+};
 
-type Manga = { id: string; title: string; slug?: string };
-type Chapter = { id: string; number: number; title?: string; mangaId: string };
-type EventItem = { id: string; title: string; type: string };
+type Reel = {
+  id: string;
+  title: string;
+  description: string | null;
+  videoUrl: string;
+  thumbnailUrl: string | null;
+  duration: number | null;
+  viewsCount: number;
+  likesCount: number;
+  commentsCount: number;
+  sharesCount: number;
+  authorId: string;
+  author: Author;
+  musicTitle: string | null;
+  musicArtist: string | null;
+  tags: string[];
+  isLiked: boolean;
+  isBookmarked: boolean;
+  createdAt: string;
+};
 
-export default function UploadReelPage() {
+export default function ReelsPage() {
   const router = useRouter();
-  const [uploading, setUploading] = useState(false);
+  const [reels, setReels] = useState<Reel[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videoPreview, setVideoPreview] = useState<string | null>(null);
-  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
-  const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [duration, setDuration] = useState<number | null>(null);
+  const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // ✅ Type + liaison + CTA
-  const [type, setType] = useState("OTHER");
-  const [mangaId, setMangaId] = useState("");
-  const [chapterId, setChapterId] = useState("");
-  const [eventId, setEventId] = useState("");
-  const [featuredCreatorId, setFeaturedCreatorId] = useState("");
-  const [ctaLabel, setCtaLabel] = useState("");
-
-  // ✅ Listes pour les sélections
-  const [mangas, setMangas] = useState<Manga[]>([]);
-  const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [events, setEvents] = useState<EventItem[]>([]);
-  const [loadingData, setLoadingData] = useState(false);
-  const [mangasError, setMangasError] = useState("");
-
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const selectedType = REEL_TYPES.find((t) => t.value === type);
-  const linksTo = selectedType?.linksTo || "none";
-
-  // ✅ Charger les mangas de l'utilisateur connecté
-  useEffect(() => {
-    const fetchData = async () => {
+  // ============================================
+  // CHARGEMENT DES REELS
+  // ============================================
+  const fetchReels = useCallback(async (pageNum: number) => {
+    try {
       const token = localStorage.getItem("token");
-      if (!token) return;
-
-      setLoadingData(true);
-      setMangasError("");
-
-      try {
-        const headers = { Authorization: `Bearer ${token}` };
-
-        // 1. Récupérer l'utilisateur connecté
-        const meRes = await fetch(`${API_URL}/users/me`, { headers });
-
-        if (!meRes.ok) {
-          throw new Error("Impossible de récupérer votre profil");
-        }
-
-        const meData = await meRes.json();
-        const userId = meData.id || meData.data?.id;
-
-        if (!userId) {
-          throw new Error("ID utilisateur introuvable");
-        }
-
-        // 2. Récupérer les mangas de l'utilisateur
-        const mangasRes = await fetch(`${API_URL}/mangas/creator/${userId}`, { headers });
-
-        if (mangasRes.ok) {
-          const mangasData = await mangasRes.json();
-          // Le controller retourne { success, data, totals }
-          const list = mangasData.data || [];
-          setMangas(Array.isArray(list) ? list : []);
-        } else {
-          setMangasError("Impossible de charger vos mangas");
-        }
-
-        // 3. Récupérer les événements actifs
-        const eventsRes = await fetch(`${API_URL}/events?isActive=true`);
-        if (eventsRes.ok) {
-          const eventsData = await eventsRes.json();
-          const list = eventsData.data || eventsData || [];
-          setEvents(Array.isArray(list) ? list : []);
-        }
-      } catch (err: any) {
-        console.error("Erreur chargement données:", err);
-        setMangasError(err.message || "Erreur de chargement");
-      } finally {
-        setLoadingData(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // ✅ Charger les chapitres quand un manga est sélectionné
-  useEffect(() => {
-    if (!mangaId || linksTo !== "chapter") {
-      setChapters([]);
-      return;
-    }
-
-    const fetchChapters = async () => {
-      try {
-        const res = await fetch(`${API_URL}/mangas/${mangaId}`);
-        if (res.ok) {
-          const data = await res.json();
-          const mangaChapters = data.data?.chapters || [];
-          setChapters(Array.isArray(mangaChapters) ? mangaChapters : []);
-        }
-      } catch (err) {
-        console.error("Erreur chargement chapitres:", err);
-      }
-    };
-
-    fetchChapters();
-  }, [mangaId, linksTo]);
-
-  // ✅ Reset les liaisons quand on change de type
-  useEffect(() => {
-    if (linksTo !== "manga" && linksTo !== "chapter") setMangaId("");
-    if (linksTo !== "chapter") setChapterId("");
-    if (linksTo !== "event") setEventId("");
-    if (linksTo !== "creator") setFeaturedCreatorId("");
-  }, [type, linksTo]);
-
-  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 100 * 1024 * 1024) {
-      setError("La vidéo ne doit pas dépasser 100MB");
-      return;
-    }
-
-    if (!file.type.startsWith("video/")) {
-      setError("Le fichier doit être une vidéo");
-      return;
-    }
-
-    setVideoFile(file);
-    const url = URL.createObjectURL(file);
-    setVideoPreview(url);
-
-    const video = document.createElement("video");
-    video.src = url;
-    video.onloadedmetadata = () => {
-      const durationInSeconds = Math.round(video.duration);
-      setDuration(durationInSeconds);
-      if (durationInSeconds < 20 || durationInSeconds > 30) {
-        setError("⚠️ La vidéo doit durer entre 20 et 30 secondes");
-      } else {
-        setError("");
-      }
-    };
-  };
-
-  const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      setError("Le fichier doit être une image");
-      return;
-    }
-
-    setThumbnailFile(file);
-    setThumbnailPreview(URL.createObjectURL(file));
-  };
-
-  const addTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput("");
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setTags(tags.filter((t) => t !== tag));
-  };
-
-  const uploadVideo = async (): Promise<string | null> => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      setError("Vous devez être connecté");
-      return null;
-    }
-
-    try {
-      const urlRes = await fetch(`${API_URL}/reels/upload-url`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ filename: videoFile?.name }),
-      });
-
-      if (!urlRes.ok) {
-        const errorData = await urlRes.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur lors de la génération de l'URL d'upload");
+      const headers: HeadersInit = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const urlData = await urlRes.json();
-      const { uploadUrl, key } = urlData.data;
-
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": videoFile?.type || "video/mp4",
-        },
-        body: videoFile,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error(`Échec de l'upload de la vidéo (${uploadRes.status})`);
-      }
-
-      return key;
-    } catch (error: any) {
-      console.error("Erreur upload vidéo:", error.message);
-      throw error;
-    }
-  };
-
-  const uploadThumbnail = async (): Promise<string | null> => {
-    if (!thumbnailFile) return null;
-
-    const token = localStorage.getItem("token");
-    if (!token) return null;
-
-    try {
-      const urlRes = await fetch(`${API_URL}/reels/upload-url`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ filename: thumbnailFile.name }),
-      });
-
-      if (!urlRes.ok) return null;
-
-      const urlData = await urlRes.json();
-      const { uploadUrl, key } = urlData.data;
-
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": thumbnailFile.type,
-        },
-        body: thumbnailFile,
-      });
-
-      if (!uploadRes.ok) return null;
-
-      return key;
-    } catch (error: any) {
-      console.error("Erreur upload vignette:", error.message);
-      return null;
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setUploading(true);
-
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      setUploading(false);
-      return;
-    }
-
-    if (!title.trim()) {
-      setError("Veuillez entrer un titre");
-      setUploading(false);
-      return;
-    }
-
-    if (!videoFile) {
-      setError("Veuillez sélectionner une vidéo");
-      setUploading(false);
-      return;
-    }
-
-    if (duration && (duration < 20 || duration > 30)) {
-      setError("⚠️ La vidéo doit durer entre 20 et 30 secondes");
-      setUploading(false);
-      return;
-    }
-
-    if (linksTo === "manga" && !mangaId) {
-      setError("Veuillez sélectionner un manga");
-      setUploading(false);
-      return;
-    }
-    if (linksTo === "chapter" && !chapterId) {
-      setError("Veuillez sélectionner un chapitre");
-      setUploading(false);
-      return;
-    }
-    if (linksTo === "event" && !eventId) {
-      setError("Veuillez sélectionner un événement");
-      setUploading(false);
-      return;
-    }
-
-    try {
-      const videoKey = await uploadVideo();
-      if (!videoKey) {
-        throw new Error("Échec de l'upload de la vidéo");
-      }
-
-      const thumbnailKey = await uploadThumbnail();
-
-      const payload: any = {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        videoUrl: videoKey,
-        thumbnailUrl: thumbnailKey || undefined,
-        duration: duration || undefined,
-        tags: tags.length > 0 ? tags : undefined,
-        isPrivate,
-        // ✅ NOUVEAU
-        type,
-        ctaLabel: ctaLabel.trim() || undefined,
-        mangaId: mangaId || undefined,
-        chapterId: chapterId || undefined,
-        eventId: eventId || undefined,
-        featuredCreatorId: featuredCreatorId || undefined,
-      };
-
-      const res = await fetch(`${API_URL}/reels`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
+      const res = await fetch(`${API_URL}/reels?page=${pageNum}&limit=10`, { headers });
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur lors de la création du reel");
+        throw new Error(data.message || "Erreur lors du chargement");
       }
 
-      setSuccess(true);
-      setTimeout(() => {
-        router.push("/reels");
-      }, 2000);
+      if (pageNum === 1) {
+        setReels(data.data || []);
+      } else {
+        setReels((prev) => [...prev, ...(data.data || [])]);
+      }
+
+      setHasMore(data.data?.length === 10);
     } catch (err: any) {
       setError(err.message);
     } finally {
-      setUploading(false);
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchReels(1);
+  }, [fetchReels]);
+
+  // ============================================
+  // SCROLL INFINI
+  // ============================================
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const scrollTop = container.scrollTop;
+      const clientHeight = container.clientHeight;
+      const scrollHeight = container.scrollHeight;
+
+      if (scrollTop + clientHeight >= scrollHeight - 200 && hasMore && !loadingMore) {
+        setLoadingMore(true);
+        const nextPage = page + 1;
+        setPage(nextPage);
+        fetchReels(nextPage);
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [hasMore, loadingMore, page, fetchReels]);
+
+  // ============================================
+  // AUTOPLAY
+  // ============================================
+  useEffect(() => {
+    // Pause tous les videos
+    Object.values(videoRefs.current).forEach((video) => {
+      if (video) {
+        video.pause();
+      }
+    });
+
+    // Play le video courant
+    const currentReel = reels[currentIndex];
+    if (currentReel && videoRefs.current[currentReel.id]) {
+      const video = videoRefs.current[currentReel.id];
+      if (video) {
+        video.play().catch(() => {});
+      }
+    }
+  }, [currentIndex, reels]);
+
+  // ============================================
+  // INTERACTIONS
+  // ============================================
+  const handleLike = async (reelId: string, index: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_URL}/reels/${reelId}/like`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setReels((prev) =>
+          prev.map((reel, i) =>
+            i === index
+              ? {
+                  ...reel,
+                  isLiked: data.liked,
+                  likesCount: data.liked ? reel.likesCount + 1 : reel.likesCount - 1,
+                }
+              : reel
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Erreur like:", error);
     }
   };
 
-  return (
-    <div className="flex flex-col min-h-screen pb-24 bg-background text-foreground">
+  const handleBookmark = async (reelId: string, index: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
 
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 py-3">
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <Link
-            href="/profile"
-            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-sm font-medium"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Retour</span>
-          </Link>
-          <span className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
-            <Play className="w-4 h-4 text-purple-400" />
-            Publier un Reel
-          </span>
-          <div className="w-12" />
-        </div>
-      </header>
+    try {
+      const res = await fetch(`${API_URL}/reels/${reelId}/bookmark`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-      <div className="h-16 w-full bg-gradient-to-r from-background via-purple-950/40 to-background border-b border-border/40 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.15),transparent_50%)]" />
+      const data = await res.json();
+      if (data.success) {
+        setReels((prev) =>
+          prev.map((reel, i) =>
+            i === index
+              ? {
+                  ...reel,
+                  isBookmarked: data.bookmarked,
+                }
+              : reel
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Erreur bookmark:", error);
+    }
+  };
+
+  const handleShare = async (reel: Reel) => {
+    const shareUrl = `${window.location.origin}/reels/${reel.id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: reel.title,
+          text: reel.description || "Regarde ce reel sur INKDROP !",
+          url: shareUrl,
+        });
+      } catch (e) {
+        // User cancelled
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert("Lien copié !");
+      } catch (e) {
+        console.error("Erreur copie:", e);
+      }
+    }
+  };
+
+  const handleView = async (reelId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      await fetch(`${API_URL}/reels/${reelId}/view`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ sessionId: localStorage.getItem("sessionId") }),
+      });
+    } catch (error) {
+      // Silence les erreurs de view
+    }
+  };
+
+  // ============================================
+  // RENDU
+  // ============================================
+  if (loading) {
+    return <Loader label="Chargement des reels..." />;
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-black px-4">
+        <p className="text-white/60 text-center">{error}</p>
+        <button
+          onClick={() => {
+            setError("");
+            setLoading(true);
+            fetchReels(1);
+          }}
+          className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 text-white font-semibold hover:bg-purple-500 transition-all"
+        >
+          Réessayer
+        </button>
       </div>
+    );
+  }
 
-      <main className="max-w-2xl mx-auto w-full px-4 -mt-8 flex-1">
+  if (reels.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-black px-4">
+        <div className="w-20 h-20 rounded-full bg-purple-950/40 border-2 border-purple-500/40 flex items-center justify-center mb-6">
+          <Play className="w-10 h-10 text-purple-400" />
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-2">Aucun reel</h1>
+        <p className="text-white/60 text-center max-w-md">
+          Soyez le premier à publier un reel sur INKDROP !
+        </p>
+        <Link
+          href="/creator/upload/video"
+          className="mt-6 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 text-white font-semibold hover:from-purple-500 hover:to-purple-400 transition-all shadow-lg shadow-purple-600/20"
+        >
+          Publier un reel
+        </Link>
+      </div>
+    );
+  }
 
-        <form onSubmit={handleSubmit} className="bg-card/40 border border-border/80 rounded-2xl p-6 space-y-6">
-
-          {error && (
-            <div className="flex items-start gap-2 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-sm">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
-              <span className="whitespace-pre-wrap">{error}</span>
-            </div>
-          )}
-
-          {success && (
-            <div className="flex items-center gap-2 p-3.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-emerald-300 text-sm">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-              <span>Reel publié avec succès ! Redirection...</span>
-            </div>
-          )}
-
-          {/* ✅ TYPE DE REEL */}
-          <div>
-            <label className="block text-sm font-bold text-foreground mb-1.5">
-              <Sparkles className="w-3.5 h-3.5 inline mr-1 text-purple-400" />
-              Type de Reel *
-            </label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground focus:border-purple-500 outline-none transition-all text-sm"
+  return (
+    <>
+      <div className="flex flex-col h-screen bg-black">
+        {/* HEADER */}
+        <header className="absolute top-0 left-0 right-0 z-10 px-4 py-3 bg-gradient-to-b from-black/80 to-transparent">
+          <div className="flex items-center justify-between max-w-lg mx-auto">
+            <span className="text-white font-bold text-lg tracking-tight">
+              <span className="text-purple-400">Reels</span>
+            </span>
+            <Link
+              href="/creator/upload/video"
+              className="px-4 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-all border border-white/20"
             >
-              {REEL_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.icon} {t.label}
-                </option>
-              ))}
-            </select>
+              + Publier
+            </Link>
           </div>
+        </header>
 
-          {/* ✅ LIAISON AU CONTENU */}
-          {linksTo !== "none" && (
-            <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-3">
-              <p className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-2">
-                <LinkIcon className="w-3.5 h-3.5" />
-                Contenu lié
-              </p>
+        {/* FEED VERTICAL */}
+        <div
+          ref={containerRef}
+          className="flex-1 overflow-y-scroll snap-y snap-mandatory scroll-smooth hide-scrollbar"
+          style={{ scrollSnapType: "y mandatory" }}
+        >
+          {reels.map((reel, index) => (
+            <div
+              key={reel.id}
+              className="relative h-screen w-full snap-start snap-always flex items-center justify-center bg-black"
+            >
+              {/* VIDÉO */}
+              <video
+                ref={(el) => {
+                  videoRefs.current[reel.id] = el;
+                }}
+                src={reel.videoUrl}
+                poster={reel.thumbnailUrl || undefined}
+                className="w-full h-full object-contain"
+                loop
+                playsInline
+                muted
+                onPlay={() => {
+                  if (index === currentIndex) {
+                    handleView(reel.id);
+                  }
+                }}
+              />
 
-              {/* Manga */}
-              {(linksTo === "manga" || linksTo === "chapter") && (
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Manga *
-                  </label>
-                  {mangasError ? (
-                    <div className="text-xs text-rose-400 p-2 rounded bg-rose-950/30 border border-rose-500/30">
-                      {mangasError}
-                    </div>
-                  ) : loadingData ? (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Chargement de vos mangas...
-                    </div>
-                  ) : mangas.length === 0 ? (
-                    <div className="text-xs text-amber-400 p-2 rounded bg-amber-950/30 border border-amber-500/30">
-                      Vous n'avez pas encore de manga.{" "}
-                      <Link href="/creator/upload" className="underline font-bold">
-                        Publier un manga
-                      </Link>
-                    </div>
-                  ) : (
-                    <select
-                      value={mangaId}
-                      onChange={(e) => setMangaId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
-                    >
-                      <option value="">-- Sélectionner --</option>
-                      {mangas.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.title}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              )}
-
-              {/* Chapitre */}
-              {linksTo === "chapter" && mangaId && (
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Chapitre *
-                  </label>
-                  <select
-                    value={chapterId}
-                    onChange={(e) => setChapterId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
-                  >
-                    <option value="">-- Sélectionner --</option>
-                    {chapters.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        Chapitre {c.number} {c.title ? `- ${c.title}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Événement */}
-              {linksTo === "event" && (
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Événement *
-                  </label>
-                  <select
-                    value={eventId}
-                    onChange={(e) => setEventId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
-                  >
-                    <option value="">-- Sélectionner --</option>
-                    {events.map((ev) => (
-                      <option key={ev.id} value={ev.id}>
-                        {ev.title}
-                      </option>
-                    ))}
-                  </select>
-                  {events.length === 0 && !loadingData && (
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Aucun événement actif.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Créateur */}
-              {linksTo === "creator" && (
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    ID du créateur *
-                  </label>
-                  <input
-                    type="text"
-                    value={featuredCreatorId}
-                    onChange={(e) => setFeaturedCreatorId(e.target.value)}
-                    placeholder="UUID du créateur"
-                    className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Laissez vide pour vous-même
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ✅ CTA LABEL */}
-          <div>
-            <label className="block text-sm font-bold text-foreground mb-1.5">
-              Bouton d'action (CTA)
-              <span className="text-xs text-muted-foreground font-normal ml-2">(optionnel)</span>
-            </label>
-            <input
-              type="text"
-              value={ctaLabel}
-              onChange={(e) => setCtaLabel(e.target.value)}
-              placeholder="Ex: Lire le manga, Voir le profil, Voter..."
-              className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none transition-all text-sm"
-              maxLength={50}
-            />
-          </div>
-
-          {/* TITRE */}
-          <div>
-            <label className="block text-sm font-bold text-foreground mb-1.5">
-              Titre *
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Titre de votre reel"
-              className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none transition-all text-sm"
-              maxLength={60}
-            />
-          </div>
-
-          {/* DESCRIPTION */}
-          <div>
-            <label className="block text-sm font-bold text-foreground mb-1.5">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Décrivez votre reel..."
-              rows={3}
-              className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none transition-all text-sm resize-none"
-            />
-          </div>
-
-          {/* VIDÉO */}
-          <div>
-            <label className="block text-sm font-bold text-foreground mb-1.5">
-              Vidéo * <span className="text-xs text-muted-foreground font-normal">(20-30 secondes)</span>
-            </label>
-            {videoPreview ? (
-              <div className="relative rounded-xl overflow-hidden border border-border/80 bg-black/40 aspect-[9/16] max-h-[400px] mx-auto">
-                <video
-                  ref={videoRef}
-                  src={videoPreview}
-                  className="w-full h-full object-contain"
-                  controls
-                  autoPlay
-                  muted
-                  loop
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVideoFile(null);
-                    setVideoPreview(null);
-                    setDuration(null);
-                  }}
-                  className="absolute top-2 right-2 p-1.5 rounded-full bg-rose-600/90 text-white hover:bg-rose-500 transition-all"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                {duration && (
-                  <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 text-white text-xs font-medium flex items-center gap-1">
-                    {Math.floor(duration / 60)}:{String(duration % 60).padStart(2, "0")}
-                    {duration >= 20 && duration <= 30 ? (
-                      <span className="text-emerald-400">✅</span>
+              {/* INFO EN BAS À GAUCHE */}
+              <div className="absolute bottom-28 left-4 z-10 max-w-[70%]">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden shrink-0">
+                    {reel.author?.avatarUrl ? (
+                      <img
+                        src={reel.author.avatarUrl}
+                        alt={reel.author.username}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <span className="text-rose-400">⚠️</span>
+                      reel.author?.username?.charAt(0).toUpperCase() || "?"
                     )}
                   </div>
-                )}
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border hover:border-purple-500/50 rounded-xl cursor-pointer bg-card/30 hover:bg-card/50 transition-all group">
-                <div className="p-4 rounded-full bg-card border border-border group-hover:border-purple-500/30 text-purple-400 mb-3 transition-all">
-                  <Upload className="w-8 h-8" />
+                  <span className="text-white font-semibold text-sm">
+                    @{reel.author?.username || "utilisateur"}
+                  </span>
+                  {reel.author?.isCertified && (
+                    <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                    </svg>
+                  )}
                 </div>
-                <p className="text-sm font-medium text-foreground">Ajouter une vidéo</p>
-                <p className="text-xs text-muted-foreground mt-1">MP4, MOV, WEBM • Max 100MB • 20-30s</p>
-                <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                  Format vertical recommandé (9:16)
-                </p>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoChange}
-                  className="hidden"
-                />
-              </label>
-            )}
-          </div>
 
-          {/* VIGNETTE */}
-          <div>
-            <label className="block text-sm font-bold text-foreground mb-1.5">
-              Vignette
-              <span className="text-xs text-muted-foreground font-normal ml-2">(optionnelle)</span>
-            </label>
-            {thumbnailPreview ? (
-              <div className="relative w-32 h-48 rounded-xl overflow-hidden border border-border/80">
-                <img
-                  src={thumbnailPreview}
-                  alt="Vignette"
-                  className="w-full h-full object-cover"
-                />
+                <h2 className="text-white font-bold text-lg leading-tight">{reel.title}</h2>
+                {reel.description && (
+                  <p className="text-white/80 text-sm mt-1 line-clamp-2">{reel.description}</p>
+                )}
+                {reel.musicTitle && (
+                  <p className="text-white/60 text-xs mt-2 flex items-center gap-1">
+                    <Play className="w-3 h-3" />
+                    {reel.musicTitle} {reel.musicArtist && `- ${reel.musicArtist}`}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {reel.tags?.slice(0, 3).map((tag) => (
+                    <span key={tag} className="text-white/40 text-[10px]">#{tag}</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* ACTIONS À DROITE */}
+              <div className="absolute bottom-28 right-4 z-10 flex flex-col items-center gap-5">
+                {/* Like */}
                 <button
-                  type="button"
-                  onClick={() => {
-                    setThumbnailFile(null);
-                    setThumbnailPreview(null);
-                  }}
-                  className="absolute top-2 right-2 p-1 rounded-full bg-rose-600/90 text-white hover:bg-rose-500 transition-all"
+                  onClick={() => handleLike(reel.id, index)}
+                  className="flex flex-col items-center gap-1 group"
                 >
-                  <X className="w-3 h-3" />
+                  <div className={`p-3 rounded-full transition-all ${
+                    reel.isLiked
+                      ? "bg-rose-600/30 text-rose-500"
+                      : "bg-white/10 hover:bg-white/20 text-white"
+                  }`}>
+                    <Heart className={`w-6 h-6 ${reel.isLiked ? "fill-rose-500" : ""}`} />
+                  </div>
+                  <span className="text-white/80 text-xs font-medium">{reel.likesCount || 0}</span>
+                </button>
+
+                {/* Commentaires */}
+                <button
+                  onClick={() => router.push(`/reels/${reel.id}`)}
+                  className="flex flex-col items-center gap-1 group"
+                >
+                  <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <span className="text-white/80 text-xs font-medium">{reel.commentsCount || 0}</span>
+                </button>
+
+                {/* Bookmark */}
+                <button
+                  onClick={() => handleBookmark(reel.id, index)}
+                  className="flex flex-col items-center gap-1 group"
+                >
+                  <div className={`p-3 rounded-full transition-all ${
+                    reel.isBookmarked
+                      ? "bg-amber-600/30 text-amber-500"
+                      : "bg-white/10 hover:bg-white/20 text-white"
+                  }`}>
+                    <Bookmark className={`w-6 h-6 ${reel.isBookmarked ? "fill-amber-500" : ""}`} />
+                  </div>
+                  <span className="text-white/80 text-xs font-medium">Sauvegarder</span>
+                </button>
+
+                {/* Partager */}
+                <button
+                  onClick={() => handleShare(reel)}
+                  className="flex flex-col items-center gap-1 group"
+                >
+                  <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
+                    <Share2 className="w-6 h-6" />
+                  </div>
+                  <span className="text-white/80 text-xs font-medium">Partager</span>
                 </button>
               </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border hover:border-purple-500/50 rounded-xl cursor-pointer bg-card/30 hover:bg-card/50 transition-all group">
-                <p className="text-sm font-medium text-foreground">Ajouter une vignette</p>
-                <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WEBP</p>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleThumbnailChange}
-                  className="hidden"
+
+              {/* INDICATEUR DE PROGRESSION */}
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10">
+                <div
+                  className="h-full bg-purple-500 transition-all duration-300"
+                  style={{ width: `${((index + 1) / reels.length) * 100}%` }}
                 />
-              </label>
-            )}
-          </div>
-
-          {/* TAGS */}
-          <div>
-            <label className="block text-sm font-bold text-foreground mb-1.5">
-              <Tag className="w-3.5 h-3.5 inline mr-1 text-purple-400" />
-              Tags
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addTag()}
-                placeholder="Ajouter un tag"
-                className="flex-1 px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none transition-all text-sm"
-              />
-              <button
-                type="button"
-                onClick={addTag}
-                className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold transition-all"
-              >
-                Ajouter
-              </button>
-            </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="flex items-center gap-1 px-3 py-1 rounded-full bg-purple-600/20 border border-purple-500/30 text-purple-400 text-xs"
-                  >
-                    #{tag}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="hover:text-purple-300 transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
               </div>
-            )}
-          </div>
-
-          {/* VISIBILITÉ */}
-          <div>
-            <label className="block text-sm font-bold text-foreground mb-1.5">
-              <Eye className="w-3.5 h-3.5 inline mr-1 text-purple-400" />
-              Visibilité
-            </label>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setIsPrivate(false)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                  !isPrivate
-                    ? "bg-purple-600 text-white border-purple-500"
-                    : "bg-card/90 text-muted-foreground border-border hover:border-border/80"
-                } flex items-center justify-center gap-2`}
-              >
-                <Globe className="w-4 h-4" />
-                Public
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsPrivate(true)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                  isPrivate
-                    ? "bg-purple-600 text-white border-purple-500"
-                    : "bg-card/90 text-muted-foreground border-border hover:border-border/80"
-                } flex items-center justify-center gap-2`}
-              >
-                <Lock className="w-4 h-4" />
-                Privé
-              </button>
             </div>
-          </div>
+          ))}
 
-          {/* BOUTON */}
-          <button
-            type="submit"
-            disabled={uploading || success}
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white text-sm font-bold transition-all shadow-lg shadow-purple-600/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Publication...
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4" />
-                Publier le Reel
-              </>
-            )}
-          </button>
+          {/* LOADER INFINI */}
+          {loadingMore && (
+            <div className="h-20 flex items-center justify-center bg-black">
+              <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+        </div>
 
-          <p className="text-[10px] text-muted-foreground text-center">
-            En publiant, vous acceptez les conditions d'utilisation d'INKDROP
-          </p>
-        </form>
+        <BottomNav />
+      </div>
 
-      </main>
-
-      <BottomNav />
-    </div>
+      <style jsx>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
+    </>
   );
 }
