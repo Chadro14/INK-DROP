@@ -5,7 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Loader } from "@/components/ui/loader";
-import { Heart, Bookmark, Share2, Play } from "lucide-react";
+import {
+  Heart,
+  Bookmark,
+  Share2,
+  Play,
+  BookOpen,
+  User as UserIcon,
+  Trophy,
+  Sparkles,
+} from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
@@ -16,6 +25,27 @@ type Author = {
   avatarColor: string | null;
   isCertified: boolean;
   badgeColor: string | null;
+};
+
+type Manga = {
+  id: string;
+  title: string;
+  slug?: string;
+  coverUrl?: string | null;
+};
+
+type Chapter = {
+  id: string;
+  number: number;
+  title?: string | null;
+  mangaId: string;
+};
+
+type EventItem = {
+  id: string;
+  title: string;
+  type: string;
+  coverUrl?: string | null;
 };
 
 type Reel = {
@@ -37,7 +67,78 @@ type Reel = {
   isLiked: boolean;
   isBookmarked: boolean;
   createdAt: string;
+
+  // ✅ NOUVEAU : Type + CTA + relations
+  type?: string;
+  ctaLabel?: string | null;
+  manga?: Manga | null;
+  chapter?: Chapter | null;
+  event?: EventItem | null;
+  featuredCreator?: Author | null;
 };
+
+// ============================================
+// ✅ COMPOSANT CTA
+// ============================================
+function CtaButton({ reel }: { reel: Reel }) {
+  const router = useRouter();
+
+  // Déterminer la destination selon le contenu lié
+  const getDestination = (): string | null => {
+    if (reel.chapter && reel.manga) {
+      const mangaSlug = reel.manga.slug || reel.manga.id;
+      return `/manga/${mangaSlug}/chapter/${reel.chapter.number}`;
+    }
+    if (reel.manga) {
+      const mangaSlug = reel.manga.slug || reel.manga.id;
+      return `/manga/${mangaSlug}`;
+    }
+    if (reel.event) {
+      return `/events/${reel.event.id}`;
+    }
+    if (reel.featuredCreator) {
+      return `/creator/${reel.featuredCreator.username}`;
+    }
+    return null;
+  };
+
+  // Déterminer l'icône selon le type
+  const getIcon = () => {
+    const type = reel.type || "";
+    if (type.startsWith("MANGA")) return <BookOpen className="w-4 h-4" />;
+    if (type.startsWith("EVENT")) return <Trophy className="w-4 h-4" />;
+    if (type.startsWith("CREATOR")) return <UserIcon className="w-4 h-4" />;
+    if (type === "INKDROP_OFFICIAL") return <Sparkles className="w-4 h-4" />;
+    return <Sparkles className="w-4 h-4" />;
+  };
+
+  // Label par défaut si non fourni
+  const getDefaultLabel = (): string => {
+    if (reel.chapter) return "Lire le chapitre";
+    if (reel.manga) return "Lire le manga";
+    if (reel.event) return "Participer";
+    if (reel.featuredCreator) return "Voir le profil";
+    return "Découvrir";
+  };
+
+  const destination = getDestination();
+  const label = reel.ctaLabel || getDefaultLabel();
+
+  if (!destination) return null;
+
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        router.push(destination);
+      }}
+      className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold transition-all shadow-lg shadow-purple-600/40 border border-purple-400/30 active:scale-95"
+    >
+      {getIcon()}
+      <span>{label}</span>
+    </button>
+  );
+}
 
 export default function ReelsPage() {
   const router = useRouter();
@@ -117,14 +218,12 @@ export default function ReelsPage() {
   // AUTOPLAY
   // ============================================
   useEffect(() => {
-    // Pause tous les videos
     Object.values(videoRefs.current).forEach((video) => {
       if (video) {
         video.pause();
       }
     });
 
-    // Play le video courant
     const currentReel = reels[currentIndex];
     if (currentReel && videoRefs.current[currentReel.id]) {
       const video = videoRefs.current[currentReel.id];
@@ -147,9 +246,7 @@ export default function ReelsPage() {
     try {
       const res = await fetch(`${API_URL}/reels/${reelId}/like`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const data = await res.json();
@@ -160,7 +257,7 @@ export default function ReelsPage() {
               ? {
                   ...reel,
                   isLiked: data.liked,
-                  likesCount: data.liked ? reel.likesCount + 1 : reel.likesCount - 1,
+                  likesCount: data.likesCount ?? (data.liked ? reel.likesCount + 1 : reel.likesCount - 1),
                 }
               : reel
           )
@@ -181,21 +278,14 @@ export default function ReelsPage() {
     try {
       const res = await fetch(`${API_URL}/reels/${reelId}/bookmark`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const data = await res.json();
       if (data.success) {
         setReels((prev) =>
           prev.map((reel, i) =>
-            i === index
-              ? {
-                  ...reel,
-                  isBookmarked: data.bookmarked,
-                }
-              : reel
+            i === index ? { ...reel, isBookmarked: data.isBookmarked } : reel
           )
         );
       }
@@ -229,9 +319,7 @@ export default function ReelsPage() {
   const handleView = async (reelId: string) => {
     try {
       const token = localStorage.getItem("token");
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
+      const headers: HeadersInit = { "Content-Type": "application/json" };
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
@@ -242,7 +330,7 @@ export default function ReelsPage() {
         body: JSON.stringify({ sessionId: localStorage.getItem("sessionId") }),
       });
     } catch (error) {
-      // Silence les erreurs de view
+      // Silence
     }
   };
 
@@ -366,6 +454,10 @@ export default function ReelsPage() {
                 {reel.description && (
                   <p className="text-white/80 text-sm mt-1 line-clamp-2">{reel.description}</p>
                 )}
+
+                {/* ✅ CTA */}
+                <CtaButton reel={reel} />
+
                 {reel.musicTitle && (
                   <p className="text-white/60 text-xs mt-2 flex items-center gap-1">
                     <Play className="w-3 h-3" />
