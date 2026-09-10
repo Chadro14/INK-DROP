@@ -9,6 +9,7 @@ import {
   Loader2,
   MessageCircle,
   X,
+  BadgeCheck,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -40,14 +41,31 @@ interface Props {
   reelId: string;
   initialCount?: number;
   onClose?: () => void;
-  onCommentAdded?: (delta: number) => void; // ✅ NOUVELLE PROP
+  onCommentAdded?: (delta: number) => void;
+}
+
+// ✅ COMPOSANT BADGE CERTIFIÉ
+function CertifiedBadge({ user, size = "xs" }: { user: CommentUser; size?: "xs" | "sm" }) {
+  if (!user?.isCertified) return null;
+
+  const badgeColor = user.badgeColor || user.avatarColor || "#3B82F6";
+  const className = size === "xs" ? "w-3.5 h-3.5" : "w-4 h-4";
+
+  return (
+    <BadgeCheck
+      className={className}
+      fill={badgeColor}
+      color="black"
+      strokeWidth={1.5}
+    />
+  );
 }
 
 export function ReelComments({
   reelId,
   initialCount = 0,
   onClose,
-  onCommentAdded, // ✅ NOUVELLE PROP
+  onCommentAdded,
 }: Props) {
   const router = useRouter();
   const [comments, setComments] = useState<ReelComment[]>([]);
@@ -63,7 +81,6 @@ export function ReelComments({
   const [replyTo, setReplyTo] = useState<ReelComment | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // ✅ Récupérer l'ID utilisateur au montage
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem("user");
@@ -76,9 +93,6 @@ export function ReelComments({
     }
   }, []);
 
-  // ============================================
-  // CHARGER LES COMMENTAIRES
-  // ============================================
   const fetchComments = async (pageNum: number) => {
     try {
       const token = localStorage.getItem("token");
@@ -115,9 +129,6 @@ export function ReelComments({
     if (reelId) fetchComments(1);
   }, [reelId]);
 
-  // ============================================
-  // AJOUTER UN COMMENTAIRE
-  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!content.trim() || sending) return;
@@ -172,7 +183,6 @@ export function ReelComments({
       setReplyTo(null);
       setTotalComments((prev) => prev + 1);
 
-      // ✅ NOTIFIER LE PARENT
       onCommentAdded?.(1);
     } catch (err: any) {
       setError(err.message);
@@ -181,9 +191,6 @@ export function ReelComments({
     }
   };
 
-  // ============================================
-  // LIKER UN COMMENTAIRE
-  // ============================================
   const handleLike = async (commentId: string) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -220,9 +227,6 @@ export function ReelComments({
     }
   };
 
-  // ============================================
-  // SUPPRIMER UN COMMENTAIRE
-  // ============================================
   const handleDelete = async (
     commentId: string,
     isReply = false,
@@ -256,8 +260,6 @@ export function ReelComments({
           setComments((prev) => prev.filter((c) => c.id !== commentId));
         }
         setTotalComments((prev) => Math.max(0, prev - 1));
-
-        // ✅ NOTIFIER LE PARENT
         onCommentAdded?.(-1);
       }
     } catch (err) {
@@ -265,9 +267,6 @@ export function ReelComments({
     }
   };
 
-  // ============================================
-  // FORMAT DATE
-  // ============================================
   const formatDate = (date: string) => {
     const d = new Date(date);
     const now = new Date();
@@ -280,11 +279,7 @@ export function ReelComments({
     return d.toLocaleDateString("fr-FR");
   };
 
-  // ============================================
-  // RENDU COMMENTAIRE
-  // ============================================
   const renderComment = (comment: ReelComment, isReply = false) => {
-    // ✅ Vérification propre du propriétaire
     const isOwner = currentUserId && comment.user.id === currentUserId;
 
     return (
@@ -292,7 +287,6 @@ export function ReelComments({
         key={comment.id}
         className={`flex gap-3 ${isReply ? "ml-10 mt-3" : "py-3"}`}
       >
-        {/* Avatar */}
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden"
           style={{ backgroundColor: comment.user.avatarColor || "#8B5CF6" }}
@@ -308,21 +302,12 @@ export function ReelComments({
           )}
         </div>
 
-        {/* Contenu */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
+          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
             <span className="text-white text-xs font-semibold">
               @{comment.user.username}
             </span>
-            {comment.user.isCertified && (
-              <svg
-                className="w-3 h-3 text-blue-400"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-              </svg>
-            )}
+            <CertifiedBadge user={comment.user} size="xs" />
             <span className="text-white/40 text-[10px]">
               {formatDate(comment.createdAt)}
             </span>
@@ -331,7 +316,6 @@ export function ReelComments({
           <p className="text-white/90 text-sm break-words">{comment.content}</p>
 
           <div className="flex items-center gap-4 mt-1.5">
-            {/* Like */}
             <button
               onClick={() => handleLike(comment.id)}
               className={`flex items-center gap-1 text-xs transition-all ${
@@ -348,7 +332,6 @@ export function ReelComments({
               <span>{comment.likesCount || 0}</span>
             </button>
 
-            {/* Répondre */}
             {!isReply && (
               <button
                 onClick={() => {
@@ -361,7 +344,6 @@ export function ReelComments({
               </button>
             )}
 
-            {/* Supprimer */}
             {isOwner && (
               <button
                 onClick={() =>
@@ -378,12 +360,8 @@ export function ReelComments({
     );
   };
 
-  // ============================================
-  // RENDU PRINCIPAL
-  // ============================================
   return (
     <div className="flex flex-col h-full bg-zinc-950">
-      {/* HEADER */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800/60">
         <h3 className="text-white font-bold text-sm flex items-center gap-2">
           <MessageCircle className="w-4 h-4" />
@@ -399,7 +377,6 @@ export function ReelComments({
         )}
       </div>
 
-      {/* LISTE */}
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -442,7 +419,6 @@ export function ReelComments({
         )}
       </div>
 
-      {/* REPLY INDICATOR */}
       {replyTo && (
         <div className="px-4 py-2 bg-zinc-900/80 border-t border-zinc-800/60 flex items-center justify-between">
           <span className="text-white/60 text-xs">
@@ -458,14 +434,12 @@ export function ReelComments({
         </div>
       )}
 
-      {/* ERROR */}
       {error && (
         <div className="px-4 py-2 bg-rose-950/40 border-t border-rose-500/30 text-rose-300 text-xs">
           {error}
         </div>
       )}
 
-      {/* INPUT */}
       <form
         onSubmit={handleSubmit}
         className="flex items-center gap-2 px-4 py-3 border-t border-zinc-800/60 bg-zinc-950"
