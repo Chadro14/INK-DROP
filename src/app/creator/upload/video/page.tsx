@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -17,9 +17,35 @@ import {
   Eye,
   Lock,
   Globe,
+  Sparkles,
+  Link as LinkIcon,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
+
+// ✅ Types de Reels avec leur cible
+const REEL_TYPES = [
+  { value: "MANGA_TEASER", label: "Teaser de manga", icon: "🎬", linksTo: "manga" },
+  { value: "MANGA_CHARACTER", label: "Présentation de personnage", icon: "👤", linksTo: "manga" },
+  { value: "MANGA_CHAPTER_PREVIEW", label: "Extrait de chapitre", icon: "📖", linksTo: "chapter" },
+  { value: "MANGA_ANNOUNCEMENT", label: "Annonce de nouveau chapitre", icon: "📢", linksTo: "manga" },
+  { value: "MANGA_TRAILER", label: "Bande-annonce", icon: "🎥", linksTo: "manga" },
+  { value: "CREATOR_PORTFOLIO", label: "Présentation créateur", icon: "🎨", linksTo: "creator" },
+  { value: "CREATOR_TIMELAPSE", label: "Timelapse de dessin", icon: "⏱️", linksTo: "creator" },
+  { value: "CREATOR_MAKING_OF", label: "Making-of", icon: "🎞️", linksTo: "creator" },
+  { value: "EVENT_PROMO", label: "Promotion d'événement", icon: "🎉", linksTo: "event" },
+  { value: "EVENT_BATTLE", label: "Battle de mangas", icon: "⚔️", linksTo: "event" },
+  { value: "EVENT_DRAWING_CHALLENGE", label: "Défi dessin", icon: "✏️", linksTo: "event" },
+  { value: "RISING_CREATOR", label: "Rising Creator", icon: "🚀", linksTo: "event" },
+  { value: "INKDROP_AWARDS", label: "INKdrop Awards", icon: "🏆", linksTo: "event" },
+  { value: "INKDROP_TOURNAMENT", label: "INKdrop Tournament", icon: "🥇", linksTo: "event" },
+  { value: "INKDROP_OFFICIAL", label: "Reel officiel INKdrop", icon: "✨", linksTo: "none" },
+  { value: "OTHER", label: "Autre", icon: "📹", linksTo: "none" },
+];
+
+type Manga = { id: string; title: string; slug?: string };
+type Chapter = { id: string; number: number; title?: string; mangaId: string };
+type EventItem = { id: string; title: string; type: string };
 
 export default function UploadReelPage() {
   const router = useRouter();
@@ -41,7 +67,93 @@ export default function UploadReelPage() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
 
+  // ✅ NOUVEAU : Type + liaison + CTA
+  const [type, setType] = useState("OTHER");
+  const [mangaId, setMangaId] = useState("");
+  const [chapterId, setChapterId] = useState("");
+  const [eventId, setEventId] = useState("");
+  const [featuredCreatorId, setFeaturedCreatorId] = useState("");
+  const [ctaLabel, setCtaLabel] = useState("");
+
+  // ✅ Listes pour les sélections
+  const [mangas, setMangas] = useState<Manga[]>([]);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [loadingData, setLoadingData] = useState(false);
+
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // ✅ Type sélectionné et cible
+  const selectedType = REEL_TYPES.find((t) => t.value === type);
+  const linksTo = selectedType?.linksTo || "none";
+
+  // ✅ Charger les données au démarrage
+  useEffect(() => {
+    const fetchData = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      setLoadingData(true);
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+
+        // Mangas de l'utilisateur
+        const mangasRes = await fetch(`${API_URL}/mangas?authorId=me&limit=50`, { headers });
+        if (mangasRes.ok) {
+          const mangasData = await mangasRes.json();
+          const list = mangasData.data || mangasData || [];
+          setMangas(Array.isArray(list) ? list : []);
+        }
+
+        // Événements actifs
+        const eventsRes = await fetch(`${API_URL}/events?isActive=true`);
+        if (eventsRes.ok) {
+          const eventsData = await eventsRes.json();
+          const list = eventsData.data || eventsData || [];
+          setEvents(Array.isArray(list) ? list : []);
+        }
+      } catch (err) {
+        console.error("Erreur chargement données:", err);
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // ✅ Charger les chapitres quand un manga est sélectionné
+  useEffect(() => {
+    if (!mangaId || (linksTo !== "chapter" && linksTo !== "manga")) {
+      setChapters([]);
+      return;
+    }
+
+    if (linksTo !== "chapter") return;
+
+    const fetchChapters = async () => {
+      try {
+        const res = await fetch(`${API_URL}/mangas/${mangaId}`);
+        if (res.ok) {
+          const data = await res.json();
+          const mangaChapters = data.data?.chapters || [];
+          setChapters(Array.isArray(mangaChapters) ? mangaChapters : []);
+        }
+      } catch (err) {
+        console.error("Erreur chargement chapitres:", err);
+      }
+    };
+
+    fetchChapters();
+  }, [mangaId, linksTo]);
+
+  // ✅ Reset les liaisons quand on change de type
+  useEffect(() => {
+    if (linksTo !== "manga" && linksTo !== "chapter") setMangaId("");
+    if (linksTo !== "chapter") setChapterId("");
+    if (linksTo !== "event") setEventId("");
+    if (linksTo !== "creator") setFeaturedCreatorId("");
+  }, [type, linksTo]);
 
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -106,7 +218,6 @@ export default function UploadReelPage() {
     }
 
     try {
-      // 1. Obtenir l'URL d'upload
       const urlRes = await fetch(`${API_URL}/reels/upload-url`, {
         method: "POST",
         headers: {
@@ -124,7 +235,6 @@ export default function UploadReelPage() {
       const urlData = await urlRes.json();
       const { uploadUrl, key } = urlData.data;
 
-      // 2. Uploader la vidéo
       const uploadRes = await fetch(uploadUrl, {
         method: "PUT",
         headers: {
@@ -160,9 +270,7 @@ export default function UploadReelPage() {
         body: JSON.stringify({ filename: thumbnailFile.name }),
       });
 
-      if (!urlRes.ok) {
-        throw new Error("Erreur lors de la génération de l'URL d'upload");
-      }
+      if (!urlRes.ok) return null;
 
       const urlData = await urlRes.json();
       const { uploadUrl, key } = urlData.data;
@@ -175,9 +283,7 @@ export default function UploadReelPage() {
         body: thumbnailFile,
       });
 
-      if (!uploadRes.ok) {
-        throw new Error("Échec de l'upload de la vignette");
-      }
+      if (!uploadRes.ok) return null;
 
       return key;
     } catch (error: any) {
@@ -216,17 +322,31 @@ export default function UploadReelPage() {
       return;
     }
 
+    // ✅ Vérifier les liaisons obligatoires
+    if (linksTo === "manga" && !mangaId) {
+      setError("Veuillez sélectionner un manga");
+      setUploading(false);
+      return;
+    }
+    if (linksTo === "chapter" && !chapterId) {
+      setError("Veuillez sélectionner un chapitre");
+      setUploading(false);
+      return;
+    }
+    if (linksTo === "event" && !eventId) {
+      setError("Veuillez sélectionner un événement");
+      setUploading(false);
+      return;
+    }
+
     try {
-      // 1. Uploader la vidéo
       const videoKey = await uploadVideo();
       if (!videoKey) {
         throw new Error("Échec de l'upload de la vidéo");
       }
 
-      // 2. Uploader la vignette
       const thumbnailKey = await uploadThumbnail();
 
-      // 3. Créer le reel
       const payload: any = {
         title: title.trim(),
         description: description.trim() || undefined,
@@ -237,6 +357,13 @@ export default function UploadReelPage() {
         musicArtist: musicArtist || undefined,
         tags: tags.length > 0 ? tags : undefined,
         isPrivate,
+        // ✅ NOUVEAU
+        type,
+        ctaLabel: ctaLabel.trim() || undefined,
+        mangaId: mangaId || undefined,
+        chapterId: chapterId || undefined,
+        eventId: eventId || undefined,
+        featuredCreatorId: featuredCreatorId || undefined,
       };
 
       const res = await fetch(`${API_URL}/reels`, {
@@ -306,6 +433,147 @@ export default function UploadReelPage() {
               <span>Reel publié avec succès ! Redirection...</span>
             </div>
           )}
+
+          {/* ✅ TYPE DE REEL */}
+          <div>
+            <label className="block text-sm font-bold text-foreground mb-1.5">
+              <Sparkles className="w-3.5 h-3.5 inline mr-1 text-purple-400" />
+              Type de Reel *
+            </label>
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground focus:border-purple-500 outline-none transition-all text-sm"
+            >
+              {REEL_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.icon} {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* ✅ LIAISON AU CONTENU */}
+          {linksTo !== "none" && (
+            <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-3">
+              <p className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-2">
+                <LinkIcon className="w-3.5 h-3.5" />
+                Contenu lié
+              </p>
+
+              {/* Manga */}
+              {(linksTo === "manga" || linksTo === "chapter") && (
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Manga *
+                  </label>
+                  <select
+                    value={mangaId}
+                    onChange={(e) => setMangaId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
+                    disabled={loadingData}
+                  >
+                    <option value="">-- Sélectionner --</option>
+                    {mangas.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.title}
+                      </option>
+                    ))}
+                  </select>
+                  {mangas.length === 0 && !loadingData && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Aucun manga trouvé. Publiez d'abord un manga.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Chapitre */}
+              {linksTo === "chapter" && mangaId && (
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Chapitre *
+                  </label>
+                  <select
+                    value={chapterId}
+                    onChange={(e) => setChapterId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
+                  >
+                    <option value="">-- Sélectionner --</option>
+                    {chapters.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        Chapitre {c.number} {c.title ? `- ${c.title}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Événement */}
+              {linksTo === "event" && (
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Événement *
+                  </label>
+                  <select
+                    value={eventId}
+                    onChange={(e) => setEventId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
+                  >
+                    <option value="">-- Sélectionner --</option>
+                    {events.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.title}
+                      </option>
+                    ))}
+                  </select>
+                  {events.length === 0 && !loadingData && (
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Aucun événement actif.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Créateur */}
+              {linksTo === "creator" && (
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    ID du créateur *
+                  </label>
+                  <input
+                    type="text"
+                    value={featuredCreatorId}
+                    onChange={(e) => setFeaturedCreatorId(e.target.value)}
+                    placeholder="UUID du créateur"
+                    className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
+                  />
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Laissez vide pour vous-même
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ✅ CTA LABEL */}
+          <div>
+            <label className="block text-sm font-bold text-foreground mb-1.5">
+              Bouton d'action (CTA)
+              <span className="text-xs text-muted-foreground font-normal ml-2">(optionnel)</span>
+            </label>
+            <input
+              type="text"
+              value={ctaLabel}
+              onChange={(e) => setCtaLabel(e.target.value)}
+              placeholder="Ex: Lire le manga, Voir le profil, Voter..."
+              className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none transition-all text-sm"
+              maxLength={50}
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Ce texte apparaîtra sur le bouton sous votre Reel
+            </p>
+          </div>
 
           {/* TITRE */}
           <div>
