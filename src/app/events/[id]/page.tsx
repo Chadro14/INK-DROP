@@ -73,15 +73,18 @@ type Event = {
 // ============================================
 // CONFIG PAR TYPE D'ÉVÉNEMENT
 // ============================================
-const EVENT_CONFIG: Record<string, {
-  label: string;
-  color: string;
-  iconColor: string;
-  acceptsSubmissions: boolean;
-  acceptsVotes: boolean;
-  submitLabel: string;
-  voteLabel: string;
-}> = {
+const EVENT_CONFIG: Record<
+  string,
+  {
+    label: string;
+    color: string;
+    iconColor: string;
+    acceptsSubmissions: boolean;
+    acceptsVotes: boolean;
+    submitLabel: string;
+    voteLabel: string;
+  }
+> = {
   BATTLE: {
     label: "Battle de mangas",
     color: "text-amber-400",
@@ -162,6 +165,9 @@ export default function EventPage() {
   const [claiming, setClaiming] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
 
+  // ============================================
+  // CHARGEMENT DE L'ÉVÉNEMENT
+  // ============================================
   useEffect(() => {
     const fetchEvent = async () => {
       try {
@@ -174,6 +180,7 @@ export default function EventPage() {
 
         const data = await res.json();
         setEvent(data.data);
+        setError("");
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -186,6 +193,9 @@ export default function EventPage() {
     }
   }, [eventId]);
 
+  // ============================================
+  // REJOINDRE L'ÉVÉNEMENT
+  // ============================================
   const handleJoin = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -208,27 +218,22 @@ export default function EventPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        // ✅ Si déjà inscrit → recharger l'event sans afficher d'erreur
         if (data.message?.includes("déjà")) {
-          setError("Vous participez déjà à cet événement");
-          setEvent((prev) => {
-            if (!prev) return null;
-            return {
-              ...prev,
-              userParticipation: {
-                id: "existing",
-                isCompleted: false,
-                rewardClaimed: false,
-                progress: {},
-                score: 0,
-              },
-            };
+          const refreshed = await fetch(`${API_URL}/events/${eventId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
           });
+          if (refreshed.ok) {
+            const refreshedData = await refreshed.json();
+            setEvent(refreshedData.data);
+          }
           setJoining(false);
           return;
         }
         throw new Error(data.message || "Erreur lors de l'inscription");
       }
 
+      // ✅ Succès → mettre à jour le state
       setEvent((prev) => {
         if (!prev) return null;
         return {
@@ -253,6 +258,9 @@ export default function EventPage() {
     }
   };
 
+  // ============================================
+  // RÉCLAMER LES RÉCOMPENSES
+  // ============================================
   const handleClaimReward = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -295,11 +303,18 @@ export default function EventPage() {
     }
   };
 
+  // ============================================
+  // LOADING
+  // ============================================
   if (loading) {
     return <Loader label="Chargement de l'événement..." />;
   }
 
-  if (error || !event) {
+  // ============================================
+  // ✅ ERREUR UNIQUEMENT SI L'EVENT N'EST PAS CHARGÉ
+  // (fix : avant c'était "error || !event" ce qui cassait l'affichage)
+  // ============================================
+  if (!event) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground px-4 text-center">
         <div className="w-20 h-20 rounded-full bg-rose-950/30 border border-rose-500/30 flex items-center justify-center mb-4">
@@ -319,7 +334,9 @@ export default function EventPage() {
     );
   }
 
-  // ✅ CORRECTION : Calcul des dates (le backend renvoie déjà un ISO complet)
+  // ============================================
+  // CALCUL DES DATES (corrigé : plus de concaténation invalide)
+  // ============================================
   const now = new Date();
   const start = new Date(event.startDate);
   const end = new Date(event.endDate);
@@ -338,13 +355,12 @@ export default function EventPage() {
     event.objectives.length > 0
       ? (event.objectives.reduce((acc, obj) => {
           const current = event.userParticipation?.progress?.[obj.id] || 0;
-          return acc + (current / obj.target);
+          return acc + current / obj.target;
         }, 0) /
           event.objectives.length) *
         100
       : 0;
 
-  // ✅ Config par type
   const config = EVENT_CONFIG[event.type] || EVENT_CONFIG.BATTLE;
   const Icon = getTypeIcon(event.type);
 
@@ -591,7 +607,7 @@ export default function EventPage() {
 
         {/* ACTIONS */}
         <div className="flex flex-wrap gap-3 pb-4">
-          {/* ✅ SOUMETTRE UNE ŒUVRE — seulement si le type accepte */}
+          {/* ✅ SOUMETTRE UNE ŒUVRE */}
           {isParticipating && isActive && config.acceptsSubmissions && (
             <Link
               href={`/events/${event.id}/participate`}
@@ -602,7 +618,7 @@ export default function EventPage() {
             </Link>
           )}
 
-          {/* ✅ VOTER — seulement si le type accepte */}
+          {/* ✅ VOTER */}
           {isParticipating && isActive && config.acceptsVotes && (
             <Link
               href={`/events/${event.id}/vote`}
@@ -618,7 +634,7 @@ export default function EventPage() {
             <button
               onClick={handleJoin}
               disabled={joining}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2 disabled:opacity-50"
             >
               {joining ? (
                 <>
@@ -639,7 +655,7 @@ export default function EventPage() {
             <button
               onClick={handleClaimReward}
               disabled={claiming}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white text-sm font-bold transition-all shadow-lg shadow-amber-600/20 flex items-center gap-2"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white text-sm font-bold transition-all shadow-lg shadow-amber-600/20 flex items-center gap-2 disabled:opacity-50"
             >
               {claiming ? (
                 <>
@@ -689,8 +705,8 @@ export default function EventPage() {
           </Link>
         </div>
 
-        {/* ERREUR */}
-        {error && (
+        {/* ERREUR SECONDAIRE (si elle apparaît après chargement) */}
+        {error && event && (
           <div className="flex items-center gap-2 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-sm font-medium">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
             <span>{error}</span>
