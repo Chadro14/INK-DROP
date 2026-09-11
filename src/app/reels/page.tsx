@@ -81,6 +81,12 @@ type Reel = {
 };
 
 // ============================================
+// ✅ COULEUR D'ACCENT (unique pour tout)
+// ============================================
+const ACCENT_COLOR = "#8B5CF6"; // Violet
+const ACCENT_GLOW = "rgba(139, 92, 246, 0.4)";
+
+// ============================================
 // ✅ COMPOSANT BADGE CERTIFIÉ
 // ============================================
 function CertifiedBadge({
@@ -157,7 +163,12 @@ function CtaButton({ reel }: { reel: Reel }) {
         e.stopPropagation();
         router.push(destination);
       }}
-      className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold transition-all shadow-lg shadow-purple-600/40 border border-purple-400/30 active:scale-95"
+      className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-bold transition-all shadow-lg border active:scale-95"
+      style={{
+        backgroundColor: ACCENT_COLOR,
+        borderColor: `${ACCENT_COLOR}99`,
+        boxShadow: `0 8px 24px ${ACCENT_GLOW}`,
+      }}
     >
       {getIcon()}
       <span>{label}</span>
@@ -175,12 +186,14 @@ export default function ReelsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // ✅ État global du son (persiste entre les Reels)
+  // ✅ État global du son
   const [isMuted, setIsMuted] = useState(true);
-
-  // ✅ État pour l'overlay "play" temporaire
   const [showPlayOverlay, setShowPlayOverlay] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+
+  // ✅ Animations pour like/bookmark
+  const [likeAnimations, setLikeAnimations] = useState<Record<string, boolean>>({});
+  const [bookmarkAnimations, setBookmarkAnimations] = useState<Record<string, boolean>>({});
 
   const [commentModalReelId, setCommentModalReelId] = useState<string | null>(
     null
@@ -258,7 +271,7 @@ export default function ReelsPage() {
   }, [hasMore, loadingMore, page, fetchReels]);
 
   // ============================================
-  // AUTOPLAY + SYNCHRONISATION DU SON
+  // AUTOPLAY + SON
   // ============================================
   useEffect(() => {
     Object.values(videoRefs.current).forEach((video) => {
@@ -277,7 +290,6 @@ export default function ReelsPage() {
     }
   }, [currentIndex, reels]);
 
-  // ✅ Applique le mute à toutes les vidéos quand on toggle
   useEffect(() => {
     Object.values(videoRefs.current).forEach((video) => {
       if (video) {
@@ -286,16 +298,10 @@ export default function ReelsPage() {
     });
   }, [isMuted]);
 
-  // ============================================
-  // TOGGLE MUTE / UNMUTE
-  // ============================================
   const toggleMute = () => {
     setIsMuted((prev) => !prev);
   };
 
-  // ============================================
-  // TOGGLE PAUSE / PLAY (clic sur vidéo)
-  // ============================================
   const togglePlayPause = (reelId: string) => {
     const video = videoRefs.current[reelId];
     if (!video) return;
@@ -308,13 +314,12 @@ export default function ReelsPage() {
       setIsPaused(true);
     }
 
-    // Afficher l'overlay temporairement
     setShowPlayOverlay(true);
     setTimeout(() => setShowPlayOverlay(false), 600);
   };
 
   // ============================================
-  // INTERACTIONS
+  // ✅ LIKE — OPTIMISTIC UPDATE (fluide)
   // ============================================
   const handleLike = async (reelId: string, index: number) => {
     const token = localStorage.getItem("token");
@@ -323,6 +328,32 @@ export default function ReelsPage() {
       return;
     }
 
+    // ✅ Animation locale
+    setLikeAnimations((prev) => ({ ...prev, [reelId]: true }));
+    setTimeout(() => {
+      setLikeAnimations((prev) => ({ ...prev, [reelId]: false }));
+    }, 400);
+
+    // ✅ Optimistic update — IMMÉDIAT
+    const previousReel = reels[index];
+    const wasLiked = previousReel.isLiked;
+    const newLiked = !wasLiked;
+
+    setReels((prev) =>
+      prev.map((reel, i) =>
+        i === index
+          ? {
+              ...reel,
+              isLiked: newLiked,
+              likesCount: newLiked
+                ? reel.likesCount + 1
+                : Math.max(0, reel.likesCount - 1),
+            }
+          : reel
+      )
+    );
+
+    // ✅ Envoi API en arrière-plan
     try {
       const res = await fetch(`${API_URL}/reels/${reelId}/like`, {
         method: "POST",
@@ -330,6 +361,8 @@ export default function ReelsPage() {
       });
 
       const data = await res.json();
+
+      // ✅ Correction si le serveur renvoie une autre valeur
       if (data.success) {
         setReels((prev) =>
           prev.map((reel, i) =>
@@ -339,17 +372,34 @@ export default function ReelsPage() {
                   isLiked: data.liked,
                   likesCount:
                     data.likesCount ??
-                    (data.liked ? reel.likesCount + 1 : reel.likesCount - 1),
+                    (data.liked
+                      ? reel.likesCount
+                      : Math.max(0, reel.likesCount)),
                 }
               : reel
           )
         );
       }
     } catch (error) {
+      // ✅ En cas d'erreur, on revient à l'état initial
       console.error("Erreur like:", error);
+      setReels((prev) =>
+        prev.map((reel, i) =>
+          i === index
+            ? {
+                ...reel,
+                isLiked: wasLiked,
+                likesCount: previousReel.likesCount,
+              }
+            : reel
+        )
+      );
     }
   };
 
+  // ============================================
+  // ✅ BOOKMARK — OPTIMISTIC UPDATE (fluide)
+  // ============================================
   const handleBookmark = async (reelId: string, index: number) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -357,6 +407,24 @@ export default function ReelsPage() {
       return;
     }
 
+    // ✅ Animation locale
+    setBookmarkAnimations((prev) => ({ ...prev, [reelId]: true }));
+    setTimeout(() => {
+      setBookmarkAnimations((prev) => ({ ...prev, [reelId]: false }));
+    }, 400);
+
+    // ✅ Optimistic update — IMMÉDIAT
+    const previousReel = reels[index];
+    const wasBookmarked = previousReel.isBookmarked;
+    const newBookmarked = !wasBookmarked;
+
+    setReels((prev) =>
+      prev.map((reel, i) =>
+        i === index ? { ...reel, isBookmarked: newBookmarked } : reel
+      )
+    );
+
+    // ✅ Envoi API en arrière-plan
     try {
       const res = await fetch(`${API_URL}/reels/${reelId}/bookmark`, {
         method: "POST",
@@ -364,6 +432,7 @@ export default function ReelsPage() {
       });
 
       const data = await res.json();
+
       if (data.success) {
         setReels((prev) =>
           prev.map((reel, i) =>
@@ -372,7 +441,13 @@ export default function ReelsPage() {
         );
       }
     } catch (error) {
+      // ✅ Revert si erreur
       console.error("Erreur bookmark:", error);
+      setReels((prev) =>
+        prev.map((reel, i) =>
+          i === index ? { ...reel, isBookmarked: wasBookmarked } : reel
+        )
+      );
     }
   };
 
@@ -444,7 +519,8 @@ export default function ReelsPage() {
             setLoading(true);
             fetchReels(1);
           }}
-          className="mt-4 px-6 py-2.5 rounded-full bg-purple-600 text-white font-semibold hover:bg-purple-500 transition-all"
+          className="mt-4 px-6 py-2.5 rounded-full text-white font-semibold transition-all"
+          style={{ backgroundColor: ACCENT_COLOR }}
         >
           Réessayer
         </button>
@@ -455,8 +531,14 @@ export default function ReelsPage() {
   if (reels.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-black px-4">
-        <div className="w-20 h-20 rounded-full bg-purple-950/40 border-2 border-purple-500/40 flex items-center justify-center mb-6">
-          <Play className="w-10 h-10 text-purple-400" />
+        <div
+          className="w-20 h-20 rounded-full border-2 flex items-center justify-center mb-6"
+          style={{
+            backgroundColor: `${ACCENT_COLOR}20`,
+            borderColor: `${ACCENT_COLOR}60`,
+          }}
+        >
+          <Play className="w-10 h-10" style={{ color: ACCENT_COLOR }} />
         </div>
         <h1 className="text-2xl font-bold text-white mb-2">Aucun reel</h1>
         <p className="text-white/60 text-center max-w-md">
@@ -464,7 +546,11 @@ export default function ReelsPage() {
         </p>
         <Link
           href="/creator/upload/video"
-          className="mt-6 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-purple-500 text-white font-semibold hover:from-purple-500 hover:to-purple-400 transition-all shadow-lg shadow-purple-600/20"
+          className="mt-6 px-6 py-2.5 rounded-full text-white font-semibold transition-all shadow-lg"
+          style={{
+            background: `linear-gradient(135deg, ${ACCENT_COLOR} 0%, #A78BFA 100%)`,
+            boxShadow: `0 8px 24px ${ACCENT_GLOW}`,
+          }}
         >
           Publier un reel
         </Link>
@@ -479,7 +565,7 @@ export default function ReelsPage() {
         <header className="absolute top-0 left-0 right-0 z-20 px-4 py-3 bg-gradient-to-b from-black/80 to-transparent">
           <div className="flex items-center justify-between max-w-lg mx-auto">
             <span className="text-white font-bold text-lg tracking-tight">
-              <span className="text-purple-400">Reels</span>
+              <span style={{ color: ACCENT_COLOR }}>Reels</span>
             </span>
             <Link
               href="/creator/upload/video"
@@ -520,20 +606,16 @@ export default function ReelsPage() {
                 }}
               />
 
-              {/* ✅ OVERLAY PLAY/PAUSE (apparait brièvement au tap) */}
+              {/* OVERLAY PLAY/PAUSE */}
               {showPlayOverlay && index === currentIndex && (
                 <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                  <div className="w-20 h-20 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 flex items-center justify-center animate-in fade-in zoom-in duration-200">
-                    {isPaused ? (
-                      <PlayCircle className="w-12 h-12 text-white" />
-                    ) : (
-                      <PlayCircle className="w-12 h-12 text-white/70" />
-                    )}
+                  <div className="w-20 h-20 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 flex items-center justify-center animate-in">
+                    <PlayCircle className="w-12 h-12 text-white" />
                   </div>
                 </div>
               )}
 
-              {/* ✅ BOUTON MUTE/UNMUTE — En haut à droite */}
+              {/* BOUTON MUTE/UNMUTE */}
               {index === currentIndex && (
                 <button
                   onClick={(e) => {
@@ -561,7 +643,7 @@ export default function ReelsPage() {
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold overflow-hidden shrink-0"
                     style={{
-                      backgroundColor: reel.author?.avatarColor || "#8B5CF6",
+                      backgroundColor: reel.author?.avatarColor || ACCENT_COLOR,
                     }}
                   >
                     {reel.author?.avatarUrl ? (
@@ -609,20 +691,30 @@ export default function ReelsPage() {
 
               {/* ACTIONS À DROITE */}
               <div className="absolute bottom-28 right-4 z-10 flex flex-col items-center gap-5">
+                {/* ✅ LIKE — fluide avec animation */}
                 <button
-                  onClick={() => handleLike(reel.id, index)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLike(reel.id, index);
+                  }}
                   className="flex flex-col items-center gap-1 group"
                 >
                   <div
-                    className={`p-3 rounded-full transition-all ${
+                    className={`p-3 rounded-full transition-all duration-200 ${
+                      likeAnimations[reel.id] ? "scale-125" : "scale-100"
+                    } ${reel.isLiked ? "" : "bg-white/10 hover:bg-white/20 text-white"}`}
+                    style={
                       reel.isLiked
-                        ? "bg-rose-600/30 text-rose-500"
-                        : "bg-white/10 hover:bg-white/20 text-white"
-                    }`}
+                        ? {
+                            backgroundColor: "rgba(244, 63, 94, 0.3)",
+                            color: "#F43F5E",
+                          }
+                        : {}
+                    }
                   >
                     <Heart
-                      className={`w-6 h-6 ${
-                        reel.isLiked ? "fill-rose-500" : ""
+                      className={`w-6 h-6 transition-all ${
+                        reel.isLiked ? "fill-rose-500 scale-110" : "scale-100"
                       }`}
                     />
                   </div>
@@ -631,6 +723,7 @@ export default function ReelsPage() {
                   </span>
                 </button>
 
+                {/* COMMENTAIRES */}
                 <button
                   onClick={() => openCommentModal(reel.id, reel.commentsCount)}
                   className="flex flex-col items-center gap-1 group"
@@ -655,20 +748,36 @@ export default function ReelsPage() {
                   </span>
                 </button>
 
+                {/* ✅ BOOKMARK — fluide avec animation */}
                 <button
-                  onClick={() => handleBookmark(reel.id, index)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBookmark(reel.id, index);
+                  }}
                   className="flex flex-col items-center gap-1 group"
                 >
                   <div
-                    className={`p-3 rounded-full transition-all ${
+                    className={`p-3 rounded-full transition-all duration-200 ${
+                      bookmarkAnimations[reel.id] ? "scale-125" : "scale-100"
+                    } ${
                       reel.isBookmarked
-                        ? "bg-amber-600/30 text-amber-500"
+                        ? ""
                         : "bg-white/10 hover:bg-white/20 text-white"
                     }`}
+                    style={
+                      reel.isBookmarked
+                        ? {
+                            backgroundColor: "rgba(245, 158, 11, 0.3)",
+                            color: "#F59E0B",
+                          }
+                        : {}
+                    }
                   >
                     <Bookmark
-                      className={`w-6 h-6 ${
-                        reel.isBookmarked ? "fill-amber-500" : ""
+                      className={`w-6 h-6 transition-all ${
+                        reel.isBookmarked
+                          ? "fill-amber-500 scale-110"
+                          : "scale-100"
                       }`}
                     />
                   </div>
@@ -677,6 +786,7 @@ export default function ReelsPage() {
                   </span>
                 </button>
 
+                {/* PARTAGER */}
                 <button
                   onClick={() => handleShare(reel)}
                   className="flex flex-col items-center gap-1 group"
@@ -690,10 +800,14 @@ export default function ReelsPage() {
                 </button>
               </div>
 
+              {/* PROGRESSION */}
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10">
                 <div
-                  className="h-full bg-purple-500 transition-all duration-300"
-                  style={{ width: `${((index + 1) / reels.length) * 100}%` }}
+                  className="h-full transition-all duration-300"
+                  style={{
+                    width: `${((index + 1) / reels.length) * 100}%`,
+                    backgroundColor: ACCENT_COLOR,
+                  }}
                 />
               </div>
             </div>
@@ -701,7 +815,13 @@ export default function ReelsPage() {
 
           {loadingMore && (
             <div className="h-20 flex items-center justify-center bg-black">
-              <div className="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+              <div
+                className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+                style={{
+                  borderColor: ACCENT_COLOR,
+                  borderTopColor: "transparent",
+                }}
+              />
             </div>
           )}
         </div>
