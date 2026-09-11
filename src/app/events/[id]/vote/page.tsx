@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
   Heart,
   X,
+  BadgeCheck,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -59,6 +60,9 @@ type Submission = {
     id: string;
     username: string;
     avatarUrl: string | null;
+    avatarColor?: string | null;
+    isCertified?: boolean;
+    badgeColor?: string | null;
   };
   manga?: {
     id: string;
@@ -85,6 +89,24 @@ const getVoteMode = (type: string): VoteMode => {
       return "UP_DOWN";
   }
 };
+
+// ============================================
+// BADGE CERTIFIÉ
+// ============================================
+function CertifiedBadge({ user }: { user: Submission["user"] }) {
+  if (!user?.isCertified) return null;
+
+  const badgeColor = user.badgeColor || user.avatarColor || "#3B82F6";
+
+  return (
+    <BadgeCheck
+      className="w-3.5 h-3.5 shrink-0"
+      fill={badgeColor}
+      color="black"
+      strokeWidth={1.5}
+    />
+  );
+}
 
 // ============================================
 // TOAST NOTIFICATION — Style TikTok
@@ -220,7 +242,7 @@ export default function EventVotePage() {
       return;
     }
 
-    // ✅ Empêcher le double vote
+    // Empêcher le double vote
     const submission = submissions.find((s) => s.id === submissionId);
     if (submission?.userVoted) {
       showToast("info", "Vous avez déjà voté pour cette œuvre");
@@ -245,12 +267,10 @@ export default function EventVotePage() {
       const data = await res.json();
 
       if (!res.ok) {
-        // ✅ Gestion des erreurs avec toast
         const errorMessage = data.message || "Erreur lors du vote";
 
         if (errorMessage.includes("déjà voté")) {
           showToast("info", "Vous avez déjà voté pour cette œuvre");
-          // Marquer comme voté localement
           setSubmissions((prev) =>
             prev.map((sub) =>
               sub.id === submissionId ? { ...sub, userVoted: true } : sub
@@ -264,7 +284,7 @@ export default function EventVotePage() {
         return;
       }
 
-      // ✅ Calcul du changement de score
+      // Calcul du changement de score
       let scoreChange = 0;
       if (voteType === "UP") scoreChange = 1;
       else if (voteType === "DOWN") scoreChange = -1;
@@ -272,7 +292,7 @@ export default function EventVotePage() {
         scoreChange = parseInt(voteType.split("_")[1]);
       }
 
-      // ✅ Mettre à jour la soumission
+      // Mettre à jour la soumission
       setSubmissions((prev) =>
         prev.map((sub) => {
           if (sub.id !== submissionId) return sub;
@@ -285,18 +305,21 @@ export default function EventVotePage() {
         })
       );
 
-      // ✅ Animation "just voted"
+      // Animation "just voted"
       setJustVoted(submissionId);
       setTimeout(() => setJustVoted(null), 800);
 
-      // ✅ Toast de succès
+      // Toast de succès
       if (voteType === "UP") {
         showToast("success", "Vote positif enregistré ! 👍");
       } else if (voteType === "DOWN") {
         showToast("success", "Vote négatif enregistré 👎");
       } else {
         const stars = voteType.split("_")[1];
-        showToast("success", `${stars} étoile${stars !== "1" ? "s" : ""} donnée${stars !== "1" ? "s" : ""} ! ⭐`);
+        showToast(
+          "success",
+          `${stars} étoile${stars !== "1" ? "s" : ""} donnée${stars !== "1" ? "s" : ""} ! ⭐`
+        );
       }
     } catch (err: any) {
       showToast("error", err.message || "Erreur réseau");
@@ -383,7 +406,7 @@ export default function EventVotePage() {
 
   return (
     <>
-      {/* ✅ TOASTS */}
+      {/* TOASTS */}
       <ToastContainer toasts={toasts} onClose={removeToast} />
 
       <div className="flex flex-col min-h-screen bg-background text-foreground pb-24">
@@ -444,7 +467,7 @@ export default function EventVotePage() {
                         : "border-border/80"
                     }`}
                   >
-                    {/* Image — ✅ object-contain pour ne pas écraser */}
+                    {/* IMAGE */}
                     <div className="relative bg-background flex items-center justify-center overflow-hidden h-64">
                       {submission.imageUrl ? (
                         <img
@@ -486,15 +509,44 @@ export default function EventVotePage() {
                       )}
                     </div>
 
-                    {/* Infos */}
+                    {/* INFOS */}
                     <div className="p-4 space-y-3">
                       <div>
                         <h3 className="text-sm font-bold text-foreground line-clamp-1">
                           {submission.title}
                         </h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          par @{submission.user.username}
-                        </p>
+
+                        {/* ✅ AUTEUR CLIQUABLE + BADGE CERTIFIÉ */}
+                        <Link
+                          href={`/creator/${submission.user.username}`}
+                          className="inline-flex items-center gap-1.5 mt-1 hover:opacity-80 transition-opacity group"
+                        >
+                          {/* Avatar miniature */}
+                          <div
+                            className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white overflow-hidden shrink-0"
+                            style={{
+                              backgroundColor:
+                                submission.user.avatarColor || "#8B5CF6",
+                            }}
+                          >
+                            {submission.user.avatarUrl ? (
+                              <img
+                                src={submission.user.avatarUrl}
+                                alt={submission.user.username}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              submission.user.username.charAt(0).toUpperCase()
+                            )}
+                          </div>
+
+                          <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                            @{submission.user.username}
+                          </span>
+
+                          {/* ✅ BADGE CERTIFIÉ */}
+                          <CertifiedBadge user={submission.user} />
+                        </Link>
                       </div>
 
                       {submission.description && (
@@ -503,7 +555,7 @@ export default function EventVotePage() {
                         </p>
                       )}
 
-                      {/* Boutons de vote */}
+                      {/* BOUTONS DE VOTE */}
                       {isOwnSubmission ? (
                         <div className="text-xs text-muted-foreground text-center py-2.5 rounded-xl bg-muted/40 border border-border/60">
                           Vous ne pouvez pas voter pour votre propre œuvre
@@ -511,10 +563,10 @@ export default function EventVotePage() {
                       ) : hasVoted ? (
                         <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-sm font-medium">
                           <CheckCircle2 className="w-4 h-4" />
-                          {submission.userVoteType === "UP" && "Vote positif"}
-                          {submission.userVoteType === "DOWN" && "Vote négatif"}
+                          {submission.userVoteType === "UP" && "Vote positif 👍"}
+                          {submission.userVoteType === "DOWN" && "Vote négatif 👎"}
                           {submission.userVoteType?.startsWith("STAR_") &&
-                            `${submission.userVoteType.split("_")[1]} étoile${submission.userVoteType.split("_")[1] !== "1" ? "s" : ""}`}
+                            `${submission.userVoteType.split("_")[1]} étoile${submission.userVoteType.split("_")[1] !== "1" ? "s" : ""} ⭐`}
                         </div>
                       ) : voteMode === "UP_DOWN" ? (
                         <div className="flex gap-2">
@@ -568,7 +620,7 @@ export default function EventVotePage() {
         <BottomNav />
       </div>
 
-      {/* ✅ ANIMATIONS CSS */}
+      {/* ANIMATIONS CSS */}
       <style jsx global>{`
         @keyframes slide-down {
           from {
