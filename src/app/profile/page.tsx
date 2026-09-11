@@ -263,7 +263,6 @@ export default function ProfilePage() {
         throw new Error(data.message || "Erreur lors de la suppression");
       }
 
-      // Retirer le manga de la liste
       setProfile((prev) => {
         if (!prev) return null;
         return {
@@ -284,9 +283,6 @@ export default function ProfilePage() {
     }
   };
 
-  // ============================================
-  // VARIABLES DÉRIVÉES
-  // ============================================
   const totalEarnings = profile?.earnings?.total || 0;
   const isCreator = profile?.role === "CREATOR" || profile?.role === "ADMIN";
   const isAdmin = profile?.role === "ADMIN";
@@ -297,17 +293,7 @@ export default function ProfilePage() {
     <svg className={className} viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="10" fill="url(#manaGradient)" stroke="#FBBF24" strokeWidth="1.5" />
       <circle cx="12" cy="12" r="8.5" fill="none" stroke="#D97706" strokeWidth="0.5" opacity="0.5" />
-      <text
-        x="12"
-        y="17"
-        textAnchor="middle"
-        fontSize="12"
-        fontWeight="800"
-        fill="#78350F"
-        fontFamily="Arial, sans-serif"
-      >
-        M
-      </text>
+      <text x="12" y="17" textAnchor="middle" fontSize="12" fontWeight="800" fill="#78350F" fontFamily="Arial, sans-serif">M</text>
       <defs>
         <linearGradient id="manaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="#FCD34D" />
@@ -326,18 +312,8 @@ export default function ProfilePage() {
           <stop offset="100%" stopColor="#00BCD4" />
         </linearGradient>
       </defs>
-      <path
-        d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-        fill="url(#proGrad)"
-        stroke="#4FC3F7"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12 6L13.5 9.5L17.5 10.5L14.5 13.5L15 17.5L12 15.5L9 17.5L9.5 13.5L6.5 10.5L10.5 9.5L12 6Z"
-        fill="white"
-        opacity="0.3"
-      />
+      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="url(#proGrad)" stroke="#4FC3F7" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M12 6L13.5 9.5L17.5 10.5L14.5 13.5L15 17.5L12 15.5L9 17.5L9.5 13.5L6.5 10.5L10.5 9.5L12 6Z" fill="white" opacity="0.3" />
     </svg>
   );
 
@@ -349,26 +325,11 @@ export default function ProfilePage() {
           <stop offset="100%" stopColor="#4F46E5" />
         </linearGradient>
       </defs>
-      <path
-        d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z"
-        fill="url(#premiumGrad)"
-        stroke="#7C3AED"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M5 16H19V20H5V16Z"
-        fill="url(#premiumGrad)"
-        stroke="#7C3AED"
-        strokeWidth="1.5"
-        strokeLinejoin="round"
-      />
+      <path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5Z" fill="url(#premiumGrad)" stroke="#7C3AED" strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M5 16H19V20H5V16Z" fill="url(#premiumGrad)" stroke="#7C3AED" strokeWidth="1.5" strokeLinejoin="round" />
     </svg>
   );
 
-  // ============================================
-  // LOADING
-  // ============================================
   if (loading) {
     return <Loader label="Chargement de votre profil" />;
   }
@@ -409,9 +370,6 @@ export default function ProfilePage() {
 
   const activeBadgeColor = profile.badgeColor || profile.avatarColor || "#3B82F6";
 
-  // ============================================
-  // BOUTON CRÉATEUR
-  // ============================================
   const renderCreatorButton = () => {
     if (isAdmin) return null;
 
@@ -530,11 +488,7 @@ export default function ProfilePage() {
           <div className="relative mb-3 group">
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted overflow-hidden border-4 border-background shadow-2xl ring-2 ring-blue-500/30 shrink-0">
               {profile.avatarUrl ? (
-                <img
-                  src={profile.avatarUrl}
-                  alt={profile.username}
-                  className="w-full h-full object-cover"
-                />
+                <img src={profile.avatarUrl} alt={profile.username} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-3xl md:text-4xl font-black text-blue-400 bg-gradient-to-br from-card to-muted">
                   {profile.username?.charAt(0).toUpperCase() || "?"}
@@ -543,12 +497,7 @@ export default function ProfilePage() {
             </div>
             {profile.isCertified && (
               <div className="absolute -bottom-1 -right-1 bg-background p-0.5 rounded-full shadow-lg">
-                <BadgeCheck
-                  className="w-6 h-6 md:w-7 md:h-7"
-                  fill={activeBadgeColor}
-                  color="black"
-                  strokeWidth={1.5}
-                />
+                <BadgeCheck className="w-6 h-6 md:w-7 md:h-7" fill={activeBadgeColor} color="black" strokeWidth={1.5} />
               </div>
             )}
             <Link
@@ -564,14 +513,12 @@ export default function ProfilePage() {
             <h1 className="text-xl md:text-3xl font-extrabold text-foreground tracking-tight">
               {profile.username}
             </h1>
-
             {profile.isPro && !profile.premiumActive && (
               <span className="relative">
                 <span className="absolute inset-0 rounded-full blur-xl bg-cyan-400/30 animate-pulse" />
                 <ProStar className="w-5 h-5 relative z-10" />
               </span>
             )}
-
             {profile.premiumActive && (
               <span className="relative">
                 <span className="absolute inset-0 rounded-full blur-2xl bg-violet-500/40 animate-pulse" />
@@ -595,10 +542,7 @@ export default function ProfilePage() {
             <span className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-blue-400" />
               Membre depuis{" "}
-              {new Date(profile.createdAt).toLocaleDateString("fr-FR", {
-                month: "long",
-                year: "numeric",
-              })}
+              {new Date(profile.createdAt).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
             </span>
             <span className="w-1 h-1 rounded-full bg-muted" />
             <span className="flex items-center gap-1.5">
@@ -610,21 +554,13 @@ export default function ProfilePage() {
           {/* STATS SOCIALES */}
           <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-card/40 rounded-2xl border border-border/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
             <div className="text-center">
-              <p className="text-lg md:text-xl font-black text-foreground">
-                {profile._count?.following || 0}
-              </p>
-              <p className="text-[11px] md:text-xs text-muted-foreground font-medium">
-                Abonnements
-              </p>
+              <p className="text-lg md:text-xl font-black text-foreground">{profile._count?.following || 0}</p>
+              <p className="text-[11px] md:text-xs text-muted-foreground font-medium">Abonnements</p>
             </div>
             <div className="h-7 w-[1px] bg-muted" />
             <div className="text-center">
-              <p className="text-lg md:text-xl font-black text-foreground">
-                {profile._count?.followers || 0}
-              </p>
-              <p className="text-[11px] md:text-xs text-muted-foreground font-medium">
-                Abonnés
-              </p>
+              <p className="text-lg md:text-xl font-black text-foreground">{profile._count?.followers || 0}</p>
+              <p className="text-[11px] md:text-xs text-muted-foreground font-medium">Abonnés</p>
             </div>
             <div className="h-7 w-[1px] bg-muted" />
             <div className="text-center">
@@ -654,10 +590,7 @@ export default function ProfilePage() {
             </Link>
           </div>
 
-          {/* BOUTON CRÉATEUR */}
-          {!isAdmin && (
-            <div className="w-full max-w-md mb-4">{renderCreatorButton()}</div>
-          )}
+          {!isAdmin && <div className="w-full max-w-md mb-4">{renderCreatorButton()}</div>}
 
           {/* TABS */}
           <div className="flex border-b border-border/80 w-full max-w-md md:max-w-xl mb-6">
@@ -702,9 +635,7 @@ export default function ProfilePage() {
               {!profile.mangas || profile.mangas.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center bg-card/30 rounded-2xl border border-border/40 max-w-md mx-auto my-2">
                   <BookOpen className="w-10 h-10 text-muted-foreground/50" />
-                  <p className="text-muted-foreground mt-3 text-sm font-medium">
-                    Aucun manga publié
-                  </p>
+                  <p className="text-muted-foreground mt-3 text-sm font-medium">Aucun manga publié</p>
                   {isCreator ? (
                     <Link
                       href="/creator/upload"
@@ -713,9 +644,7 @@ export default function ProfilePage() {
                       Publier ton premier projet
                     </Link>
                   ) : (
-                    <p className="text-muted-foreground text-xs mt-2">
-                      Deviens créateur pour publier tes mangas
-                    </p>
+                    <p className="text-muted-foreground text-xs mt-2">Deviens créateur pour publier tes mangas</p>
                   )}
                 </div>
               ) : (
@@ -747,7 +676,6 @@ export default function ProfilePage() {
                         </div>
                       </Link>
 
-                      {/* ✅ BOUTON SUPPRIMER */}
                       <button
                         onClick={(e) => {
                           e.preventDefault();
@@ -773,35 +701,332 @@ export default function ProfilePage() {
                 {isCreator ? (
                   <div className="bg-card/60 border border-border/80 rounded-2xl p-4 text-center">
                     <DollarSign className="w-5 h-5 mx-auto text-emerald-400 mb-1" />
-                    <p className="text-base md:text-lg font-black text-foreground">
-                      ${(profile.manas / 100).toFixed(2)}
-                    </p>
-                    <p className="text-[10px] md:text-xs text-muted-foreground font-medium">
-                      Balance
-                    </p>
+                    <p className="text-base md:text-lg font-black text-foreground">${(profile.manas / 100).toFixed(2)}</p>
+                    <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Balance</p>
                   </div>
                 ) : (
                   <div className="bg-card/60 border border-border/80 rounded-2xl p-4 text-center">
                     <ManaCoin className="w-6 h-6 mx-auto mb-1" />
-                    <p className="text-base md:text-lg font-black text-foreground">
-                      {profile.manas}
-                    </p>
-                    <p className="text-[10px] md:text-xs text-muted-foreground font-medium">
-                      MANAS
-                    </p>
+                    <p className="text-base md:text-lg font-black text-foreground">{profile.manas}</p>
+                    <p className="text-[10px] md:text-xs text-muted-foreground font-medium">MANAS</p>
                   </div>
                 )}
 
                 {isCreator ? (
                   <div className="bg-card/60 border border-border/80 rounded-2xl p-4 text-center">
                     <TrendingUp className="w-5 h-5 mx-auto text-blue-400 mb-1" />
-                    <p className="text-base md:text-lg font-black text-foreground">
-                      ${totalEarnings.toFixed(2)}
-                    </p>
-                    <p className="text-[10px] md:text-xs text-muted-foreground font-medium">
-                      Revenus
-                    </p>
+                    <p className="text-base md:text-lg font-black text-foreground">${totalEarnings.toFixed(2)}</p>
+                    <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Revenus</p>
                   </div>
                 ) : (
                   <div className="bg-card/60 border border-border/80 rounded-2xl p-4 text-center">
-                    <Heart className="w-5 h-5 mx
+                    <Heart className="w-5 h-5 mx-auto text-rose-400 mb-1" />
+                    <p className="text-base md:text-lg font-black text-foreground">{profile._count?.likes || 0}</p>
+                    <p className="text-[10px] md:text-xs text-muted-foreground font-medium">Likes reçus</p>
+                  </div>
+                )}
+
+                <Link
+                  href="/profile/tickets"
+                  className="bg-card/60 border border-border/80 rounded-2xl p-4 text-center hover:border-blue-500/50 transition-all group"
+                >
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <Ticket className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
+                    <span className="text-base md:text-lg font-black text-foreground">{ticketBalance?.tickets || 0}</span>
+                  </div>
+                  <p className="text-[10px] md:text-xs text-muted-foreground font-medium flex items-center justify-center gap-1">
+                    Tickets
+                    <ChevronRight className="w-3 h-3 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                  </p>
+                </Link>
+              </div>
+
+              {isCreator && profile.earnings && (
+                <div className="bg-card/40 border border-border/60 rounded-2xl p-4">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <DollarSign className="w-3.5 h-3.5" />
+                    Détail des revenus
+                  </h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total</span>
+                      <span className="text-foreground font-bold">${profile.earnings.total.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Payé</span>
+                      <span className="text-emerald-400 font-medium">${profile.earnings.paid.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">En attente</span>
+                      <span className="text-amber-400 font-medium">${profile.earnings.pending.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-card/40 border border-border/60 rounded-2xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                      <Ticket className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">Mes Tickets</p>
+                      <p className="text-xs text-muted-foreground">
+                        {ticketBalance?.tickets || 0} ticket{ticketBalance?.tickets !== 1 ? "s" : ""} disponible
+                        {ticketBalance?.tickets !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/profile/tickets"
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition-all shadow-lg shadow-purple-600/20 flex items-center gap-1.5"
+                  >
+                    <Ticket className="w-3.5 h-3.5" />
+                    Voir
+                  </Link>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-3">
+                  <Ticket className="w-3 h-3 inline mr-1 text-purple-400" />1 ticket = 1 chapitre payant débloqué
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ===== TAB AVANTAGES ===== */}
+          {activeTab === "menu" && (
+            <div className="w-full max-w-xl mx-auto bg-card/20 rounded-2xl border border-border/40 overflow-hidden">
+              <Link
+                href="/premium"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-card/50 transition-colors border-b border-border/30"
+              >
+                {profile.premiumActive ? (
+                  <Crown className="w-5 h-5 text-violet-400" />
+                ) : profile.isPro ? (
+                  <Star className="w-5 h-5 text-cyan-400" />
+                ) : (
+                  <User className="w-5 h-5 text-muted-foreground" />
+                )}
+                <span className="text-sm font-medium text-foreground flex-1">
+                  {profile.premiumActive
+                    ? "Abonnement Premium actif"
+                    : profile.isPro
+                    ? "Abonnement Pro actif"
+                    : "Devenir Premium"}
+                </span>
+                {profile.premiumActive && (
+                  <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-[9px] font-bold border border-violet-500/20 flex items-center gap-1">
+                    <Crown className="w-3 h-3" />
+                    Actif
+                  </span>
+                )}
+                {profile.isPro && !profile.premiumActive && (
+                  <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 text-[9px] font-bold border border-cyan-400/20 flex items-center gap-1">
+                    <Star className="w-3 h-3" />
+                    Pro
+                  </span>
+                )}
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </Link>
+
+              <Link
+                href="/profile/events"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-card/50 transition-colors border-b border-border/30"
+              >
+                <Trophy className="w-5 h-5 text-amber-400" />
+                <span className="text-sm font-medium text-foreground flex-1">Mes événements</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </Link>
+
+              <Link
+                href="/certification"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-card/50 transition-colors border-b border-border/30"
+              >
+                <Award className="w-5 h-5 text-blue-400" />
+                <span className="text-sm font-medium text-foreground flex-1">Certification</span>
+                {profile.isCertified && (
+                  <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[9px] font-bold border border-blue-500/20 flex items-center gap-1">
+                    <BadgeCheck className="w-3 h-3" />
+                    Certifié
+                  </span>
+                )}
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </Link>
+
+              {profile.isCertified && (
+                <Link
+                  href="/profile/badge-color"
+                  className="flex items-center gap-3 px-4 py-3.5 hover:bg-card/50 transition-colors border-b border-border/30"
+                >
+                  <Palette className="w-5 h-5 text-purple-400" />
+                  <span className="text-sm font-medium text-foreground flex-1">Couleur du Badge</span>
+                  <div className="w-5 h-5 rounded-full border border-muted shadow-inner" style={{ backgroundColor: activeBadgeColor }} />
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </Link>
+              )}
+
+              <Link
+                href="/favorites"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-card/50 transition-colors border-b border-border/30"
+              >
+                <Bookmark className="w-5 h-5 text-rose-400" />
+                <span className="text-sm font-medium text-foreground flex-1">Mes favoris</span>
+                <span className="text-xs text-muted-foreground">({profile._count?.favorites || 0})</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </Link>
+
+              <Link
+                href="/profile/manas-history"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-card/50 transition-colors border-b border-border/30"
+              >
+                <ManaCoin className="w-5 h-5" />
+                <span className="text-sm font-medium text-foreground flex-1">Historique MANAS</span>
+                <span className="text-xs text-muted-foreground">({profile.manas || 0})</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </Link>
+
+              {isCreator && (
+                <Link
+                  href="/creator/balance"
+                  className="flex items-center gap-3 px-4 py-3.5 hover:bg-card/50 transition-colors border-b border-border/30"
+                >
+                  <DollarSign className="w-5 h-5 text-emerald-400" />
+                  <span className="text-sm font-medium text-foreground flex-1">Retirer de l'argent</span>
+                  <span className="text-xs text-muted-foreground">≈ ${(profile.manas / 100).toFixed(2)}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </Link>
+              )}
+
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-3 px-4 py-3.5 hover:bg-card/50 transition-colors border-b border-border/30"
+                >
+                  <Shield className="w-5 h-5 text-rose-400" />
+                  <span className="text-sm font-medium text-foreground flex-1">Administration</span>
+                  <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[9px] font-bold border border-rose-500/20">
+                    Admin
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </Link>
+              )}
+
+              <Link
+                href="/profile/settings"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-card/50 transition-colors border-b border-border/30"
+              >
+                <Settings className="w-5 h-5 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground flex-1">Paramètres du compte</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </Link>
+
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-card/50 transition-colors w-full text-rose-400 border-t border-border/30"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="text-sm font-medium flex-1 text-left">Se déconnecter</span>
+                <ChevronRight className="w-4 h-4 text-rose-400/50" />
+              </button>
+            </div>
+          )}
+        </main>
+
+        <BottomNav />
+      </div>
+
+      {/* ✅ MODAL DE SUPPRESSION */}
+      {mangaToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl overflow-hidden shadow-2xl">
+            {/* HEADER */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-rose-950/40 border border-rose-500/40 flex items-center justify-center">
+                  <AlertCircle className="w-4 h-4 text-rose-400" />
+                </div>
+                <h2 className="text-base font-bold text-foreground">Supprimer le manga ?</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setMangaToDelete(null);
+                  setDeleteError("");
+                }}
+                className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* BODY */}
+            <div className="px-5 py-5 space-y-3">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
+                {mangaToDelete.coverUrl ? (
+                  <img
+                    src={mangaToDelete.coverUrl}
+                    alt={mangaToDelete.title}
+                    className="w-14 h-20 rounded-lg object-cover border border-border/60 shrink-0"
+                  />
+                ) : (
+                  <div className="w-14 h-20 rounded-lg bg-card border border-border/60 flex items-center justify-center shrink-0">
+                    <BookOpen className="w-6 h-6 text-muted-foreground/30" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-foreground truncate">{mangaToDelete.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {mangaToDelete._count?.chapters || 0} chapitre
+                    {(mangaToDelete._count?.chapters || 0) !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                Cette action est <span className="text-rose-400 font-semibold">irréversible</span>. Tous les chapitres,
+                commentaires et données associés seront définitivement supprimés.
+              </p>
+
+              {deleteError && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-xs">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+            </div>
+
+            {/* ACTIONS */}
+            <div className="flex gap-3 px-5 py-4 border-t border-border/60 bg-muted/20">
+              <button
+                onClick={() => {
+                  setMangaToDelete(null);
+                  setDeleteError("");
+                }}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl bg-card border border-border text-foreground hover:bg-muted text-sm font-medium transition-all disabled:opacity-50"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDeleteManga}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold transition-all shadow-lg shadow-rose-600/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Suppression...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Supprimer
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
