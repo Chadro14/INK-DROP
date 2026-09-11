@@ -890,4 +890,26 @@ export default function EventPage() {
             </div>
           )}
 
-         
+          {/* CLASSEMENT */}
+          <Link
+            href={`/events/${event.id}/ranking`}
+            className="group flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-card/60 hover:bg-card border border-border hover:border-amber-500/40 text-foreground text-sm font-bold transition-all"
+          >
+            <Trophy className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+            Voir le classement
+          </Link>
+        </div>
+
+        {/* ERREUR SECONDAIRE */}
+        {error && event && (
+          <div className="flex items-center gap-2 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-sm font-medium">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <span>{error}</span>
+          </div>
+        )}
+      </main>
+
+      <BottomNav />
+    </div>
+  );
+}
