@@ -16,6 +16,9 @@ import {
   Trophy,
   Sparkles,
   BadgeCheck,
+  Volume2,
+  VolumeX,
+  PlayCircle,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -80,7 +83,13 @@ type Reel = {
 // ============================================
 // ✅ COMPOSANT BADGE CERTIFIÉ
 // ============================================
-function CertifiedBadge({ author, size = "sm" }: { author: Author; size?: "sm" | "md" }) {
+function CertifiedBadge({
+  author,
+  size = "sm",
+}: {
+  author: Author;
+  size?: "sm" | "md";
+}) {
   if (!author?.isCertified) return null;
 
   const badgeColor = author.badgeColor || author.avatarColor || "#3B82F6";
@@ -166,7 +175,16 @@ export default function ReelsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const [commentModalReelId, setCommentModalReelId] = useState<string | null>(null);
+  // ✅ État global du son (persiste entre les Reels)
+  const [isMuted, setIsMuted] = useState(true);
+
+  // ✅ État pour l'overlay "play" temporaire
+  const [showPlayOverlay, setShowPlayOverlay] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+
+  const [commentModalReelId, setCommentModalReelId] = useState<string | null>(
+    null
+  );
   const [commentModalCount, setCommentModalCount] = useState(0);
 
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
@@ -183,7 +201,9 @@ export default function ReelsPage() {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const res = await fetch(`${API_URL}/reels?page=${pageNum}&limit=10`, { headers });
+      const res = await fetch(`${API_URL}/reels?page=${pageNum}&limit=10`, {
+        headers,
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -221,7 +241,11 @@ export default function ReelsPage() {
       const clientHeight = container.clientHeight;
       const scrollHeight = container.scrollHeight;
 
-      if (scrollTop + clientHeight >= scrollHeight - 200 && hasMore && !loadingMore) {
+      if (
+        scrollTop + clientHeight >= scrollHeight - 200 &&
+        hasMore &&
+        !loadingMore
+      ) {
         setLoadingMore(true);
         const nextPage = page + 1;
         setPage(nextPage);
@@ -234,7 +258,7 @@ export default function ReelsPage() {
   }, [hasMore, loadingMore, page, fetchReels]);
 
   // ============================================
-  // AUTOPLAY
+  // AUTOPLAY + SYNCHRONISATION DU SON
   // ============================================
   useEffect(() => {
     Object.values(videoRefs.current).forEach((video) => {
@@ -247,10 +271,47 @@ export default function ReelsPage() {
     if (currentReel && videoRefs.current[currentReel.id]) {
       const video = videoRefs.current[currentReel.id];
       if (video) {
+        video.muted = isMuted;
         video.play().catch(() => {});
       }
     }
   }, [currentIndex, reels]);
+
+  // ✅ Applique le mute à toutes les vidéos quand on toggle
+  useEffect(() => {
+    Object.values(videoRefs.current).forEach((video) => {
+      if (video) {
+        video.muted = isMuted;
+      }
+    });
+  }, [isMuted]);
+
+  // ============================================
+  // TOGGLE MUTE / UNMUTE
+  // ============================================
+  const toggleMute = () => {
+    setIsMuted((prev) => !prev);
+  };
+
+  // ============================================
+  // TOGGLE PAUSE / PLAY (clic sur vidéo)
+  // ============================================
+  const togglePlayPause = (reelId: string) => {
+    const video = videoRefs.current[reelId];
+    if (!video) return;
+
+    if (video.paused) {
+      video.play().catch(() => {});
+      setIsPaused(false);
+    } else {
+      video.pause();
+      setIsPaused(true);
+    }
+
+    // Afficher l'overlay temporairement
+    setShowPlayOverlay(true);
+    setTimeout(() => setShowPlayOverlay(false), 600);
+  };
 
   // ============================================
   // INTERACTIONS
@@ -276,7 +337,9 @@ export default function ReelsPage() {
               ? {
                   ...reel,
                   isLiked: data.liked,
-                  likesCount: data.likesCount ?? (data.liked ? reel.likesCount + 1 : reel.likesCount - 1),
+                  likesCount:
+                    data.likesCount ??
+                    (data.liked ? reel.likesCount + 1 : reel.likesCount - 1),
                 }
               : reel
           )
@@ -413,7 +476,7 @@ export default function ReelsPage() {
     <>
       <div className="flex flex-col h-screen bg-black">
         {/* HEADER */}
-        <header className="absolute top-0 left-0 right-0 z-10 px-4 py-3 bg-gradient-to-b from-black/80 to-transparent">
+        <header className="absolute top-0 left-0 right-0 z-20 px-4 py-3 bg-gradient-to-b from-black/80 to-transparent">
           <div className="flex items-center justify-between max-w-lg mx-auto">
             <span className="text-white font-bold text-lg tracking-tight">
               <span className="text-purple-400">Reels</span>
@@ -438,7 +501,7 @@ export default function ReelsPage() {
               key={reel.id}
               className="relative h-screen w-full snap-start snap-always flex items-center justify-center bg-black"
             >
-              {/* VIDÉO CLIQUABLE → PAGE DÉTAIL */}
+              {/* VIDÉO */}
               <video
                 ref={(el) => {
                   videoRefs.current[reel.id] = el;
@@ -448,8 +511,8 @@ export default function ReelsPage() {
                 className="w-full h-full object-contain cursor-pointer"
                 loop
                 playsInline
-                muted
-                onClick={() => router.push(`/reels/${reel.id}`)}
+                muted={isMuted}
+                onClick={() => togglePlayPause(reel.id)}
                 onPlay={() => {
                   if (index === currentIndex) {
                     handleView(reel.id);
@@ -457,15 +520,50 @@ export default function ReelsPage() {
                 }}
               />
 
+              {/* ✅ OVERLAY PLAY/PAUSE (apparait brièvement au tap) */}
+              {showPlayOverlay && index === currentIndex && (
+                <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                  <div className="w-20 h-20 rounded-full bg-black/60 backdrop-blur-sm border border-white/20 flex items-center justify-center animate-in fade-in zoom-in duration-200">
+                    {isPaused ? (
+                      <PlayCircle className="w-12 h-12 text-white" />
+                    ) : (
+                      <PlayCircle className="w-12 h-12 text-white/70" />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ✅ BOUTON MUTE/UNMUTE — En haut à droite */}
+              {index === currentIndex && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleMute();
+                  }}
+                  className="absolute top-20 right-4 z-20 w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/70 active:scale-95 transition-all shadow-lg"
+                  title={isMuted ? "Activer le son" : "Couper le son"}
+                >
+                  {isMuted ? (
+                    <VolumeX className="w-5 h-5" />
+                  ) : (
+                    <Volume2 className="w-5 h-5" />
+                  )}
+                </button>
+              )}
+
               {/* INFO EN BAS À GAUCHE */}
               <div className="absolute bottom-28 left-4 z-10 max-w-[70%]">
-                {/* AUTEUR CLIQUABLE + BADGE CERTIFIÉ */}
                 <Link
                   href={`/creator/${reel.author?.username || ""}`}
                   onClick={(e) => e.stopPropagation()}
                   className="flex items-center gap-2 mb-2 hover:opacity-80 transition-all"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white text-xs font-bold overflow-hidden shrink-0">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold overflow-hidden shrink-0"
+                    style={{
+                      backgroundColor: reel.author?.avatarColor || "#8B5CF6",
+                    }}
+                  >
                     {reel.author?.avatarUrl ? (
                       <img
                         src={reel.author.avatarUrl}
@@ -482,9 +580,13 @@ export default function ReelsPage() {
                   <CertifiedBadge author={reel.author} size="sm" />
                 </Link>
 
-                <h2 className="text-white font-bold text-lg leading-tight">{reel.title}</h2>
+                <h2 className="text-white font-bold text-lg leading-tight">
+                  {reel.title}
+                </h2>
                 {reel.description && (
-                  <p className="text-white/80 text-sm mt-1 line-clamp-2">{reel.description}</p>
+                  <p className="text-white/80 text-sm mt-1 line-clamp-2">
+                    {reel.description}
+                  </p>
                 )}
 
                 <CtaButton reel={reel} />
@@ -492,12 +594,15 @@ export default function ReelsPage() {
                 {reel.musicTitle && (
                   <p className="text-white/60 text-xs mt-2 flex items-center gap-1">
                     <Play className="w-3 h-3" />
-                    {reel.musicTitle} {reel.musicArtist && `- ${reel.musicArtist}`}
+                    {reel.musicTitle}{" "}
+                    {reel.musicArtist && `- ${reel.musicArtist}`}
                   </p>
                 )}
                 <div className="flex flex-wrap gap-1 mt-2">
                   {reel.tags?.slice(0, 3).map((tag) => (
-                    <span key={tag} className="text-white/40 text-[10px]">#{tag}</span>
+                    <span key={tag} className="text-white/40 text-[10px]">
+                      #{tag}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -508,14 +613,22 @@ export default function ReelsPage() {
                   onClick={() => handleLike(reel.id, index)}
                   className="flex flex-col items-center gap-1 group"
                 >
-                  <div className={`p-3 rounded-full transition-all ${
-                    reel.isLiked
-                      ? "bg-rose-600/30 text-rose-500"
-                      : "bg-white/10 hover:bg-white/20 text-white"
-                  }`}>
-                    <Heart className={`w-6 h-6 ${reel.isLiked ? "fill-rose-500" : ""}`} />
+                  <div
+                    className={`p-3 rounded-full transition-all ${
+                      reel.isLiked
+                        ? "bg-rose-600/30 text-rose-500"
+                        : "bg-white/10 hover:bg-white/20 text-white"
+                    }`}
+                  >
+                    <Heart
+                      className={`w-6 h-6 ${
+                        reel.isLiked ? "fill-rose-500" : ""
+                      }`}
+                    />
                   </div>
-                  <span className="text-white/80 text-xs font-medium">{reel.likesCount || 0}</span>
+                  <span className="text-white/80 text-xs font-medium">
+                    {reel.likesCount || 0}
+                  </span>
                 </button>
 
                 <button
@@ -523,25 +636,45 @@ export default function ReelsPage() {
                   className="flex flex-col items-center gap-1 group"
                 >
                   <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
                     </svg>
                   </div>
-                  <span className="text-white/80 text-xs font-medium">{reel.commentsCount || 0}</span>
+                  <span className="text-white/80 text-xs font-medium">
+                    {reel.commentsCount || 0}
+                  </span>
                 </button>
 
                 <button
                   onClick={() => handleBookmark(reel.id, index)}
                   className="flex flex-col items-center gap-1 group"
                 >
-                  <div className={`p-3 rounded-full transition-all ${
-                    reel.isBookmarked
-                      ? "bg-amber-600/30 text-amber-500"
-                      : "bg-white/10 hover:bg-white/20 text-white"
-                  }`}>
-                    <Bookmark className={`w-6 h-6 ${reel.isBookmarked ? "fill-amber-500" : ""}`} />
+                  <div
+                    className={`p-3 rounded-full transition-all ${
+                      reel.isBookmarked
+                        ? "bg-amber-600/30 text-amber-500"
+                        : "bg-white/10 hover:bg-white/20 text-white"
+                    }`}
+                  >
+                    <Bookmark
+                      className={`w-6 h-6 ${
+                        reel.isBookmarked ? "fill-amber-500" : ""
+                      }`}
+                    />
                   </div>
-                  <span className="text-white/80 text-xs font-medium">Sauvegarder</span>
+                  <span className="text-white/80 text-xs font-medium">
+                    Sauvegarder
+                  </span>
                 </button>
 
                 <button
@@ -551,7 +684,9 @@ export default function ReelsPage() {
                   <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
                     <Share2 className="w-6 h-6" />
                   </div>
-                  <span className="text-white/80 text-xs font-medium">Partager</span>
+                  <span className="text-white/80 text-xs font-medium">
+                    Partager
+                  </span>
                 </button>
               </div>
 
@@ -582,7 +717,9 @@ export default function ReelsPage() {
               reelId={commentModalReelId}
               initialCount={commentModalCount}
               onClose={() => setCommentModalReelId(null)}
-              onCommentAdded={(delta) => incrementCommentCount(commentModalReelId, delta)}
+              onCommentAdded={(delta) =>
+                incrementCommentCount(commentModalReelId, delta)
+              }
             />
           </div>
         </div>
@@ -595,6 +732,21 @@ export default function ReelsPage() {
         .hide-scrollbar {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: scale(0.8);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .animate-in {
+          animation: fade-in 0.2s ease-out;
         }
       `}</style>
     </>
