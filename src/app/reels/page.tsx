@@ -60,6 +60,11 @@ type Reel = {
   videoUrl: string;
   thumbnailUrl: string | null;
   duration: number | null;
+
+  // ✅ NOUVEAU : Trim virtuel
+  trimStart?: number | null;
+  trimEnd?: number | null;
+
   viewsCount: number;
   likesCount: number;
   commentsCount: number;
@@ -81,13 +86,13 @@ type Reel = {
 };
 
 // ============================================
-// ✅ COULEUR D'ACCENT (unique pour tout)
+// COULEUR D'ACCENT
 // ============================================
-const ACCENT_COLOR = "#8B5CF6"; // Violet
+const ACCENT_COLOR = "#8B5CF6";
 const ACCENT_GLOW = "rgba(139, 92, 246, 0.4)";
 
 // ============================================
-// ✅ COMPOSANT BADGE CERTIFIÉ
+// BADGE CERTIFIÉ
 // ============================================
 function CertifiedBadge({
   author,
@@ -112,7 +117,7 @@ function CertifiedBadge({
 }
 
 // ============================================
-// ✅ COMPOSANT CTA
+// CTA
 // ============================================
 function CtaButton({ reel }: { reel: Reel }) {
   const router = useRouter();
@@ -186,14 +191,16 @@ export default function ReelsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // ✅ État global du son
   const [isMuted, setIsMuted] = useState(true);
   const [showPlayOverlay, setShowPlayOverlay] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
 
-  // ✅ Animations pour like/bookmark
-  const [likeAnimations, setLikeAnimations] = useState<Record<string, boolean>>({});
-  const [bookmarkAnimations, setBookmarkAnimations] = useState<Record<string, boolean>>({});
+  const [likeAnimations, setLikeAnimations] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [bookmarkAnimations, setBookmarkAnimations] = useState<
+    Record<string, boolean>
+  >({});
 
   const [commentModalReelId, setCommentModalReelId] = useState<string | null>(
     null
@@ -204,7 +211,7 @@ export default function ReelsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // ============================================
-  // CHARGEMENT DES REELS
+  // CHARGEMENT
   // ============================================
   const fetchReels = useCallback(async (pageNum: number) => {
     try {
@@ -271,7 +278,7 @@ export default function ReelsPage() {
   }, [hasMore, loadingMore, page, fetchReels]);
 
   // ============================================
-  // AUTOPLAY + SON
+  // AUTOPLAY + TRIM
   // ============================================
   useEffect(() => {
     Object.values(videoRefs.current).forEach((video) => {
@@ -285,11 +292,19 @@ export default function ReelsPage() {
       const video = videoRefs.current[currentReel.id];
       if (video) {
         video.muted = isMuted;
+
+        // ✅ Démarrer au trimStart si défini
+        const startTime = currentReel.trimStart || 0;
+        if (video.currentTime < startTime) {
+          video.currentTime = startTime;
+        }
+
         video.play().catch(() => {});
       }
     }
   }, [currentIndex, reels]);
 
+  // ✅ Sync mute
   useEffect(() => {
     Object.values(videoRefs.current).forEach((video) => {
       if (video) {
@@ -319,7 +334,35 @@ export default function ReelsPage() {
   };
 
   // ============================================
-  // ✅ LIKE — OPTIMISTIC UPDATE (fluide)
+  // TRIM HANDLERS (sur chaque vidéo)
+  // ============================================
+  const handleTimeUpdate = (
+    e: React.SyntheticEvent<HTMLVideoElement>,
+    reel: Reel
+  ) => {
+    const video = e.currentTarget;
+    const trimEnd = reel.trimEnd;
+
+    // ✅ Si on dépasse trimEnd → revenir à trimStart
+    if (trimEnd && video.currentTime >= trimEnd) {
+      video.currentTime = reel.trimStart || 0;
+    }
+  };
+
+  const handleLoadedMetadata = (
+    e: React.SyntheticEvent<HTMLVideoElement>,
+    reel: Reel
+  ) => {
+    const video = e.currentTarget;
+    // ✅ Positionner au trimStart si défini
+    const trimStart = reel.trimStart || 0;
+    if (trimStart > 0 && trimStart < video.duration) {
+      video.currentTime = trimStart;
+    }
+  };
+
+  // ============================================
+  // LIKE (optimistic)
   // ============================================
   const handleLike = async (reelId: string, index: number) => {
     const token = localStorage.getItem("token");
@@ -328,13 +371,13 @@ export default function ReelsPage() {
       return;
     }
 
-    // ✅ Animation locale
+    // ✅ Animation
     setLikeAnimations((prev) => ({ ...prev, [reelId]: true }));
     setTimeout(() => {
       setLikeAnimations((prev) => ({ ...prev, [reelId]: false }));
     }, 400);
 
-    // ✅ Optimistic update — IMMÉDIAT
+    // ✅ Optimistic update
     const previousReel = reels[index];
     const wasLiked = previousReel.isLiked;
     const newLiked = !wasLiked;
@@ -353,7 +396,7 @@ export default function ReelsPage() {
       )
     );
 
-    // ✅ Envoi API en arrière-plan
+    // ✅ Envoi API
     try {
       const res = await fetch(`${API_URL}/reels/${reelId}/like`, {
         method: "POST",
@@ -362,7 +405,6 @@ export default function ReelsPage() {
 
       const data = await res.json();
 
-      // ✅ Correction si le serveur renvoie une autre valeur
       if (data.success) {
         setReels((prev) =>
           prev.map((reel, i) =>
@@ -381,7 +423,7 @@ export default function ReelsPage() {
         );
       }
     } catch (error) {
-      // ✅ En cas d'erreur, on revient à l'état initial
+      // ✅ Revert
       console.error("Erreur like:", error);
       setReels((prev) =>
         prev.map((reel, i) =>
@@ -398,7 +440,7 @@ export default function ReelsPage() {
   };
 
   // ============================================
-  // ✅ BOOKMARK — OPTIMISTIC UPDATE (fluide)
+  // BOOKMARK (optimistic)
   // ============================================
   const handleBookmark = async (reelId: string, index: number) => {
     const token = localStorage.getItem("token");
@@ -407,13 +449,11 @@ export default function ReelsPage() {
       return;
     }
 
-    // ✅ Animation locale
     setBookmarkAnimations((prev) => ({ ...prev, [reelId]: true }));
     setTimeout(() => {
       setBookmarkAnimations((prev) => ({ ...prev, [reelId]: false }));
     }, 400);
 
-    // ✅ Optimistic update — IMMÉDIAT
     const previousReel = reels[index];
     const wasBookmarked = previousReel.isBookmarked;
     const newBookmarked = !wasBookmarked;
@@ -424,7 +464,6 @@ export default function ReelsPage() {
       )
     );
 
-    // ✅ Envoi API en arrière-plan
     try {
       const res = await fetch(`${API_URL}/reels/${reelId}/bookmark`, {
         method: "POST",
@@ -441,7 +480,6 @@ export default function ReelsPage() {
         );
       }
     } catch (error) {
-      // ✅ Revert si erreur
       console.error("Erreur bookmark:", error);
       setReels((prev) =>
         prev.map((reel, i) =>
@@ -503,7 +541,7 @@ export default function ReelsPage() {
   };
 
   // ============================================
-  // RENDU
+  // LOADING / ERROR
   // ============================================
   if (loading) {
     return <Loader label="Chargement des reels..." />;
@@ -558,6 +596,9 @@ export default function ReelsPage() {
     );
   }
 
+  // ============================================
+  // RENDU
+  // ============================================
   return (
     <>
       <div className="flex flex-col h-screen bg-black">
@@ -599,6 +640,8 @@ export default function ReelsPage() {
                 playsInline
                 muted={isMuted}
                 onClick={() => togglePlayPause(reel.id)}
+                onLoadedMetadata={(e) => handleLoadedMetadata(e, reel)}
+                onTimeUpdate={(e) => handleTimeUpdate(e, reel)}
                 onPlay={() => {
                   if (index === currentIndex) {
                     handleView(reel.id);
@@ -633,7 +676,7 @@ export default function ReelsPage() {
                 </button>
               )}
 
-              {/* INFO EN BAS À GAUCHE */}
+              {/* INFO BAS GAUCHE */}
               <div className="absolute bottom-28 left-4 z-10 max-w-[70%]">
                 <Link
                   href={`/creator/${reel.author?.username || ""}`}
@@ -643,7 +686,8 @@ export default function ReelsPage() {
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold overflow-hidden shrink-0"
                     style={{
-                      backgroundColor: reel.author?.avatarColor || ACCENT_COLOR,
+                      backgroundColor:
+                        reel.author?.avatarColor || ACCENT_COLOR,
                     }}
                   >
                     {reel.author?.avatarUrl ? (
@@ -689,9 +733,9 @@ export default function ReelsPage() {
                 </div>
               </div>
 
-              {/* ACTIONS À DROITE */}
+              {/* ACTIONS DROITE */}
               <div className="absolute bottom-28 right-4 z-10 flex flex-col items-center gap-5">
-                {/* ✅ LIKE — fluide avec animation */}
+                {/* LIKE */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -702,7 +746,11 @@ export default function ReelsPage() {
                   <div
                     className={`p-3 rounded-full transition-all duration-200 ${
                       likeAnimations[reel.id] ? "scale-125" : "scale-100"
-                    } ${reel.isLiked ? "" : "bg-white/10 hover:bg-white/20 text-white"}`}
+                    } ${
+                      reel.isLiked
+                        ? ""
+                        : "bg-white/10 hover:bg-white/20 text-white"
+                    }`}
                     style={
                       reel.isLiked
                         ? {
@@ -725,7 +773,10 @@ export default function ReelsPage() {
 
                 {/* COMMENTAIRES */}
                 <button
-                  onClick={() => openCommentModal(reel.id, reel.commentsCount)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openCommentModal(reel.id, reel.commentsCount);
+                  }}
                   className="flex flex-col items-center gap-1 group"
                 >
                   <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
@@ -748,7 +799,7 @@ export default function ReelsPage() {
                   </span>
                 </button>
 
-                {/* ✅ BOOKMARK — fluide avec animation */}
+                {/* BOOKMARK */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -786,9 +837,12 @@ export default function ReelsPage() {
                   </span>
                 </button>
 
-                {/* PARTAGER */}
+                {/* SHARE */}
                 <button
-                  onClick={() => handleShare(reel)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleShare(reel);
+                  }}
                   className="flex flex-col items-center gap-1 group"
                 >
                   <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
