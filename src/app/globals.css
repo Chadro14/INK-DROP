@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================
+   VARIABLES CSS — THÈME
+   ============================================ */
 @layer base {
   /* ============================================
      THÈME SOMBRE (DÉFAUT)
@@ -34,73 +37,236 @@
   }
 }
 
+/* ============================================
+   BASE
+   ============================================ */
 @layer base {
   * {
     border-color: hsl(var(--border));
   }
+
+  html,
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+  }
+
+  body {
     font-family: 'Outfit', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 }
 
 /* ============================================
-   THÈME UTILITAIRES
+   UTILITAIRES PERSONNALISÉS
+   — Inclut les variantes de transparence /40, /60, etc.
    ============================================ */
 @layer utilities {
-  /* Fond */
+  /* ===== FOND ===== */
   .bg-background {
     background-color: hsl(var(--background));
   }
+  .bg-background\/5 { background-color: hsl(var(--background) / 0.05); }
+  .bg-background\/10 { background-color: hsl(var(--background) / 0.1); }
+  .bg-background\/20 { background-color: hsl(var(--background) / 0.2); }
+  .bg-background\/30 { background-color: hsl(var(--background) / 0.3); }
+  .bg-background\/40 { background-color: hsl(var(--background) / 0.4); }
+  .bg-background\/50 { background-color: hsl(var(--background) / 0.5); }
+  .bg-background\/60 { background-color: hsl(var(--background) / 0.6); }
+  .bg-background\/70 { background-color: hsl(var(--background) / 0.7); }
+  .bg-background\/80 { background-color: hsl(var(--background) / 0.8); }
+  .bg-background\/90 { background-color: hsl(var(--background) / 0.9); }
+
   .bg-card {
     background-color: hsl(var(--card));
   }
+  .bg-card\/5 { background-color: hsl(var(--card) / 0.05); }
+  .bg-card\/10 { background-color: hsl(var(--card) / 0.1); }
+  .bg-card\/20 { background-color: hsl(var(--card) / 0.2); }
+  .bg-card\/30 { background-color: hsl(var(--card) / 0.3); }
+  .bg-card\/40 { background-color: hsl(var(--card) / 0.4); }
+  .bg-card\/50 { background-color: hsl(var(--card) / 0.5); }
+  .bg-card\/60 { background-color: hsl(var(--card) / 0.6); }
+  .bg-card\/70 { background-color: hsl(var(--card) / 0.7); }
+  .bg-card\/80 { background-color: hsl(var(--card) / 0.8); }
+  .bg-card\/90 { background-color: hsl(var(--card) / 0.9); }
+
   .bg-muted {
     background-color: hsl(var(--muted));
   }
+  .bg-muted\/5 { background-color: hsl(var(--muted) / 0.05); }
+  .bg-muted\/10 { background-color: hsl(var(--muted) / 0.1); }
+  .bg-muted\/20 { background-color: hsl(var(--muted) / 0.2); }
+  .bg-muted\/30 { background-color: hsl(var(--muted) / 0.3); }
+  .bg-muted\/40 { background-color: hsl(var(--muted) / 0.4); }
+  .bg-muted\/50 { background-color: hsl(var(--muted) / 0.5); }
+  .bg-muted\/60 { background-color: hsl(var(--muted) / 0.6); }
+  .bg-muted\/70 { background-color: hsl(var(--muted) / 0.7); }
+  .bg-muted\/80 { background-color: hsl(var(--muted) / 0.8); }
+  .bg-muted\/90 { background-color: hsl(var(--muted) / 0.9); }
 
-  /* Texte */
-  .text-foreground {
-    color: hsl(var(--foreground));
-  }
-  .text-card-foreground {
-    color: hsl(var(--card-foreground));
-  }
-  .text-muted-foreground {
-    color: hsl(var(--muted-foreground));
-  }
-
-  /* Bordure */
-  .border-border {
-    border-color: hsl(var(--border));
-  }
-
-  /* Input */
   .bg-input {
     background-color: hsl(var(--input));
   }
+  .bg-input\/50 { background-color: hsl(var(--input) / 0.5); }
 
-  /* Ring */
+  /* ===== TEXTE ===== */
+  .text-foreground {
+    color: hsl(var(--foreground));
+  }
+  .text-foreground\/5 { color: hsl(var(--foreground) / 0.05); }
+  .text-foreground\/10 { color: hsl(var(--foreground) / 0.1); }
+  .text-foreground\/20 { color: hsl(var(--foreground) / 0.2); }
+  .text-foreground\/30 { color: hsl(var(--foreground) / 0.3); }
+  .text-foreground\/40 { color: hsl(var(--foreground) / 0.4); }
+  .text-foreground\/50 { color: hsl(var(--foreground) / 0.5); }
+  .text-foreground\/60 { color: hsl(var(--foreground) / 0.6); }
+  .text-foreground\/70 { color: hsl(var(--foreground) / 0.7); }
+  .text-foreground\/80 { color: hsl(var(--foreground) / 0.8); }
+  .text-foreground\/90 { color: hsl(var(--foreground) / 0.9); }
+
+  .text-card-foreground {
+    color: hsl(var(--card-foreground));
+  }
+
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+  .text-muted-foreground\/30 { color: hsl(var(--muted-foreground) / 0.3); }
+  .text-muted-foreground\/40 { color: hsl(var(--muted-foreground) / 0.4); }
+  .text-muted-foreground\/50 { color: hsl(var(--muted-foreground) / 0.5); }
+  .text-muted-foreground\/60 { color: hsl(var(--muted-foreground) / 0.6); }
+  .text-muted-foreground\/70 { color: hsl(var(--muted-foreground) / 0.7); }
+  .text-muted-foreground\/80 { color: hsl(var(--muted-foreground) / 0.8); }
+
+  /* ===== BORDURE ===== */
+  .border-border {
+    border-color: hsl(var(--border));
+  }
+  .border-border\/20 { border-color: hsl(var(--border) / 0.2); }
+  .border-border\/30 { border-color: hsl(var(--border) / 0.3); }
+  .border-border\/40 { border-color: hsl(var(--border) / 0.4); }
+  .border-border\/50 { border-color: hsl(var(--border) / 0.5); }
+  .border-border\/60 { border-color: hsl(var(--border) / 0.6); }
+  .border-border\/70 { border-color: hsl(var(--border) / 0.7); }
+  .border-border\/80 { border-color: hsl(var(--border) / 0.8); }
+  .border-border\/90 { border-color: hsl(var(--border) / 0.9); }
+
+  /* ===== DIVIDE ===== */
+  .divide-border > * + * {
+    border-color: hsl(var(--border));
+  }
+
+  /* ===== RING ===== */
   .ring-ring {
     --tw-ring-color: hsl(var(--ring));
   }
+  .ring-ring\/30 { --tw-ring-color: hsl(var(--ring) / 0.3); }
+  .ring-ring\/40 { --tw-ring-color: hsl(var(--ring) / 0.4); }
+  .ring-ring\/50 { --tw-ring-color: hsl(var(--ring) / 0.5); }
+
+  /* ===== HOVER / FOCUS ===== */
+  .hover\:bg-card:hover {
+    background-color: hsl(var(--card));
+  }
+  .hover\:bg-card\/60:hover {
+    background-color: hsl(var(--card) / 0.6);
+  }
+  .hover\:bg-card\/80:hover {
+    background-color: hsl(var(--card) / 0.8);
+  }
+  .hover\:bg-muted:hover {
+    background-color: hsl(var(--muted));
+  }
+  .hover\:bg-muted\/40:hover {
+    background-color: hsl(var(--muted) / 0.4);
+  }
+  .hover\:text-foreground:hover {
+    color: hsl(var(--foreground));
+  }
+  .hover\:border-border:hover {
+    border-color: hsl(var(--border));
+  }
+
+  .focus\:border-ring:focus {
+    border-color: hsl(var(--ring));
+  }
+  .focus\:ring-ring:focus {
+    --tw-ring-color: hsl(var(--ring));
+  }
+
+  /* ===== GROUP HOVER ===== */
+  .group:hover .group-hover\:text-foreground {
+    color: hsl(var(--foreground));
+  }
+  .group:hover .group-hover\:bg-card {
+    background-color: hsl(var(--card));
+  }
+
+  /* ===== OPACITÉ SUR BG-FOREGROUND ===== */
+  .bg-foreground {
+    background-color: hsl(var(--foreground));
+  }
+  .bg-foreground\/5 { background-color: hsl(var(--foreground) / 0.05); }
+  .bg-foreground\/10 { background-color: hsl(var(--foreground) / 0.1); }
+  .bg-foreground\/20 { background-color: hsl(var(--foreground) / 0.2); }
+  .bg-foreground\/30 { background-color: hsl(var(--foreground) / 0.3); }
+
+  /* ===== BORDER-FOREGROUND ===== */
+  .border-foreground {
+    border-color: hsl(var(--foreground));
+  }
+  .border-foreground\/20 { border-color: hsl(var(--foreground) / 0.2); }
+  .border-foreground\/30 { border-color: hsl(var(--foreground) / 0.3); }
+  .border-foreground\/40 { border-color: hsl(var(--foreground) / 0.4); }
+
+  /* ===== PLACEHOLDER ===== */
+  .placeholder-muted-foreground::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* ===== ANIMATIONS ===== */
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out forwards;
+  }
+  .animate-slide-left {
+    animation: slideLeft 0.5s ease-out forwards;
+  }
+  .animate-slide-down {
+    animation: slideDown 0.3s ease-out forwards;
+  }
+  .animate-pulse-glow {
+    animation: pulseGlow 2s ease-in-out infinite;
+  }
+  .delay-100 { animation-delay: 0.1s; }
+  .delay-200 { animation-delay: 0.2s; }
+  .delay-300 { animation-delay: 0.3s; }
+  .delay-400 { animation-delay: 0.4s; }
+  .delay-500 { animation-delay: 0.5s; }
 }
 
 /* ============================================
    SCROLLBAR
    ============================================ */
 ::-webkit-scrollbar {
-  width: 3px;
-  height: 3px;
+  width: 6px;
+  height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #FFFFFF;
+  background: hsl(var(--muted-foreground) / 0.3);
   border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
 }
 
 .scrollbar-hide::-webkit-scrollbar {
@@ -134,6 +300,17 @@
   }
 }
 
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
 @keyframes slideLeft {
   from {
     opacity: 0;
@@ -146,35 +323,24 @@
 }
 
 @keyframes pulseGlow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
-    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6));
+    filter: drop-shadow(0 0 6px hsl(var(--foreground) / 0.6));
   }
   50% {
     opacity: 0.5;
-    filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.2));
+    filter: drop-shadow(0 0 2px hsl(var(--foreground) / 0.2));
   }
 }
 
 /* ============================================
-   ANIMATIONS
+   TRANSITIONS GLOBALES POUR LE THÈME
    ============================================ */
-@layer utilities {
-  .animate-fade-in {
-    animation: fadeIn 0.4s ease-out forwards;
-  }
-  .animate-slide-up {
-    animation: slideUp 0.3s ease-out forwards;
-  }
-  .animate-slide-left {
-    animation: slideLeft 0.5s ease-out forwards;
-  }
-  .animate-pulse-glow {
-    animation: pulseGlow 2s ease-in-out infinite;
-  }
-  .delay-100 { animation-delay: 0.1s; }
-  .delay-200 { animation-delay: 0.2s; }
-  .delay-300 { animation-delay: 0.3s; }
-  .delay-400 { animation-delay: 0.4s; }
-  .delay-500 { animation-delay: 0.5s; }
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
