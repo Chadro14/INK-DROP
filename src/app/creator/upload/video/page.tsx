@@ -67,16 +67,16 @@ export default function UploadReelPage() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
 
-  // ✅ NOUVEAU : Trim virtuel
+  // NOUVEAU : Trim virtuel
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState<number | null>(null);
 
-  // ✅ NOUVEAU : Publication programmée
+  // NOUVEAU : Publication programmée
   const [publishMode, setPublishMode] = useState<"now" | "scheduled">("now");
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
 
-  // ✅ NOUVEAU : Mentions
+  // NOUVEAU : Mentions
   const [mentionIds, setMentionIds] = useState<string[]>([]);
 
   const [type, setType] = useState("OTHER");
@@ -97,7 +97,7 @@ export default function UploadReelPage() {
   const selectedType = REEL_TYPES.find((t) => t.value === type);
   const linksTo = selectedType?.linksTo || "none";
 
-  // ✅ Charger les données
+  // Charger les données
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem("token");
@@ -142,7 +142,7 @@ export default function UploadReelPage() {
     fetchData();
   }, []);
 
-  // ✅ Charger les chapitres
+  // Charger les chapitres
   useEffect(() => {
     if (!mangaId || linksTo !== "chapter") {
       setChapters([]);
@@ -165,7 +165,7 @@ export default function UploadReelPage() {
     fetchChapters();
   }, [mangaId, linksTo]);
 
-  // ✅ Reset les liaisons
+  // Reset les liaisons
   useEffect(() => {
     if (linksTo !== "manga" && linksTo !== "chapter") setMangaId("");
     if (linksTo !== "chapter") setChapterId("");
@@ -204,7 +204,7 @@ export default function UploadReelPage() {
       const durationInSeconds = Math.round(video.duration);
       setDuration(durationInSeconds);
       if (durationInSeconds > 30) {
-        setError("⚠️ La vidéo ne doit pas dépasser 30 secondes");
+        setError("La vidéo ne doit pas dépasser 30 secondes");
       } else {
         setError("");
       }
@@ -353,7 +353,7 @@ export default function UploadReelPage() {
     }
 
     if (duration && duration > 30) {
-      setError("⚠️ La vidéo ne doit pas dépasser 30 secondes");
+      setError("La vidéo ne doit pas dépasser 30 secondes");
       setUploading(false);
       return;
     }
@@ -374,7 +374,7 @@ export default function UploadReelPage() {
       return;
     }
 
-    // ✅ Vérifier la programmation
+    // Vérifier la programmation
     let scheduledAt: string | undefined = undefined;
     if (publishMode === "scheduled") {
       if (!scheduledDate || !scheduledTime) {
@@ -408,7 +408,7 @@ export default function UploadReelPage() {
         thumbnailUrl: thumbnailKey || undefined,
         duration: duration || undefined,
 
-        // ✅ Trim virtuel
+        // Trim virtuel
         trimStart: trimStart > 0 ? trimStart : undefined,
         trimEnd: trimEnd || undefined,
 
@@ -421,10 +421,10 @@ export default function UploadReelPage() {
         eventId: eventId || undefined,
         featuredCreatorId: featuredCreatorId || undefined,
 
-        // ✅ Programmation
+        // Programmation
         scheduledAt,
 
-        // ✅ Mentions
+        // Mentions
         mentionIds: mentionIds.length > 0 ? mentionIds : undefined,
       };
 
@@ -512,7 +512,7 @@ export default function UploadReelPage() {
             >
               {REEL_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
-                  {t.icon} {t.label}
+                  {t.label}
                 </option>
               ))}
             </select>
@@ -715,9 +715,9 @@ export default function UploadReelPage() {
                   <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 text-white text-xs font-medium flex items-center gap-1 z-10">
                     {Math.floor(duration / 60)}:{String(duration % 60).padStart(2, "0")}
                     {duration <= 30 ? (
-                      <span className="text-emerald-400">✅</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     ) : (
-                      <span className="text-rose-400">⚠️</span>
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-400" />
                     )}
                   </div>
                 )}
@@ -742,7 +742,7 @@ export default function UploadReelPage() {
             )}
           </div>
 
-          {/* ✅ TRIM VIDÉO — NOUVEAU */}
+          {/* TRIM VIDÉO — NOUVEAU */}
           {videoFile && (
             <div className="p-4 rounded-xl bg-blue-950/20 border border-blue-500/30 space-y-3">
               <div className="flex items-center gap-2">
@@ -849,7 +849,7 @@ export default function UploadReelPage() {
             )}
           </div>
 
-          {/* ✅ PUBLICATION PROGRAMMÉE — NOUVEAU */}
+          {/* PUBLICATION PROGRAMMÉE — NOUVEAU */}
           <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-3">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-purple-400" />
