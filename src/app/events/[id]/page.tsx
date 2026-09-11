@@ -23,6 +23,7 @@ import {
   Swords,
   Palette,
   Rocket,
+  Loader2,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -52,8 +53,7 @@ type Event = {
 };
 
 // ============================================
-// CONFIG PAR TYPE — Identité couleur (voulue)
-// Ces couleurs SONT intentionnelles (chaque type a sa couleur)
+// CONFIG PAR TYPE
 // ============================================
 type TypeConfig = {
   icon: any;
@@ -137,12 +137,25 @@ export default function EventsPage() {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "upcoming" | "past">("active");
 
+  // ============================================
+  // CHARGEMENT DES ÉVÉNEMENTS
+  // ✅ setLoading uniquement au premier chargement
+  // ============================================
   useEffect(() => {
+    let isFirstLoad = true;
+
     const fetchEvents = async () => {
-      setLoading(true);
+      // ✅ Loader complet SEULEMENT au premier chargement
+      if (isFirstLoad) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+
       try {
         const token = localStorage.getItem("token");
         const res = await fetch(`${API_URL}/events?filter=${filter}`, {
@@ -158,6 +171,8 @@ export default function EventsPage() {
         setError(err.message);
       } finally {
         setLoading(false);
+        setRefreshing(false);
+        isFirstLoad = false;
       }
     };
 
@@ -189,7 +204,7 @@ export default function EventsPage() {
   };
 
   // ============================================
-  // LOADING
+  // LOADER INITIAL
   // ============================================
   if (loading) {
     return <Loader label="Chargement des événements..." />;
@@ -216,13 +231,11 @@ export default function EventsPage() {
       </header>
 
       <main className="flex-1 px-4 md:px-8 py-6 max-w-6xl mx-auto w-full">
-        {/* ===== HERO BANNER — Thème-aware ===== */}
+        {/* ===== HERO BANNER ===== */}
         <div className="relative overflow-hidden rounded-3xl mb-8 border border-border/60 bg-card/40">
-          {/* Fond décoratif thème-aware */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--foreground)/0.08),transparent_60%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,hsl(var(--foreground)/0.05),transparent_60%)]" />
 
-          {/* Grille décorative */}
           <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
@@ -232,9 +245,7 @@ export default function EventsPage() {
             }}
           />
 
-          {/* Contenu */}
           <div className="relative px-6 py-10 md:py-14 text-center">
-            {/* Icône animée */}
             <div className="relative inline-flex items-center justify-center mb-5">
               <div className="absolute inset-0 rounded-2xl bg-amber-500/20 blur-2xl animate-pulse" />
               <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-2xl shadow-amber-500/40 rotate-3 hover:rotate-0 transition-transform duration-500">
@@ -253,7 +264,6 @@ export default function EventsPage() {
               et remporte des récompenses uniques sur INKDROP.
             </p>
 
-            {/* Stats rapides */}
             <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mt-6">
               <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background/60 backdrop-blur-sm border border-border/60">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
@@ -278,7 +288,7 @@ export default function EventsPage() {
         </div>
 
         {/* ===== FILTRES ===== */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6 items-center">
           {[
             { key: "active", label: "En cours" },
             { key: "upcoming", label: "À venir" },
@@ -288,15 +298,24 @@ export default function EventsPage() {
             <button
               key={f.key}
               onClick={() => setFilter(f.key as any)}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+              disabled={refreshing}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-60 ${
                 filter === f.key
-                  ? "bg-foreground text-background shadow-lg scale-105"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105"
                   : "bg-card/40 text-muted-foreground hover:text-foreground hover:bg-card/60 border border-border/60"
               }`}
             >
               {f.label}
             </button>
           ))}
+
+          {/* Petit spinner pendant le refresh (discret) */}
+          {refreshing && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Chargement...
+            </div>
+          )}
         </div>
 
         {/* ===== ERREUR ===== */}
@@ -339,9 +358,9 @@ export default function EventsPage() {
                 <Link
                   key={event.id}
                   href={`/events/${event.id}`}
-                  className={`group relative bg-card/40 border border-border/80 rounded-3xl overflow-hidden hover:scale-[1.02] hover:border-opacity-100 transition-all duration-300 hover:shadow-2xl ${config.glow}`}
+                  className={`group relative bg-card/40 border border-border/80 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-300 hover:shadow-2xl ${config.glow}`}
                 >
-                  {/* ===== COUVERTURE ===== */}
+                  {/* COUVERTURE */}
                   <div className="relative h-40 overflow-hidden">
                     {event.coverUrl ? (
                       <>
@@ -354,14 +373,12 @@ export default function EventsPage() {
                       </>
                     ) : (
                       <>
-                        {/* ✅ Gradient propre au type (voulu) */}
                         <div
                           className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-90`}
                         />
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,hsl(var(--background)/0.3),transparent_60%)]" />
                         <div className="absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
 
-                        {/* Grande icône en fond */}
                         <div className="absolute inset-0 flex items-center justify-center opacity-25">
                           <Icon className="w-24 h-24 text-white" />
                         </div>
@@ -387,7 +404,6 @@ export default function EventsPage() {
                       {status.label}
                     </div>
 
-                    {/* Badge "Vous participez" */}
                     {isParticipating && (
                       <div
                         className={`absolute bottom-3 left-3 px-2.5 py-1 rounded-full backdrop-blur-md text-[10px] font-extrabold border ${
@@ -400,7 +416,6 @@ export default function EventsPage() {
                       </div>
                     )}
 
-                    {/* Compteur jours */}
                     {event.isActive && end >= now && (
                       <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-background/90 backdrop-blur-md text-[10px] font-extrabold border border-border/60 flex items-center gap-1">
                         <Clock className="w-3 h-3 text-amber-400" />
@@ -411,9 +426,9 @@ export default function EventsPage() {
                     )}
                   </div>
 
-                  {/* ===== CONTENU ===== */}
+                  {/* CONTENU */}
                   <div className="p-5 space-y-3">
-                    <h3 className="text-lg font-extrabold leading-tight group-hover:opacity-80 transition-opacity line-clamp-2 min-h-[2.75rem]">
+                    <h3 className="text-lg font-extrabold leading-tight group-hover:opacity-80 transition-opacity line-clamp-2 min-h-[2.75rem] text-foreground">
                       {event.title}
                     </h3>
 
@@ -435,7 +450,6 @@ export default function EventsPage() {
                       </div>
                     )}
 
-                    {/* Séparateur */}
                     <div className="border-t border-border/40 pt-3 space-y-2.5">
                       <div className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1.5 text-muted-foreground">
@@ -457,7 +471,6 @@ export default function EventsPage() {
                         </span>
                       </div>
 
-                      {/* Récompenses + CTA */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <Coins className="w-3.5 h-3.5 text-amber-400" />
@@ -467,7 +480,6 @@ export default function EventsPage() {
                           </span>
                         </div>
 
-                        {/* ✅ CTA thème-aware */}
                         <div className="flex items-center gap-1 text-xs font-bold text-foreground/70 group-hover:text-foreground group-hover:gap-2 transition-all">
                           <span>Voir</span>
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -476,7 +488,6 @@ export default function EventsPage() {
                     </div>
                   </div>
 
-                  {/* Ligne déco en bas (couleur du type, voulue) */}
                   <div
                     className={`h-1 bg-gradient-to-r ${config.gradient} opacity-0 group-hover:opacity-100 transition-opacity`}
                   />
