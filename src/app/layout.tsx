@@ -26,7 +26,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#000000" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 
-        {/* ✅ SCRIPT ANTI-FLASH : applique le thème AVANT le rendu React */}
+        {/* ✅ SCRIPT ANTI-FLASH */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -66,8 +66,8 @@ export default function RootLayout({
         />
       </head>
       <body className={`${outfit.variable} min-h-screen flex flex-col bg-background text-foreground`}>
-        <ThemeProvider>
-          <Providers>
+        <ThemeProvider>       {/* ← TON provider uniquement */}
+          <Providers>         {/* ← QueryClient uniquement */}
             <SocketProvider>
               {children}
             </SocketProvider>
