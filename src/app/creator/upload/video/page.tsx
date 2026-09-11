@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { VideoTrimmer } from "@/components/reels/VideoTrimmer";
+import { MentionInput } from "@/components/reels/MentionInput";
 import {
   ArrowLeft,
   Upload,
@@ -18,6 +20,9 @@ import {
   Globe,
   Sparkles,
   Link as LinkIcon,
+  Calendar,
+  Clock,
+  Scissors,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -62,6 +67,18 @@ export default function UploadReelPage() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
 
+  // ✅ NOUVEAU : Trim virtuel
+  const [trimStart, setTrimStart] = useState(0);
+  const [trimEnd, setTrimEnd] = useState<number | null>(null);
+
+  // ✅ NOUVEAU : Publication programmée
+  const [publishMode, setPublishMode] = useState<"now" | "scheduled">("now");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
+
+  // ✅ NOUVEAU : Mentions
+  const [mentionIds, setMentionIds] = useState<string[]>([]);
+
   const [type, setType] = useState("OTHER");
   const [mangaId, setMangaId] = useState("");
   const [chapterId, setChapterId] = useState("");
@@ -80,7 +97,7 @@ export default function UploadReelPage() {
   const selectedType = REEL_TYPES.find((t) => t.value === type);
   const linksTo = selectedType?.linksTo || "none";
 
-  // ✅ Charger les mangas de l'utilisateur connecté
+  // ✅ Charger les données
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem("token");
@@ -93,20 +110,13 @@ export default function UploadReelPage() {
         const headers = { Authorization: `Bearer ${token}` };
 
         const meRes = await fetch(`${API_URL}/users/me`, { headers });
-
-        if (!meRes.ok) {
-          throw new Error("Impossible de récupérer votre profil");
-        }
+        if (!meRes.ok) throw new Error("Impossible de récupérer votre profil");
 
         const meData = await meRes.json();
         const userId = meData.id || meData.data?.id;
-
-        if (!userId) {
-          throw new Error("ID utilisateur introuvable");
-        }
+        if (!userId) throw new Error("ID utilisateur introuvable");
 
         const mangasRes = await fetch(`${API_URL}/mangas/creator/${userId}`, { headers });
-
         if (mangasRes.ok) {
           const mangasData = await mangasRes.json();
           const list = mangasData.data || [];
@@ -132,7 +142,7 @@ export default function UploadReelPage() {
     fetchData();
   }, []);
 
-  // ✅ Charger les chapitres quand un manga est sélectionné
+  // ✅ Charger les chapitres
   useEffect(() => {
     if (!mangaId || linksTo !== "chapter") {
       setChapters([]);
@@ -155,7 +165,7 @@ export default function UploadReelPage() {
     fetchChapters();
   }, [mangaId, linksTo]);
 
-  // ✅ Reset les liaisons quand on change de type
+  // ✅ Reset les liaisons
   useEffect(() => {
     if (linksTo !== "manga" && linksTo !== "chapter") setMangaId("");
     if (linksTo !== "chapter") setChapterId("");
@@ -163,6 +173,9 @@ export default function UploadReelPage() {
     if (linksTo !== "creator") setFeaturedCreatorId("");
   }, [type, linksTo]);
 
+  // ============================================
+  // VIDÉO
+  // ============================================
   const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -181,12 +194,15 @@ export default function UploadReelPage() {
     const url = URL.createObjectURL(file);
     setVideoPreview(url);
 
+    // Reset trim
+    setTrimStart(0);
+    setTrimEnd(null);
+
     const video = document.createElement("video");
     video.src = url;
     video.onloadedmetadata = () => {
       const durationInSeconds = Math.round(video.duration);
       setDuration(durationInSeconds);
-      // ✅ RÈGLE : max 30 secondes (pas de minimum)
       if (durationInSeconds > 30) {
         setError("⚠️ La vidéo ne doit pas dépasser 30 secondes");
       } else {
@@ -198,16 +214,17 @@ export default function UploadReelPage() {
   const handleThumbnailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith("image/")) {
       setError("Le fichier doit être une image");
       return;
     }
-
     setThumbnailFile(file);
     setThumbnailPreview(URL.createObjectURL(file));
   };
 
+  // ============================================
+  // TAGS
+  // ============================================
   const addTag = () => {
     if (tagInput.trim() && !tags.includes(tagInput.trim())) {
       setTags([...tags, tagInput.trim()]);
@@ -219,6 +236,17 @@ export default function UploadReelPage() {
     setTags(tags.filter((t) => t !== tag));
   };
 
+  // ============================================
+  // TRIM CALLBACK
+  // ============================================
+  const handleTrimChange = useCallback((start: number, end: number) => {
+    setTrimStart(start);
+    setTrimEnd(end);
+  }, []);
+
+  // ============================================
+  // UPLOAD VIDÉO
+  // ============================================
   const uploadVideo = async (): Promise<string | null> => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -246,9 +274,7 @@ export default function UploadReelPage() {
 
       const uploadRes = await fetch(uploadUrl, {
         method: "PUT",
-        headers: {
-          "Content-Type": videoFile?.type || "video/mp4",
-        },
+        headers: { "Content-Type": videoFile?.type || "video/mp4" },
         body: videoFile,
       });
 
@@ -286,9 +312,7 @@ export default function UploadReelPage() {
 
       const uploadRes = await fetch(uploadUrl, {
         method: "PUT",
-        headers: {
-          "Content-Type": thumbnailFile.type,
-        },
+        headers: { "Content-Type": thumbnailFile.type },
         body: thumbnailFile,
       });
 
@@ -301,6 +325,9 @@ export default function UploadReelPage() {
     }
   };
 
+  // ============================================
+  // SOUMISSION
+  // ============================================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -325,7 +352,6 @@ export default function UploadReelPage() {
       return;
     }
 
-    // ✅ RÈGLE : max 30 secondes
     if (duration && duration > 30) {
       setError("⚠️ La vidéo ne doit pas dépasser 30 secondes");
       setUploading(false);
@@ -348,6 +374,25 @@ export default function UploadReelPage() {
       return;
     }
 
+    // ✅ Vérifier la programmation
+    let scheduledAt: string | undefined = undefined;
+    if (publishMode === "scheduled") {
+      if (!scheduledDate || !scheduledTime) {
+        setError("Veuillez choisir une date et une heure de publication");
+        setUploading(false);
+        return;
+      }
+
+      const scheduledDateTime = new Date(`${scheduledDate}T${scheduledTime}:00`);
+      if (scheduledDateTime <= new Date()) {
+        setError("La date programmée doit être dans le futur");
+        setUploading(false);
+        return;
+      }
+
+      scheduledAt = scheduledDateTime.toISOString();
+    }
+
     try {
       const videoKey = await uploadVideo();
       if (!videoKey) {
@@ -362,6 +407,11 @@ export default function UploadReelPage() {
         videoUrl: videoKey,
         thumbnailUrl: thumbnailKey || undefined,
         duration: duration || undefined,
+
+        // ✅ Trim virtuel
+        trimStart: trimStart > 0 ? trimStart : undefined,
+        trimEnd: trimEnd || undefined,
+
         tags: tags.length > 0 ? tags : undefined,
         isPrivate,
         type,
@@ -370,6 +420,12 @@ export default function UploadReelPage() {
         chapterId: chapterId || undefined,
         eventId: eventId || undefined,
         featuredCreatorId: featuredCreatorId || undefined,
+
+        // ✅ Programmation
+        scheduledAt,
+
+        // ✅ Mentions
+        mentionIds: mentionIds.length > 0 ? mentionIds : undefined,
       };
 
       const res = await fetch(`${API_URL}/reels`, {
@@ -398,6 +454,9 @@ export default function UploadReelPage() {
     }
   };
 
+  // ============================================
+  // RENDU
+  // ============================================
   return (
     <div className="flex flex-col min-h-screen pb-24 bg-background text-foreground">
 
@@ -440,7 +499,7 @@ export default function UploadReelPage() {
             </div>
           )}
 
-          {/* ✅ TYPE DE REEL */}
+          {/* TYPE */}
           <div>
             <label className="block text-sm font-bold text-foreground mb-1.5">
               <Sparkles className="w-3.5 h-3.5 inline mr-1 text-purple-400" />
@@ -459,7 +518,7 @@ export default function UploadReelPage() {
             </select>
           </div>
 
-          {/* ✅ LIAISON AU CONTENU */}
+          {/* LIAISON AU CONTENU */}
           {linksTo !== "none" && (
             <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-3">
               <p className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-2">
@@ -570,7 +629,7 @@ export default function UploadReelPage() {
             </div>
           )}
 
-          {/* ✅ CTA LABEL */}
+          {/* CTA */}
           <div>
             <label className="block text-sm font-bold text-foreground mb-1.5">
               Bouton d'action (CTA)
@@ -601,17 +660,25 @@ export default function UploadReelPage() {
             />
           </div>
 
-          {/* DESCRIPTION */}
+          {/* DESCRIPTION avec MENTIONS */}
           <div>
             <label className="block text-sm font-bold text-foreground mb-1.5">
               Description
+              <span className="text-xs text-muted-foreground font-normal ml-2">
+                (tapez @ pour mentionner)
+              </span>
             </label>
-            <textarea
+            <MentionInput
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Décrivez votre reel..."
+              onChange={setDescription}
+              onMentionSelect={(userId) => {
+                setMentionIds((prev) =>
+                  prev.includes(userId) ? prev : [...prev, userId]
+                );
+              }}
+              placeholder="Décrivez votre reel... Mentionnez des créateurs avec @"
+              maxLength={500}
               rows={3}
-              className="w-full px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none transition-all text-sm resize-none"
             />
           </div>
 
@@ -637,13 +704,15 @@ export default function UploadReelPage() {
                     setVideoFile(null);
                     setVideoPreview(null);
                     setDuration(null);
+                    setTrimStart(0);
+                    setTrimEnd(null);
                   }}
-                  className="absolute top-2 right-2 p-1.5 rounded-full bg-rose-600/90 text-white hover:bg-rose-500 transition-all"
+                  className="absolute top-2 right-2 p-1.5 rounded-full bg-rose-600/90 text-white hover:bg-rose-500 transition-all z-10"
                 >
                   <X className="w-4 h-4" />
                 </button>
                 {duration && (
-                  <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 text-white text-xs font-medium flex items-center gap-1">
+                  <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 text-white text-xs font-medium flex items-center gap-1 z-10">
                     {Math.floor(duration / 60)}:{String(duration % 60).padStart(2, "0")}
                     {duration <= 30 ? (
                       <span className="text-emerald-400">✅</span>
@@ -672,6 +741,26 @@ export default function UploadReelPage() {
               </label>
             )}
           </div>
+
+          {/* ✅ TRIM VIDÉO — NOUVEAU */}
+          {videoFile && (
+            <div className="p-4 rounded-xl bg-blue-950/20 border border-blue-500/30 space-y-3">
+              <div className="flex items-center gap-2">
+                <Scissors className="w-4 h-4 text-blue-400" />
+                <p className="text-sm font-bold text-blue-300">
+                  Découper la vidéo
+                  <span className="text-xs text-muted-foreground font-normal ml-2">
+                    (optionnel)
+                  </span>
+                </p>
+              </div>
+              <VideoTrimmer
+                file={videoFile}
+                onTrimChange={handleTrimChange}
+                maxDuration={30}
+              />
+            </div>
+          )}
 
           {/* VIGNETTE */}
           <div>
@@ -722,7 +811,12 @@ export default function UploadReelPage() {
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addTag()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addTag();
+                  }
+                }}
                 placeholder="Ajouter un tag"
                 className="flex-1 px-4 py-2.5 rounded-xl bg-card/90 border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none transition-all text-sm"
               />
@@ -751,6 +845,71 @@ export default function UploadReelPage() {
                     </button>
                   </span>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* ✅ PUBLICATION PROGRAMMÉE — NOUVEAU */}
+          <div className="p-4 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-purple-400" />
+              <p className="text-sm font-bold text-purple-300">
+                Publication
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPublishMode("now")}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border flex items-center justify-center gap-2 ${
+                  publishMode === "now"
+                    ? "bg-purple-600 text-white border-purple-500"
+                    : "bg-card/90 text-muted-foreground border-border hover:border-border/80"
+                }`}
+              >
+                <Play className="w-4 h-4" />
+                Maintenant
+              </button>
+              <button
+                type="button"
+                onClick={() => setPublishMode("scheduled")}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all border flex items-center justify-center gap-2 ${
+                  publishMode === "scheduled"
+                    ? "bg-purple-600 text-white border-purple-500"
+                    : "bg-card/90 text-muted-foreground border-border hover:border-border/80"
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                Programmer
+              </button>
+            </div>
+
+            {publishMode === "scheduled" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                    className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    Heure
+                  </label>
+                  <input
+                    type="time"
+                    value={scheduledTime}
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-card/90 border border-border text-foreground text-sm"
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -803,7 +962,7 @@ export default function UploadReelPage() {
             ) : (
               <>
                 <Play className="w-4 h-4" />
-                Publier le Reel
+                {publishMode === "scheduled" ? "Programmer le Reel" : "Publier le Reel"}
               </>
             )}
           </button>
