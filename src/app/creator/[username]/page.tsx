@@ -5,11 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Loader } from "@/components/ui/loader";
-import { 
-  ArrowLeft, 
-  BookOpen, 
-  Calendar, 
-  User, 
+import { ReelGrid } from "@/components/reels/ReelGrid";
+import {
+  ArrowLeft,
+  BookOpen,
+  Calendar,
+  User,
   Grid,
   Heart,
   Eye,
@@ -27,6 +28,7 @@ import {
   AlertCircle,
   Send,
   ShoppingCart,
+  Film,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -64,7 +66,7 @@ export default function CreatorProfilePage() {
   const [error, setError] = useState("");
   const [isFollowing, setIsFollowing] = useState(false);
   const [isCurrentUser, setIsCurrentUser] = useState(false);
-  const [activeTab, setActiveTab] = useState<"mangas" | "about">("mangas");
+  const [activeTab, setActiveTab] = useState<"mangas" | "reels" | "about">("mangas");
   const [userManasBalance, setUserManasBalance] = useState(0);
 
   const [collaborating, setCollaborating] = useState(false);
@@ -167,13 +169,19 @@ export default function CreatorProfilePage() {
       if (res.ok) {
         const newStatus = data.following !== undefined ? data.following : true;
         setIsFollowing(newStatus);
-        setProfile((prev) => prev ? {
-          ...prev,
-          _count: {
-            ...prev._count,
-            followers: newStatus ? prev._count.followers + 1 : prev._count.followers - 1,
-          },
-        } : null);
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                _count: {
+                  ...prev._count,
+                  followers: newStatus
+                    ? prev._count.followers + 1
+                    : prev._count.followers - 1,
+                },
+              }
+            : null
+        );
       }
     } catch (error) {
       console.error("Erreur follow:", error);
@@ -280,7 +288,7 @@ export default function CreatorProfilePage() {
 
   const handleShare = () => {
     const shareUrl = `https://ink-drop-one.vercel.app/creator/${profile?.username}`;
-    
+
     if (navigator.share) {
       navigator.share({
         title: `INKDROP - ${profile?.username}`,
@@ -297,36 +305,44 @@ export default function CreatorProfilePage() {
     router.push("/acheter-manas?redirect=/creator/" + username);
   };
 
-  // ✅ ICÔNE GALAXY - Premium
+  // ============================================
+  // ICÔNE GALAXY - Premium
+  // ============================================
   const GalaxyIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none">
       <defs>
         <radialGradient id="galaxyGrad" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#C084FC"/>
-          <stop offset="50%" stopColor="#7C3AED"/>
-          <stop offset="100%" stopColor="#4F46E5"/>
+          <stop offset="0%" stopColor="#C084FC" />
+          <stop offset="50%" stopColor="#7C3AED" />
+          <stop offset="100%" stopColor="#4F46E5" />
         </radialGradient>
         <radialGradient id="galaxyGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#C084FC" stopOpacity="0.8"/>
-          <stop offset="100%" stopColor="#4F46E5" stopOpacity="0"/>
+          <stop offset="0%" stopColor="#C084FC" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="#4F46E5" stopOpacity="0" />
         </radialGradient>
       </defs>
-      {/* Noyau de la galaxie */}
-      <circle cx="12" cy="12" r="4" fill="url(#galaxyGrad)" stroke="#A78BFA" strokeWidth="1.5"/>
-      {/* Bras de la galaxie (spirale) */}
-      <path d="M12 4C8 4 4 8 4 12C4 16 8 20 12 20C16 20 20 16 20 12" 
-        stroke="url(#galaxyGrad)" strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
-      <path d="M12 4C16 4 20 8 20 12C20 16 16 20 12 20C8 20 4 16 4 12" 
-        stroke="url(#galaxyGrad)" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
-      {/* Étoiles (petits points) */}
-      <circle cx="6" cy="8" r="1" fill="#C084FC" opacity="0.7"/>
-      <circle cx="18" cy="16" r="1" fill="#A78BFA" opacity="0.7"/>
-      <circle cx="8" cy="18" r="0.8" fill="#8B5CF6" opacity="0.6"/>
-      <circle cx="16" cy="6" r="0.8" fill="#7C3AED" opacity="0.6"/>
-      <circle cx="5" cy="14" r="0.6" fill="#C084FC" opacity="0.5"/>
-      <circle cx="19" cy="10" r="0.6" fill="#A78BFA" opacity="0.5"/>
-      {/* Glow extérieur */}
-      <circle cx="12" cy="12" r="10" fill="url(#galaxyGlow)" opacity="0.3"/>
+      <circle cx="12" cy="12" r="4" fill="url(#galaxyGrad)" stroke="#A78BFA" strokeWidth="1.5" />
+      <path
+        d="M12 4C8 4 4 8 4 12C4 16 8 20 12 20C16 20 20 16 20 12"
+        stroke="url(#galaxyGrad)"
+        strokeWidth="2"
+        strokeLinecap="round"
+        opacity="0.8"
+      />
+      <path
+        d="M12 4C16 4 20 8 20 12C20 16 16 20 12 20C8 20 4 16 4 12"
+        stroke="url(#galaxyGrad)"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
+      <circle cx="6" cy="8" r="1" fill="#C084FC" opacity="0.7" />
+      <circle cx="18" cy="16" r="1" fill="#A78BFA" opacity="0.7" />
+      <circle cx="8" cy="18" r="0.8" fill="#8B5CF6" opacity="0.6" />
+      <circle cx="16" cy="6" r="0.8" fill="#7C3AED" opacity="0.6" />
+      <circle cx="5" cy="14" r="0.6" fill="#C084FC" opacity="0.5" />
+      <circle cx="19" cy="10" r="0.6" fill="#A78BFA" opacity="0.5" />
+      <circle cx="12" cy="12" r="10" fill="url(#galaxyGlow)" opacity="0.3" />
     </svg>
   );
 
@@ -336,11 +352,13 @@ export default function CreatorProfilePage() {
 
   if (error || !profile) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4">
-        <div className="w-16 h-16 rounded-full bg-rose-950/30 flex items-center justify-center mb-4">
-          <AlertCircle className="w-8 h-8 text-rose-400" />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground px-4">
+        <div className="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center mb-4">
+          <AlertCircle className="w-8 h-8 text-rose-500 dark:text-rose-400" />
         </div>
-        <p className="text-zinc-400 text-center">{error || "Utilisateur non trouvé"}</p>
+        <p className="text-muted-foreground text-center">
+          {error || "Utilisateur non trouvé"}
+        </p>
         <Link
           href="/discover"
           className="mt-4 px-6 py-2.5 rounded-full bg-blue-600 text-white font-semibold hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20"
@@ -352,33 +370,33 @@ export default function CreatorProfilePage() {
   }
 
   const activeBadgeColor = profile.badgeColor || profile.avatarColor || "#3B82F6";
-  const isCreator = profile.role === 'CREATOR' || profile.role === 'ADMIN';
+  const isCreator = profile.role === "CREATOR" || profile.role === "ADMIN";
 
   return (
-    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
-
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+    <div className="flex flex-col min-h-screen pb-24 bg-background text-foreground">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <button
             onClick={() => router.back()}
-            className="text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-zinc-900 flex items-center gap-1.5"
+            className="text-muted-foreground hover:text-foreground transition-colors p-2 rounded-full hover:bg-card flex items-center gap-1.5"
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm font-medium hidden sm:inline">Retour</span>
           </button>
-          <span className="text-base font-bold tracking-tight text-white/90">
+          <span className="text-base font-bold tracking-tight text-foreground/90">
             @{profile.username.toLowerCase()}
           </span>
           <button
             onClick={handleShare}
-            className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors"
+            className="p-2 rounded-full hover:bg-card text-muted-foreground hover:text-foreground transition-colors"
           >
             <Share2 className="w-4 h-4" />
           </button>
         </div>
       </header>
 
-      <div className="h-32 md:h-48 w-full bg-gradient-to-r from-zinc-950 via-blue-950/40 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
+      {/* BANNIÈRE */}
+      <div className="h-32 md:h-48 w-full bg-gradient-to-r from-background via-blue-950/40 to-background border-b border-border/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
         <div className="absolute inset-0 flex items-center justify-center opacity-5">
           <span className="text-8xl font-black text-blue-500 select-none">
@@ -388,23 +406,23 @@ export default function CreatorProfilePage() {
       </div>
 
       <main className="max-w-4xl mx-auto w-full px-4 md:px-8 -mt-14 md:-mt-20 flex flex-col items-center">
-
+        {/* AVATAR */}
         <div className="relative mb-3 group">
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-zinc-900 overflow-hidden border-4 border-zinc-950 shadow-2xl ring-2 ring-blue-500/30 shrink-0">
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-muted overflow-hidden border-4 border-background shadow-2xl ring-2 ring-blue-500/30 shrink-0">
             {profile.avatarUrl ? (
-              <img 
-                src={profile.avatarUrl} 
-                alt={profile.username} 
+              <img
+                src={profile.avatarUrl}
+                alt={profile.username}
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-3xl md:text-4xl font-black text-blue-400 bg-gradient-to-br from-zinc-800 to-zinc-900">
+              <div className="w-full h-full flex items-center justify-center text-3xl md:text-4xl font-black text-blue-500 bg-gradient-to-br from-card to-muted">
                 {profile.username?.charAt(0).toUpperCase() || "?"}
               </div>
             )}
           </div>
           {profile.isCertified && (
-            <div className="absolute bottom-1 right-1 bg-zinc-950 p-0.5 rounded-full shadow-lg">
+            <div className="absolute bottom-1 right-1 bg-background p-0.5 rounded-full shadow-lg">
               <BadgeCheck
                 className="w-6 h-6 md:w-7 md:h-7"
                 fill={activeBadgeColor}
@@ -415,39 +433,49 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
-        {/* ===== NOM + GALAXY ICON ===== */}
+        {/* NOM + GALAXY ICON */}
         <div className="flex items-center gap-2 mb-1 flex-wrap justify-center">
-          <h1 className="text-xl md:text-3xl font-extrabold text-white tracking-tight">{profile.username}</h1>
-          
+          <h1 className="text-xl md:text-3xl font-extrabold text-foreground tracking-tight">
+            {profile.username}
+          </h1>
+
           {profile.premiumActive && (
             <span className="relative">
               <span className="absolute inset-0 rounded-full blur-2xl bg-violet-500/40 animate-pulse" />
               <span className="absolute inset-0">
-                <span className="absolute -top-1 -right-1 w-1 h-1 bg-violet-300 rounded-full animate-ping" style={{ animationDuration: '1.2s' }} />
-                <span className="absolute -bottom-1 -left-1 w-0.5 h-0.5 bg-violet-300 rounded-full animate-ping" style={{ animationDuration: '0.8s', animationDelay: '0.4s' }} />
+                <span
+                  className="absolute -top-1 -right-1 w-1 h-1 bg-violet-300 rounded-full animate-ping"
+                  style={{ animationDuration: "1.2s" }}
+                />
+                <span
+                  className="absolute -bottom-1 -left-1 w-0.5 h-0.5 bg-violet-300 rounded-full animate-ping"
+                  style={{ animationDuration: "0.8s", animationDelay: "0.4s" }}
+                />
               </span>
               <GalaxyIcon className="w-6 h-6 relative z-10" />
             </span>
           )}
         </div>
 
-        <p className="text-zinc-400 text-sm md:text-base text-center mb-3 max-w-md font-normal">
+        {/* BIO */}
+        <p className="text-muted-foreground text-sm md:text-base text-center mb-3 max-w-md font-normal">
           {profile.bio || "Créateur sur INKDROP"}
         </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-zinc-500 mb-6">
+        {/* INFOS */}
+        <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm text-muted-foreground mb-6">
           <span className="flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-blue-400" /> 
+            <Calendar className="w-3.5 h-3.5 text-blue-400" />
             Membre depuis {new Date(profile.createdAt).toLocaleDateString()}
           </span>
-          <span className="w-1 h-1 rounded-full bg-zinc-700" />
+          <span className="w-1 h-1 rounded-full bg-muted" />
           <span className="flex items-center gap-1.5">
             <Globe className="w-3.5 h-3.5 text-blue-400" />
-            {profile.role === 'CREATOR' ? 'Créateur' : 'Membre'}
+            {profile.role === "CREATOR" ? "Créateur" : "Membre"}
           </span>
           {isCreator && (
             <>
-              <span className="w-1 h-1 rounded-full bg-zinc-700" />
+              <span className="w-1 h-1 rounded-full bg-muted" />
               <span className="flex items-center gap-1.5">
                 <Coins className="w-3.5 h-3.5 text-blue-400" />
                 {profile.manas || 0} MANAS
@@ -456,29 +484,43 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
-        <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-zinc-900/40 rounded-2xl border border-zinc-800/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
+        {/* STATS SOCIALES */}
+        <div className="flex items-center justify-center gap-6 md:gap-12 py-3.5 px-6 md:px-12 bg-card/40 rounded-2xl border border-border/60 w-full max-w-md md:max-w-lg mb-6 backdrop-blur-md shadow-lg">
           <div className="text-center">
-            <p className="text-lg md:text-xl font-black text-white">{profile._count?.following || 0}</p>
-            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Abonnements</p>
+            <p className="text-lg md:text-xl font-black text-foreground">
+              {profile._count?.following || 0}
+            </p>
+            <p className="text-[11px] md:text-xs text-muted-foreground font-medium">
+              Abonnements
+            </p>
           </div>
-          <div className="h-7 w-[1px] bg-zinc-800" />
+          <div className="h-7 w-[1px] bg-border" />
           <div className="text-center">
-            <p className="text-lg md:text-xl font-black text-white">{profile._count?.followers || 0}</p>
-            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Abonnés</p>
+            <p className="text-lg md:text-xl font-black text-foreground">
+              {profile._count?.followers || 0}
+            </p>
+            <p className="text-[11px] md:text-xs text-muted-foreground font-medium">
+              Abonnés
+            </p>
           </div>
-          <div className="h-7 w-[1px] bg-zinc-800" />
+          <div className="h-7 w-[1px] bg-border" />
           <div className="text-center">
-            <p className="text-lg md:text-xl font-black text-blue-400">{profile._count?.mangas || 0}</p>
-            <p className="text-[11px] md:text-xs text-zinc-400 font-medium">Mangas</p>
+            <p className="text-lg md:text-xl font-black text-blue-500">
+              {profile._count?.mangas || 0}
+            </p>
+            <p className="text-[11px] md:text-xs text-muted-foreground font-medium">
+              Mangas
+            </p>
           </div>
         </div>
 
+        {/* BOUTONS ACTION */}
         <div className="flex flex-wrap items-center justify-center gap-2.5 w-full max-w-md md:max-w-lg mb-6">
           {isCurrentUser ? (
             <>
               <Link
                 href="/profile/edit"
-                className="flex-1 py-2.5 rounded-full bg-white hover:bg-zinc-200 text-black text-xs md:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-full bg-foreground hover:bg-foreground/90 text-background text-xs md:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2"
               >
                 <Edit className="w-4 h-4" />
                 Modifier
@@ -497,7 +539,7 @@ export default function CreatorProfilePage() {
                 onClick={handleFollow}
                 className={`flex-1 py-2.5 rounded-full text-xs md:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 ${
                   isFollowing
-                    ? "bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700"
+                    ? "bg-muted hover:bg-muted/80 text-foreground border border-border"
                     : "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-blue-600/20"
                 }`}
               >
@@ -516,7 +558,7 @@ export default function CreatorProfilePage() {
 
               <button
                 onClick={handleShare}
-                className="p-2.5 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-800 transition-all flex items-center justify-center"
+                className="p-2.5 rounded-full bg-card hover:bg-muted text-foreground border border-border transition-all flex items-center justify-center"
                 title="Partager"
               >
                 <Share2 className="w-4 h-4" />
@@ -525,6 +567,7 @@ export default function CreatorProfilePage() {
           )}
         </div>
 
+        {/* BOUTONS MANAS */}
         {!isCurrentUser && !loading && (
           <div className="flex flex-wrap items-center justify-center gap-2.5 mb-6 w-full max-w-md">
             <button
@@ -550,7 +593,7 @@ export default function CreatorProfilePage() {
                 className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all shadow-lg flex items-center gap-2 ${
                   userManasBalance >= 250
                     ? "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 text-white shadow-purple-900/30"
-                    : "bg-zinc-800 text-zinc-400 cursor-not-allowed border border-zinc-700"
+                    : "bg-muted text-muted-foreground cursor-not-allowed border border-border"
                 }`}
               >
                 {collaborating ? (
@@ -566,31 +609,44 @@ export default function CreatorProfilePage() {
           </div>
         )}
 
+        {/* ALERTE SOLDE INSUFFISANT */}
         {isCreator && userManasBalance < 250 && !isCurrentUser && (
-          <div className="flex items-center gap-2 p-2.5 bg-amber-950/30 border border-amber-500/30 rounded-xl text-amber-300 text-xs mb-4 max-w-md w-full">
+          <div className="flex items-center gap-2 p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-600 dark:text-amber-300 text-xs mb-4 max-w-md w-full">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>Solde insuffisant pour collaborer (250 MANAS requis).</span>
           </div>
         )}
 
-        <div className="flex border-b border-zinc-800/80 w-full max-w-md md:max-w-xl mb-6">
+        {/* TABS */}
+        <div className="flex border-b border-border/80 w-full max-w-md md:max-w-xl mb-6">
           <button
             onClick={() => setActiveTab("mangas")}
             className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
               activeTab === "mangas"
-                ? "border-blue-500 text-white"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
+                ? "border-blue-500 text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <Grid className="w-4 h-4" />
             <span>Mangas ({profile._count?.mangas || 0})</span>
           </button>
           <button
+            onClick={() => setActiveTab("reels")}
+            className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
+              activeTab === "reels"
+                ? "border-blue-500 text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Film className="w-4 h-4" />
+            <span>Reels</span>
+          </button>
+          <button
             onClick={() => setActiveTab("about")}
             className={`flex-1 py-3 text-center text-xs md:text-sm font-bold transition-all border-b-2 flex items-center justify-center gap-2 ${
               activeTab === "about"
-                ? "border-blue-500 text-white"
-                : "border-transparent text-zinc-500 hover:text-zinc-300"
+                ? "border-blue-500 text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <User className="w-4 h-4" />
@@ -598,12 +654,15 @@ export default function CreatorProfilePage() {
           </button>
         </div>
 
+        {/* TAB MANGAS */}
         {activeTab === "mangas" && (
           <div className="w-full">
             {!profile.mangas || profile.mangas.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center bg-zinc-900/30 rounded-2xl border border-zinc-800/40 max-w-md mx-auto my-2">
-                <BookOpen className="w-10 h-10 text-zinc-700" />
-                <p className="text-zinc-400 mt-3 text-sm font-medium">Aucun manga publié</p>
+              <div className="flex flex-col items-center justify-center py-12 text-center bg-card/30 rounded-2xl border border-border/40 max-w-md mx-auto my-2">
+                <BookOpen className="w-10 h-10 text-muted-foreground/50" />
+                <p className="text-muted-foreground mt-3 text-sm font-medium">
+                  Aucun manga publié
+                </p>
                 {isCurrentUser && (
                   <Link
                     href="/creator/upload"
@@ -619,17 +678,17 @@ export default function CreatorProfilePage() {
                   <Link
                     key={manga.id}
                     href={`/manga/${manga.id}`}
-                    className="group relative aspect-[2/3] bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800/60 hover:scale-[1.02] hover:border-blue-500/50 transition-all duration-200"
+                    className="group relative aspect-[2/3] bg-muted rounded-lg overflow-hidden border border-border/60 hover:scale-[1.02] hover:border-blue-500/50 transition-all duration-200"
                   >
                     {manga.coverUrl || manga.imageUrl ? (
-                      <img 
-                        src={manga.coverUrl || manga.imageUrl} 
-                        alt={manga.title} 
+                      <img
+                        src={manga.coverUrl || manga.imageUrl}
+                        alt={manga.title}
                         className="absolute inset-0 w-full h-full object-cover"
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <BookOpen className="w-8 h-8 text-zinc-700" />
+                        <BookOpen className="w-8 h-8 text-muted-foreground/30" />
                       </div>
                     )}
                     <div className="absolute bottom-0 left-0 right-0 p-1.5 md:p-2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end justify-between">
@@ -647,43 +706,72 @@ export default function CreatorProfilePage() {
           </div>
         )}
 
+        {/* TAB REELS */}
+        {activeTab === "reels" && (
+          <div className="w-full">
+            <ReelGrid
+              userId={profile.id}
+              isOwner={isCurrentUser}
+              emptyHint={
+                isCurrentUser
+                  ? "Vous n'avez pas encore publié de Reel"
+                  : "Aucun Reel publié"
+              }
+            />
+          </div>
+        )}
+
+        {/* TAB À PROPOS */}
         {activeTab === "about" && (
           <div className="w-full max-w-md mx-auto">
-            <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 space-y-4">
-              <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                <User className="w-4 h-4 text-blue-400" />
-                <span className="text-zinc-300 text-sm">@{profile.username}</span>
+            <div className="bg-card/40 border border-border/80 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center gap-3 py-2 border-b border-border/40">
+                <User className="w-4 h-4 text-blue-500" />
+                <span className="text-foreground text-sm">@{profile.username}</span>
               </div>
               {profile.bio && (
-                <div className="flex items-start gap-3 py-2 border-b border-zinc-800/40">
-                  <BookOpen className="w-4 h-4 text-blue-400 mt-0.5" />
-                  <span className="text-zinc-300 text-sm">{profile.bio}</span>
+                <div className="flex items-start gap-3 py-2 border-b border-border/40">
+                  <BookOpen className="w-4 h-4 text-blue-500 mt-0.5" />
+                  <span className="text-foreground text-sm">{profile.bio}</span>
                 </div>
               )}
-              <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                <Calendar className="w-4 h-4 text-blue-400" />
-                <span className="text-zinc-300 text-sm">Membre depuis {new Date(profile.createdAt).toLocaleDateString()}</span>
+              <div className="flex items-center gap-3 py-2 border-b border-border/40">
+                <Calendar className="w-4 h-4 text-blue-500" />
+                <span className="text-foreground text-sm">
+                  Membre depuis {new Date(profile.createdAt).toLocaleDateString()}
+                </span>
               </div>
-              <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                <Globe className="w-4 h-4 text-blue-400" />
-                <span className="text-zinc-300 text-sm">{profile.role === 'CREATOR' ? 'Créateur' : 'Membre'}</span>
+              <div className="flex items-center gap-3 py-2 border-b border-border/40">
+                <Globe className="w-4 h-4 text-blue-500" />
+                <span className="text-foreground text-sm">
+                  {profile.role === "CREATOR" ? "Créateur" : "Membre"}
+                </span>
               </div>
               {profile.isCertified && (
-                <div className="flex items-center gap-3 py-2 border-b border-zinc-800/40">
-                  <BadgeCheck className="w-4 h-4" fill={activeBadgeColor} color="black" strokeWidth={1.5} />
-                  <span className="text-zinc-300 text-sm">Compte certifié</span>
+                <div className="flex items-center gap-3 py-2 border-b border-border/40">
+                  <BadgeCheck
+                    className="w-4 h-4"
+                    fill={activeBadgeColor}
+                    color="black"
+                    strokeWidth={1.5}
+                  />
+                  <span className="text-foreground text-sm">Compte certifié</span>
                 </div>
               )}
               {profile.premiumActive && (
                 <div className="flex items-center gap-3 py-2">
                   <GalaxyIcon className="w-5 h-5" />
-                  <span className="text-zinc-300 text-sm">Abonnement Premium actif</span>
+                  <span className="text-foreground text-sm">
+                    Abonnement Premium actif
+                  </span>
                 </div>
               )}
               {isCreator && (
-                <div className="flex items-center gap-3 py-2 border-t border-zinc-800/40 pt-3">
-                  <Coins className="w-4 h-4 text-blue-400" />
-                  <span className="text-zinc-300 text-sm">{profile.manas || 0} MANAS</span>
+                <div className="flex items-center gap-3 py-2 border-t border-border/40 pt-3">
+                  <Coins className="w-4 h-4 text-blue-500" />
+                  <span className="text-foreground text-sm">
+                    {profile.manas || 0} MANAS
+                  </span>
                 </div>
               )}
             </div>
@@ -693,20 +781,21 @@ export default function CreatorProfilePage() {
 
       <BottomNav />
 
+      {/* MODAL SEND MANAS */}
       {showSendManas && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-6 max-w-sm w-full">
-            <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
-              <Send className="w-5 h-5 text-emerald-400" />
+          <div className="bg-background border border-border/80 rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-foreground mb-2 flex items-center gap-2">
+              <Send className="w-5 h-5 text-emerald-500" />
               Envoyer des MANAS
             </h3>
-            <p className="text-sm text-zinc-400 mb-4">
-              À <span className="text-white font-bold">{profile.username}</span>
+            <p className="text-sm text-muted-foreground mb-4">
+              À <span className="text-foreground font-bold">{profile.username}</span>
             </p>
-            
+
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                <label className="text-xs font-medium text-muted-foreground block mb-1">
                   Montant en MANAS
                 </label>
                 <input
@@ -715,16 +804,14 @@ export default function CreatorProfilePage() {
                   value={sendManasAmount}
                   onChange={(e) => setSendManasAmount(e.target.value)}
                   placeholder="10"
-                  className="w-full px-4 py-2.5 bg-zinc-950 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-emerald-500 outline-none transition-all"
                 />
-                <p className="text-[10px] text-zinc-500 mt-1">
+                <p className="text-[10px] text-muted-foreground mt-1">
                   Votre solde : {userManasBalance} MANAS
                 </p>
               </div>
 
-              {error && (
-                <p className="text-xs text-rose-400">{error}</p>
-              )}
+              {error && <p className="text-xs text-rose-500 dark:text-rose-400">{error}</p>}
 
               <div className="flex gap-3">
                 <button
@@ -747,7 +834,7 @@ export default function CreatorProfilePage() {
                     setSendManasAmount("");
                     setError("");
                   }}
-                  className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-bold transition-all"
+                  className="px-4 py-2.5 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-bold transition-all"
                 >
                   Annuler
                 </button>
