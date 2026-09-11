@@ -52,7 +52,8 @@ type Event = {
 };
 
 // ============================================
-// CONFIG PAR TYPE — Icône + Couleur + Label
+// CONFIG PAR TYPE — Identité couleur (voulue)
+// Ces couleurs SONT intentionnelles (chaque type a sa couleur)
 // ============================================
 type TypeConfig = {
   icon: any;
@@ -125,11 +126,11 @@ const getTypeConfig = (type: string): TypeConfig =>
   TYPE_CONFIG[type] || {
     icon: Zap,
     label: type,
-    gradient: "from-zinc-500 to-zinc-600",
-    textColor: "text-zinc-400",
-    bgLight: "bg-zinc-500/15",
-    border: "border-zinc-500/40",
-    glow: "shadow-zinc-500/20",
+    gradient: "from-muted to-muted/50",
+    textColor: "text-muted-foreground",
+    bgLight: "bg-muted/40",
+    border: "border-border",
+    glow: "shadow-none",
   };
 
 export default function EventsPage() {
@@ -215,25 +216,34 @@ export default function EventsPage() {
       </header>
 
       <main className="flex-1 px-4 md:px-8 py-6 max-w-6xl mx-auto w-full">
-        {/* ===== HERO BANNER ===== */}
-        <div className="relative overflow-hidden rounded-3xl mb-8 border border-border/60">
-          {/* Fond dégradé animé */}
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-amber-600/20" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(139,92,246,0.25),transparent_50%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(245,158,11,0.25),transparent_50%)]" />
+        {/* ===== HERO BANNER — Thème-aware ===== */}
+        <div className="relative overflow-hidden rounded-3xl mb-8 border border-border/60 bg-card/40">
+          {/* Fond décoratif thème-aware */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--foreground)/0.08),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,hsl(var(--foreground)/0.05),transparent_60%)]" />
+
+          {/* Grille décorative */}
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage:
+                "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)",
+              backgroundSize: "32px 32px",
+            }}
+          />
 
           {/* Contenu */}
           <div className="relative px-6 py-10 md:py-14 text-center">
             {/* Icône animée */}
             <div className="relative inline-flex items-center justify-center mb-5">
-              <div className="absolute inset-0 rounded-full bg-amber-400/30 blur-2xl animate-pulse" />
-              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-2xl shadow-amber-500/40 rotate-3">
+              <div className="absolute inset-0 rounded-2xl bg-amber-500/20 blur-2xl animate-pulse" />
+              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-2xl shadow-amber-500/40 rotate-3 hover:rotate-0 transition-transform duration-500">
                 <Trophy className="w-8 h-8 text-white drop-shadow-lg" />
               </div>
             </div>
 
             <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-3">
-              <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
                 Événements & Compétitions
               </span>
             </h1>
@@ -244,18 +254,24 @@ export default function EventsPage() {
             </p>
 
             {/* Stats rapides */}
-            <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6 mt-6">
+            <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mt-6">
               <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background/60 backdrop-blur-sm border border-border/60">
                 <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-xs font-bold">6 types d'événements</span>
+                <span className="text-xs font-bold text-foreground">
+                  6 types d'événements
+                </span>
               </div>
               <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background/60 backdrop-blur-sm border border-border/60">
                 <Coins className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-xs font-bold">Récompenses MANAS & Tickets</span>
+                <span className="text-xs font-bold text-foreground">
+                  Récompenses MANAS & Tickets
+                </span>
               </div>
               <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background/60 backdrop-blur-sm border border-border/60">
                 <Crown className="w-3.5 h-3.5 text-violet-400" />
-                <span className="text-xs font-bold">Badges exclusifs</span>
+                <span className="text-xs font-bold text-foreground">
+                  Badges exclusifs
+                </span>
               </div>
             </div>
           </div>
@@ -274,7 +290,7 @@ export default function EventsPage() {
               onClick={() => setFilter(f.key as any)}
               className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
                 filter === f.key
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105"
+                  ? "bg-foreground text-background shadow-lg scale-105"
                   : "bg-card/40 text-muted-foreground hover:text-foreground hover:bg-card/60 border border-border/60"
               }`}
             >
@@ -327,7 +343,6 @@ export default function EventsPage() {
                 >
                   {/* ===== COUVERTURE ===== */}
                   <div className="relative h-40 overflow-hidden">
-                    {/* Image ou gradient */}
                     {event.coverUrl ? (
                       <>
                         <img
@@ -339,11 +354,13 @@ export default function EventsPage() {
                       </>
                     ) : (
                       <>
+                        {/* ✅ Gradient propre au type (voulu) */}
                         <div
                           className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-90`}
                         />
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.2),transparent_60%)]" />
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,hsl(var(--background)/0.3),transparent_60%)]" />
                         <div className="absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
+
                         {/* Grande icône en fond */}
                         <div className="absolute inset-0 flex items-center justify-center opacity-25">
                           <Icon className="w-24 h-24 text-white" />
@@ -388,9 +405,7 @@ export default function EventsPage() {
                       <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-background/90 backdrop-blur-md text-[10px] font-extrabold border border-border/60 flex items-center gap-1">
                         <Clock className="w-3 h-3 text-amber-400" />
                         <span className="text-foreground">
-                          {daysLeft > 0
-                            ? `${daysLeft}j`
-                            : "Dernier jour"}
+                          {daysLeft > 0 ? `${daysLeft}j` : "Dernier jour"}
                         </span>
                       </div>
                     )}
@@ -398,19 +413,16 @@ export default function EventsPage() {
 
                   {/* ===== CONTENU ===== */}
                   <div className="p-5 space-y-3">
-                    {/* Titre */}
-                    <h3 className="text-lg font-extrabold leading-tight group-hover:text-blue-400 transition-colors line-clamp-2 min-h-[2.75rem]">
+                    <h3 className="text-lg font-extrabold leading-tight group-hover:opacity-80 transition-opacity line-clamp-2 min-h-[2.75rem]">
                       {event.title}
                     </h3>
 
-                    {/* Description */}
                     {event.description && (
                       <p className="text-muted-foreground text-xs line-clamp-2 leading-relaxed">
                         {event.description}
                       </p>
                     )}
 
-                    {/* Thème */}
                     {event.theme && (
                       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                         <Sparkles className="w-3 h-3 text-purple-400 shrink-0" />
@@ -425,7 +437,6 @@ export default function EventsPage() {
 
                     {/* Séparateur */}
                     <div className="border-t border-border/40 pt-3 space-y-2.5">
-                      {/* Dates + Participants */}
                       <div className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1.5 text-muted-foreground">
                           <Calendar className="w-3.5 h-3.5" />
@@ -446,7 +457,7 @@ export default function EventsPage() {
                         </span>
                       </div>
 
-                      {/* Récompenses */}
+                      {/* Récompenses + CTA */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <Coins className="w-3.5 h-3.5 text-amber-400" />
@@ -456,8 +467,8 @@ export default function EventsPage() {
                           </span>
                         </div>
 
-                        {/* CTA */}
-                        <div className="flex items-center gap-1 text-xs font-bold text-blue-400 group-hover:text-blue-300 group-hover:gap-2 transition-all">
+                        {/* ✅ CTA thème-aware */}
+                        <div className="flex items-center gap-1 text-xs font-bold text-foreground/70 group-hover:text-foreground group-hover:gap-2 transition-all">
                           <span>Voir</span>
                           <ChevronRight className="w-3.5 h-3.5" />
                         </div>
@@ -465,7 +476,7 @@ export default function EventsPage() {
                     </div>
                   </div>
 
-                  {/* Ligne déco en bas */}
+                  {/* Ligne déco en bas (couleur du type, voulue) */}
                   <div
                     className={`h-1 bg-gradient-to-r ${config.gradient} opacity-0 group-hover:opacity-100 transition-opacity`}
                   />
