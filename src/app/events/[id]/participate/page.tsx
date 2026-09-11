@@ -14,6 +14,7 @@ import {
   Upload,
   Image as ImageIcon,
   X,
+  BookOpen,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -43,6 +44,18 @@ type Event = {
   };
 };
 
+type Manga = {
+  id: string;
+  title: string;
+  coverUrl: string | null;
+};
+
+type Chapter = {
+  id: string;
+  number: number;
+  title: string | null;
+};
+
 export default function EventParticipatePage() {
   const router = useRouter();
   const params = useParams();
@@ -54,9 +67,16 @@ export default function EventParticipatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // Mangas
+  const [mangas, setMangas] = useState<Manga[]>([]);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [loadingMangas, setLoadingMangas] = useState(false);
+
   // Formulaire
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [mangaId, setMangaId] = useState("");
+  const [chapterId, setChapterId] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -94,23 +114,98 @@ export default function EventParticipatePage() {
   }, [eventId, router]);
 
   // ============================================
-  // GESTION IMAGE
+  // CHARGEMENT DES MANGAS (si event accepte)
+  // ============================================
+  useEffect(() => {
+    if (!event) return;
+
+    const allowedTypes = ["BATTLE", "DESSIN", "TOURNAMENT"];
+    if (!allowedTypes.includes(event.type)) return;
+
+    const fetchMangas = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      setLoadingMangas(true);
+
+      try {
+        // 1. Récupérer l'ID utilisateur
+        const meRes = await fetch(`${API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!meRes.ok) return;
+
+        const meData = await meRes.json();
+        const userId = meData.id || meData.data?.id;
+
+        if (!userId) return;
+
+        // 2. Récupérer les mangas
+        const mangasRes = await fetch(`${API_URL}/mangas/creator/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (mangasRes.ok) {
+          const mangasData = await mangasRes.json();
+          setMangas(mangasData.data || []);
+        }
+      } catch (err) {
+        console.error("Erreur chargement mangas:", err);
+      } finally {
+        setLoadingMangas(false);
+      }
+    };
+
+    fetchMangas();
+  }, [event]);
+
+  // ============================================
+  // CHARGEMENT DES CHAPITRES
+  // ============================================
+  useEffect(() => {
+    if (!mangaId) {
+      setChapters([]);
+      setChapterId("");
+      return;
+    }
+
+    const fetchChapters = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const res = await fetch(`${API_URL}/mangas/${mangaId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setChapters(data.data?.chapters || []);
+        }
+      } catch (err) {
+        console.error("Erreur chargement chapitres:", err);
+      }
+    };
+
+    fetchChapters();
+  }, [mangaId]);
+
+  // ============================================
+  // IMAGE
   // ============================================
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Vérifier la taille (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError("L'image ne doit pas dépasser 5MB");
-        return;
-      }
+    if (!file) return;
 
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onload = () => setImagePreview(reader.result as string);
-      reader.readAsDataURL(file);
-      setError("");
+    if (file.size > 5 * 1024 * 1024) {
+      setError("L'image ne doit pas dépasser 5MB");
+      return;
     }
+
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+    setError("");
   };
 
   const removeImage = () => {
@@ -133,53 +228,73 @@ export default function EventParticipatePage() {
     }
 
     if (!title.trim()) {
-      setError("Veuillez entrer un titre pour votre soumission");
-      return;
-    }
-
-    if (!imageFile) {
-      setError("Veuillez sélectionner une image");
+      setError("Veuillez entrer un titre");
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // 1. Upload de l'image
-      const formData = new FormData();
-      formData.append("file", imageFile);
+      let uploadedKey: string | undefined;
 
-      const uploadRes = await fetch(`${API_URL}/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      // 1. Upload image si présente
+      if (imageFile) {
+        const urlRes = await fetch(
+          `${API_URL}/events/${eventId}/submission/upload-url`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ filename: imageFile.name }),
+          }
+        );
 
-      if (!uploadRes.ok) {
-        throw new Error("Erreur lors de l'upload de l'image");
+        if (!urlRes.ok) {
+          const errorData = await urlRes.json().catch(() => ({}));
+          throw new Error(
+            errorData.message || "Erreur lors de la génération de l'URL d'upload"
+          );
+        }
+
+        const urlData = await urlRes.json();
+        const { uploadUrl, key } = urlData.data;
+
+        if (!uploadUrl || !key) {
+          throw new Error("URL d'upload ou clé manquante");
+        }
+
+        // Upload direct
+        const uploadRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": imageFile.type },
+          body: imageFile,
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error(`Échec de l'upload de l'image (${uploadRes.status})`);
+        }
+
+        uploadedKey = key;
       }
 
-      const uploadData = await uploadRes.json();
-      const imageUrl = uploadData.url || uploadData.data?.url;
+      // 2. Soumettre
+      const payload: any = {
+        title: title.trim(),
+        description: description.trim() || undefined,
+        mangaId: mangaId || undefined,
+        chapterId: chapterId || undefined,
+        imageUrl: uploadedKey || undefined,
+      };
 
-      if (!imageUrl) {
-        throw new Error("URL de l'image manquante après upload");
-      }
-
-      // 2. Soumettre au backend
       const submitRes = await fetch(`${API_URL}/events/${eventId}/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || undefined,
-          imageUrl,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const submitData = await submitRes.json();
@@ -207,7 +322,7 @@ export default function EventParticipatePage() {
   }
 
   // ============================================
-  // ✅ ERREUR UNIQUEMENT SI L'ÉVÉNEMENT N'EST PAS CHARGÉ
+  // ERREUR
   // ============================================
   if (!event) {
     return (
@@ -230,7 +345,7 @@ export default function EventParticipatePage() {
   }
 
   // ============================================
-  // CALCUL DATES
+  // VÉRIFICATIONS
   // ============================================
   const now = new Date();
   const start = new Date(event.startDate);
@@ -238,9 +353,7 @@ export default function EventParticipatePage() {
   const isActive = event.isActive && start <= now && end >= now;
   const isParticipating = !!event.userParticipation;
 
-  // ============================================
-  // ✅ SI PAS INSCRIT → INVITER À S'INSCRIRE (pas une erreur)
-  // ============================================
+  // Pas inscrit
   if (!isParticipating) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground px-4 text-center">
@@ -261,9 +374,7 @@ export default function EventParticipatePage() {
     );
   }
 
-  // ============================================
-  // ✅ SI ÉVÉNEMENT TERMINÉ
-  // ============================================
+  // Event terminé
   if (!isActive) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground px-4 text-center">
@@ -285,7 +396,7 @@ export default function EventParticipatePage() {
   }
 
   // ============================================
-  // FORMULAIRE DE SOUMISSION
+  // FORMULAIRE
   // ============================================
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground pb-24">
@@ -338,47 +449,107 @@ export default function EventParticipatePage() {
           </div>
         )}
 
-        {/* FORMULAIRE */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-card/40 border border-border/80 rounded-2xl p-5 md:p-6 space-y-5"
-        >
-          {/* TITRE */}
-          <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wider">
-              Titre de l'œuvre *
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Mon dessin pour le défi"
-              className="w-full px-4 py-2.5 rounded-xl bg-card border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm"
-              required
-              maxLength={100}
-            />
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* TITRE + DESCRIPTION */}
+          <div className="bg-card/40 border border-border/80 rounded-2xl p-5 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wider">
+                Titre de l'œuvre *
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Ex: Mon dessin pour le défi"
+                className="w-full px-4 py-2.5 rounded-xl bg-card border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
+                required
+                maxLength={100}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wider">
+                Description
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Décrivez votre œuvre..."
+                rows={3}
+                className="w-full px-4 py-2.5 rounded-xl bg-card border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm resize-none"
+                maxLength={500}
+              />
+            </div>
           </div>
 
-          {/* DESCRIPTION */}
-          <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wider">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Décrivez votre œuvre..."
-              rows={3}
-              className="w-full px-4 py-2.5 rounded-xl bg-card border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm resize-none"
-              maxLength={500}
-            />
+          {/* ŒUVRE ASSOCIÉE (MANGA + CHAPITRE) */}
+          <div className="bg-card/40 border border-border/80 rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-blue-400" />
+              Œuvre associée
+              <span className="text-xs text-muted-foreground font-normal">(optionnel)</span>
+            </h3>
+
+            <div>
+              <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wider">
+                Manga
+              </label>
+              <select
+                value={mangaId}
+                onChange={(e) => setMangaId(e.target.value)}
+                disabled={loadingMangas}
+                className="w-full px-4 py-2.5 rounded-xl bg-card border border-border text-foreground focus:border-blue-500 outline-none transition-all text-sm disabled:opacity-50"
+              >
+                <option value="">Aucun manga associé</option>
+                {mangas.map((manga) => (
+                  <option key={manga.id} value={manga.id}>
+                    {manga.title}
+                  </option>
+                ))}
+              </select>
+              {loadingMangas && (
+                <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Chargement...
+                </p>
+              )}
+              {!loadingMangas && mangas.length === 0 && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Vous n'avez pas encore de manga publié
+                </p>
+              )}
+            </div>
+
+            {mangaId && (
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wider">
+                  Chapitre
+                </label>
+                <select
+                  value={chapterId}
+                  onChange={(e) => setChapterId(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-card border border-border text-foreground focus:border-blue-500 outline-none transition-all text-sm"
+                >
+                  <option value="">Aucun chapitre</option>
+                  {chapters.map((chapter) => (
+                    <option key={chapter.id} value={chapter.id}>
+                      Chapitre {chapter.number}
+                      {chapter.title ? ` : ${chapter.title}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* IMAGE */}
-          <div>
-            <label className="block text-xs font-semibold text-foreground mb-1.5 uppercase tracking-wider">
-              Image de l'œuvre *
-            </label>
+          <div className="bg-card/40 border border-border/80 rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-purple-400" />
+              Image de l'œuvre
+              <span className="text-xs text-muted-foreground font-normal">(optionnel)</span>
+            </h3>
+
             <div
               className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all bg-card/30 ${
                 imagePreview
@@ -424,7 +595,7 @@ export default function EventParticipatePage() {
           {/* BOUTON */}
           <button
             type="submit"
-            disabled={submitting || success || !title.trim() || !imageFile}
+            disabled={submitting || success || !title.trim()}
             className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold transition-all shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (
