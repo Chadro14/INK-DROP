@@ -4,28 +4,42 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Search, User, Trophy } from "lucide-react";
+import { useTheme } from "@/components/providers/ThemeProvider";
 
+// ============================================
 // 🎬 SVG REELS — STYLE INSTAGRAM
-const ReelIcon = ({ className = "w-5 h-5", active = false }: { className?: string; active?: boolean }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+// ============================================
+const ReelIcon = ({
+  className = "w-5 h-5",
+  active = false,
+}: {
+  className?: string;
+  active?: boolean;
+}) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
     {/* Carré avec coins arrondis */}
-    <rect 
-      x="2.5" 
-      y="2.5" 
-      width="19" 
-      height="19" 
-      rx="4.5" 
-      stroke="currentColor" 
+    <rect
+      x="2.5"
+      y="2.5"
+      width="19"
+      height="19"
+      rx="4.5"
+      stroke="currentColor"
       strokeWidth="1.8"
       fill={active ? "currentColor" : "none"}
       fillOpacity={active ? "0.12" : "0"}
     />
-    
+
     {/* Triangle de lecture (play) */}
-    <polygon 
-      points="9.5,7.5 16.5,12 9.5,16.5" 
-      fill="currentColor" 
-      opacity={active ? "1" : "0.7"} 
+    <polygon
+      points="9.5,7.5 16.5,12 9.5,16.5"
+      fill="currentColor"
+      opacity={active ? "1" : "0.7"}
     />
   </svg>
 );
@@ -33,15 +47,14 @@ const ReelIcon = ({ className = "w-5 h-5", active = false }: { className?: strin
 interface BottomNavProps {
   primaryColor?: string;
   accentColor?: string;
-  theme?: "dark" | "light";
 }
 
 export function BottomNav({
   primaryColor = "#3B82F6",
   accentColor = "#8B5CF6",
-  theme = "dark",
 }: BottomNavProps) {
   const pathname = usePathname();
+  const { resolvedTheme } = useTheme();
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,28 +63,23 @@ export function BottomNav({
 
   const isActive = (path: string) => pathname === path;
 
-  const navBg =
-    theme === "dark"
-      ? "bg-zinc-950/90 backdrop-blur-xl border-t border-zinc-800/60"
-      : "bg-white/90 backdrop-blur-xl border-t border-gray-200/60 shadow-lg";
-
-  const textMuted = theme === "dark" ? "text-zinc-500" : "text-gray-400";
-  const textHover = theme === "dark" ? "hover:text-white" : "hover:text-gray-900";
-
+  // ============================================
+  // STYLE ACTIF avec couleur personnalisée
+  // ============================================
   const activeStyle = (color: string) => ({
     color: color,
-    filter: `drop-shadow(0 0 12px ${color}70)`,
+    filter: `drop-shadow(0 0 10px ${color}60)`,
   });
 
   return (
-    <nav className={`fixed bottom-0 left-0 right-0 z-50 ${navBg} px-4 py-2 transition-all duration-300`}>
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border/60 px-4 py-2 transition-all duration-300">
       <div className="flex items-center justify-around max-w-lg mx-auto">
 
-        {/* ACCUEIL */}
+        {/* ===== ACCUEIL ===== */}
         <Link
           href="/"
           className={`flex flex-col items-center gap-1 transition-all duration-200 ${
-            isActive("/") ? "text-blue-500" : `${textMuted} ${textHover}`
+            isActive("/") ? "" : "text-muted-foreground hover:text-foreground"
           }`}
           style={isActive("/") ? activeStyle(primaryColor) : {}}
         >
@@ -79,11 +87,11 @@ export function BottomNav({
           <span className="text-[10px] font-medium">Accueil</span>
         </Link>
 
-        {/* DÉCOUVRIR */}
+        {/* ===== DÉCOUVRIR ===== */}
         <Link
           href="/discover"
           className={`flex flex-col items-center gap-1 transition-all duration-200 ${
-            isActive("/discover") ? "text-blue-500" : `${textMuted} ${textHover}`
+            isActive("/discover") ? "" : "text-muted-foreground hover:text-foreground"
           }`}
           style={isActive("/discover") ? activeStyle(primaryColor) : {}}
         >
@@ -91,13 +99,13 @@ export function BottomNav({
           <span className="text-[10px] font-medium">Découvrir</span>
         </Link>
 
-        {/* REELS — STYLE INSTAGRAM */}
+        {/* ===== REELS — STYLE INSTAGRAM ===== */}
         <Link
           href="/reels"
           className={`flex flex-col items-center gap-1 transition-all duration-200 ${
             isActive("/reels") || pathname?.startsWith("/reels/")
-              ? "text-purple-400"
-              : `${textMuted} ${textHover}`
+              ? ""
+              : "text-muted-foreground hover:text-foreground"
           }`}
           style={
             isActive("/reels") || pathname?.startsWith("/reels/")
@@ -112,13 +120,13 @@ export function BottomNav({
           <span className="text-[10px] font-medium">Reels</span>
         </Link>
 
-        {/* ÉVÉNEMENTS */}
+        {/* ===== ÉVÉNEMENTS ===== */}
         <Link
           href="/events"
           className={`flex flex-col items-center gap-1 transition-all duration-200 ${
             isActive("/events") || pathname?.startsWith("/events/")
-              ? "text-amber-400"
-              : `${textMuted} ${textHover}`
+              ? ""
+              : "text-muted-foreground hover:text-foreground"
           }`}
           style={
             isActive("/events") || pathname?.startsWith("/events/")
@@ -130,13 +138,19 @@ export function BottomNav({
           <span className="text-[10px] font-medium">Événements</span>
         </Link>
 
-        {/* PROFIL */}
+        {/* ===== PROFIL ===== */}
         <Link
           href={token ? "/profile" : "/login"}
           className={`flex flex-col items-center gap-1 transition-all duration-200 ${
-            isActive("/profile") ? "text-blue-500" : `${textMuted} ${textHover}`
+            isActive("/profile") || pathname?.startsWith("/profile/")
+              ? ""
+              : "text-muted-foreground hover:text-foreground"
           }`}
-          style={isActive("/profile") ? activeStyle(primaryColor) : {}}
+          style={
+            isActive("/profile") || pathname?.startsWith("/profile/")
+              ? activeStyle(primaryColor)
+              : {}
+          }
         >
           <User className="w-5 h-5" />
           <span className="text-[10px] font-medium">Profil</span>
