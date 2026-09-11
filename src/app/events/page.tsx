@@ -19,10 +19,11 @@ import {
   Star,
   Flame,
   Zap,
-  Eye,
-  Heart,
-  FileText,
   ArrowLeft,
+  Swords,
+  Palette,
+  Rocket,
+  Loader2,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -51,15 +52,110 @@ type Event = {
   };
 };
 
+// ============================================
+// CONFIG PAR TYPE
+// ============================================
+type TypeConfig = {
+  icon: any;
+  label: string;
+  gradient: string;
+  textColor: string;
+  bgLight: string;
+  border: string;
+  glow: string;
+};
+
+const TYPE_CONFIG: Record<string, TypeConfig> = {
+  BATTLE: {
+    icon: Swords,
+    label: "Battle de mangas",
+    gradient: "from-amber-500 to-orange-600",
+    textColor: "text-amber-400",
+    bgLight: "bg-amber-500/15",
+    border: "border-amber-500/40",
+    glow: "shadow-amber-500/20",
+  },
+  DESSIN: {
+    icon: Palette,
+    label: "Défi dessin",
+    gradient: "from-purple-500 to-fuchsia-600",
+    textColor: "text-purple-400",
+    bgLight: "bg-purple-500/15",
+    border: "border-purple-500/40",
+    glow: "shadow-purple-500/20",
+  },
+  TICKETS: {
+    icon: Ticket,
+    label: "Semaine des Tickets",
+    gradient: "from-blue-500 to-cyan-600",
+    textColor: "text-blue-400",
+    bgLight: "bg-blue-500/15",
+    border: "border-blue-500/40",
+    glow: "shadow-blue-500/20",
+  },
+  RISING_CREATOR: {
+    icon: Rocket,
+    label: "Rising Creator",
+    gradient: "from-emerald-500 to-teal-600",
+    textColor: "text-emerald-400",
+    bgLight: "bg-emerald-500/15",
+    border: "border-emerald-500/40",
+    glow: "shadow-emerald-500/20",
+  },
+  AWARDS: {
+    icon: Crown,
+    label: "INKDROP Awards",
+    gradient: "from-rose-500 to-pink-600",
+    textColor: "text-rose-400",
+    bgLight: "bg-rose-500/15",
+    border: "border-rose-500/40",
+    glow: "shadow-rose-500/20",
+  },
+  TOURNAMENT: {
+    icon: Flame,
+    label: "Tournament",
+    gradient: "from-red-500 to-rose-600",
+    textColor: "text-red-400",
+    bgLight: "bg-red-500/15",
+    border: "border-red-500/40",
+    glow: "shadow-red-500/20",
+  },
+};
+
+const getTypeConfig = (type: string): TypeConfig =>
+  TYPE_CONFIG[type] || {
+    icon: Zap,
+    label: type,
+    gradient: "from-muted to-muted/50",
+    textColor: "text-muted-foreground",
+    bgLight: "bg-muted/40",
+    border: "border-border",
+    glow: "shadow-none",
+  };
+
 export default function EventsPage() {
   const router = useRouter();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "upcoming" | "past">("active");
 
+  // ============================================
+  // CHARGEMENT DES ÉVÉNEMENTS
+  // ✅ setLoading uniquement au premier chargement
+  // ============================================
   useEffect(() => {
+    let isFirstLoad = true;
+
     const fetchEvents = async () => {
+      // ✅ Loader complet SEULEMENT au premier chargement
+      if (isFirstLoad) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+
       try {
         const token = localStorage.getItem("token");
         const res = await fetch(`${API_URL}/events?filter=${filter}`, {
@@ -70,83 +166,63 @@ export default function EventsPage() {
 
         const data = await res.json();
         setEvents(data.data || []);
+        setError("");
       } catch (err: any) {
         setError(err.message);
       } finally {
         setLoading(false);
+        setRefreshing(false);
+        isFirstLoad = false;
       }
     };
 
     fetchEvents();
   }, [filter]);
 
+  // ============================================
+  // STATUT
+  // ============================================
   const getStatus = (event: Event) => {
     const now = new Date();
-    const start = new Date(event.startDate + 'T00:00:00Z');
-    const end = new Date(event.endDate + 'T23:59:59Z');
+    const start = new Date(event.startDate);
+    const end = new Date(event.endDate);
 
-    if (!event.isActive) return { label: "Terminé", color: "bg-zinc-600/20 text-zinc-400 border-zinc-600/30" };
-    if (start > now) return { label: "À venir", color: "bg-blue-600/20 text-blue-400 border-blue-500/30" };
-    if (end < now) return { label: "Terminé", color: "bg-zinc-600/20 text-zinc-400 border-zinc-600/30" };
-    return { label: "En cours", color: "bg-emerald-600/20 text-emerald-400 border-emerald-500/30" };
-  };
-
-  const getTypeIcon = (type: string) => {
-    const icons: Record<string, any> = {
-      BATTLE: Trophy,
-      DESSIN: Sparkles,
-      TICKETS: Ticket,
-      RISING_CREATOR: Star,
-      AWARDS: Crown,
-      TOURNAMENT: Flame,
+    if (!event.isActive || end < now)
+      return {
+        label: "Terminé",
+        color: "bg-muted/80 text-muted-foreground border-border",
+      };
+    if (start > now)
+      return {
+        label: "À venir",
+        color: "bg-blue-600/20 text-blue-400 border-blue-500/40",
+      };
+    return {
+      label: "En cours",
+      color: "bg-emerald-600/20 text-emerald-400 border-emerald-500/40",
     };
-    const Icon = icons[type] || Zap;
-    return Icon;
   };
 
-  const getTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      BATTLE: "Battle de mangas",
-      DESSIN: "Défi dessin",
-      TICKETS: "Semaine des Tickets",
-      RISING_CREATOR: "Rising Creator",
-      AWARDS: "INKDROP Awards",
-      TOURNAMENT: "Tournament",
-    };
-    return labels[type] || type;
-  };
-
-  const getTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      BATTLE: "text-amber-400 bg-amber-950/30 border-amber-500/30",
-      DESSIN: "text-purple-400 bg-purple-950/30 border-purple-500/30",
-      TICKETS: "text-blue-400 bg-blue-950/30 border-blue-500/30",
-      RISING_CREATOR: "text-emerald-400 bg-emerald-950/30 border-emerald-500/30",
-      AWARDS: "text-rose-400 bg-rose-950/30 border-rose-500/30",
-      TOURNAMENT: "text-red-400 bg-red-950/30 border-red-500/30",
-    };
-    return colors[type] || "text-zinc-400 bg-zinc-950/30 border-zinc-500/30";
-  };
-
+  // ============================================
+  // LOADER INITIAL
+  // ============================================
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <Loader label="Chargement des événements..." />
-      </div>
-    );
+    return <Loader label="Chargement des événements..." />;
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
-      
+    <div className="flex flex-col min-h-screen bg-background text-foreground pb-24">
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
-          <Link href="/" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium">
+          <Link
+            href="/"
+            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-sm font-medium"
+          >
             <ArrowLeft className="w-4 h-4" />
             <span>Accueil</span>
           </Link>
-          <span className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+          <span className="text-base font-bold tracking-tight flex items-center gap-2">
             <Trophy className="w-5 h-5 text-amber-400" />
             Événements
           </span>
@@ -155,18 +231,64 @@ export default function EventsPage() {
       </header>
 
       <main className="flex-1 px-4 md:px-8 py-6 max-w-6xl mx-auto w-full">
+        {/* ===== HERO BANNER ===== */}
+        <div className="relative overflow-hidden rounded-3xl mb-8 border border-border/60 bg-card/40">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--foreground)/0.08),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,hsl(var(--foreground)/0.05),transparent_60%)]" />
 
-        {/* BANNIÈRE */}
-        <div className="bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-amber-950/40 border border-zinc-800/80 rounded-2xl p-6 mb-8 text-center">
-          <Trophy className="w-12 h-12 text-amber-400 mx-auto mb-3" />
-          <h1 className="text-2xl font-extrabold text-white">Événements et Compétitions</h1>
-          <p className="text-zinc-400 text-sm max-w-2xl mx-auto mt-2">
-            Participe à des événements exclusifs, gagne des récompenses et deviens une légende sur INKDROP.
-          </p>
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage:
+                "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)",
+              backgroundSize: "32px 32px",
+            }}
+          />
+
+          <div className="relative px-6 py-10 md:py-14 text-center">
+            <div className="relative inline-flex items-center justify-center mb-5">
+              <div className="absolute inset-0 rounded-2xl bg-amber-500/20 blur-2xl animate-pulse" />
+              <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-2xl shadow-amber-500/40 rotate-3 hover:rotate-0 transition-transform duration-500">
+                <Trophy className="w-8 h-8 text-white drop-shadow-lg" />
+              </div>
+            </div>
+
+            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-3">
+              <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 bg-clip-text text-transparent">
+                Événements & Compétitions
+              </span>
+            </h1>
+
+            <p className="text-muted-foreground text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
+              Participe à des événements exclusifs, affronte d'autres créateurs
+              et remporte des récompenses uniques sur INKDROP.
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mt-6">
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background/60 backdrop-blur-sm border border-border/60">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-xs font-bold text-foreground">
+                  6 types d'événements
+                </span>
+              </div>
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background/60 backdrop-blur-sm border border-border/60">
+                <Coins className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-xs font-bold text-foreground">
+                  Récompenses MANAS & Tickets
+                </span>
+              </div>
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-background/60 backdrop-blur-sm border border-border/60">
+                <Crown className="w-3.5 h-3.5 text-violet-400" />
+                <span className="text-xs font-bold text-foreground">
+                  Badges exclusifs
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* FILTRES */}
-        <div className="flex flex-wrap gap-2 mb-6">
+        {/* ===== FILTRES ===== */}
+        <div className="flex flex-wrap gap-2 mb-6 items-center">
           {[
             { key: "active", label: "En cours" },
             { key: "upcoming", label: "À venir" },
@@ -176,41 +298,59 @@ export default function EventsPage() {
             <button
               key={f.key}
               onClick={() => setFilter(f.key as any)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+              disabled={refreshing}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-60 ${
                 filter === f.key
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-white border border-zinc-800/50"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105"
+                  : "bg-card/40 text-muted-foreground hover:text-foreground hover:bg-card/60 border border-border/60"
               }`}
             >
               {f.label}
             </button>
           ))}
+
+          {/* Petit spinner pendant le refresh (discret) */}
+          {refreshing && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground ml-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Chargement...
+            </div>
+          )}
         </div>
 
-        {/* ERREUR */}
+        {/* ===== ERREUR ===== */}
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-sm flex items-center gap-2 shadow-lg">
+          <div className="mb-4 p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-sm flex items-center gap-2 shadow-lg">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* LISTE DES ÉVÉNEMENTS */}
+        {/* ===== LISTE DES ÉVÉNEMENTS ===== */}
         {events.length === 0 ? (
-          <div className="text-center py-16 bg-zinc-900/30 rounded-2xl border border-zinc-800/40">
-            <Calendar className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-            <p className="text-zinc-400 font-medium">Aucun événement disponible</p>
-            <p className="text-zinc-500 text-xs mt-1">Reviens plus tard pour découvrir de nouveaux événements.</p>
+          <div className="text-center py-20 bg-card/20 rounded-3xl border border-border/40">
+            <div className="w-20 h-20 rounded-full bg-muted/40 border border-border/60 flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-10 h-10 text-muted-foreground/50" />
+            </div>
+            <p className="text-foreground font-bold mb-1">
+              Aucun événement disponible
+            </p>
+            <p className="text-muted-foreground text-sm">
+              Reviens plus tard pour découvrir de nouveaux défis.
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {events.map((event) => {
               const status = getStatus(event);
-              const Icon = getTypeIcon(event.type);
-              const typeColor = getTypeColor(event.type);
+              const config = getTypeConfig(event.type);
+              const Icon = config.icon;
               const now = new Date();
-              const end = new Date(event.endDate + 'T23:59:59Z');
-              const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              const end = new Date(event.endDate);
+              const daysLeft = Math.max(
+                0,
+                Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+              );
               const isParticipating = !!event.userParticipation;
               const isCompleted = event.userParticipation?.isCompleted || false;
 
@@ -218,78 +358,139 @@ export default function EventsPage() {
                 <Link
                   key={event.id}
                   href={`/events/${event.id}`}
-                  className="group bg-zinc-900/40 border border-zinc-800/80 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all hover:scale-[1.02] duration-300"
+                  className={`group relative bg-card/40 border border-border/80 rounded-3xl overflow-hidden hover:scale-[1.02] transition-all duration-300 hover:shadow-2xl ${config.glow}`}
                 >
-                  {/* Image de couverture */}
-                  <div className="relative h-32 bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-amber-950/40 flex items-center justify-center">
+                  {/* COUVERTURE */}
+                  <div className="relative h-40 overflow-hidden">
                     {event.coverUrl ? (
-                      <img
-                        src={event.coverUrl}
-                        alt={event.title}
-                        className="w-full h-full object-cover"
-                      />
+                      <>
+                        <img
+                          src={event.coverUrl}
+                          alt={event.title}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent" />
+                      </>
                     ) : (
-                      <Icon className="w-12 h-12 text-amber-400/50" />
+                      <>
+                        <div
+                          className={`absolute inset-0 bg-gradient-to-br ${config.gradient} opacity-90`}
+                        />
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,hsl(var(--background)/0.3),transparent_60%)]" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-card via-card/30 to-transparent" />
+
+                        <div className="absolute inset-0 flex items-center justify-center opacity-25">
+                          <Icon className="w-24 h-24 text-white" />
+                        </div>
+                      </>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
-                    <span className={`absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-bold border ${status.color}`}>
-                      {status.label}
-                    </span>
-                    <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-bold border ${typeColor}`}>
-                      {getTypeLabel(event.type)}
-                    </span>
-                    {event.isActive && end >= now && (
-                      <span className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-zinc-950/80 text-white text-[10px] font-bold border border-zinc-700/50 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {daysLeft > 0 ? `${daysLeft}j restants` : "Dernier jour"}
+
+                    {/* Badge TYPE */}
+                    <div
+                      className={`absolute top-3 left-3 px-2.5 py-1.5 rounded-full backdrop-blur-md border ${config.border} ${config.bgLight} flex items-center gap-1.5 shadow-lg`}
+                    >
+                      <Icon className={`w-3.5 h-3.5 ${config.textColor}`} />
+                      <span
+                        className={`text-[10px] font-extrabold uppercase tracking-wide ${config.textColor}`}
+                      >
+                        {config.label}
                       </span>
+                    </div>
+
+                    {/* Badge STATUT */}
+                    <div
+                      className={`absolute top-3 right-3 px-2.5 py-1.5 rounded-full backdrop-blur-md text-[10px] font-extrabold uppercase tracking-wide border ${status.color}`}
+                    >
+                      {status.label}
+                    </div>
+
+                    {isParticipating && (
+                      <div
+                        className={`absolute bottom-3 left-3 px-2.5 py-1 rounded-full backdrop-blur-md text-[10px] font-extrabold border ${
+                          isCompleted
+                            ? "bg-emerald-600/30 text-emerald-300 border-emerald-500/50"
+                            : "bg-blue-600/30 text-blue-300 border-blue-500/50"
+                        }`}
+                      >
+                        {isCompleted ? "Objectifs atteints" : "En cours"}
+                      </div>
                     )}
-                    <span className="absolute bottom-3 left-3 px-2.5 py-1 rounded-full bg-zinc-950/80 text-white text-[10px] font-bold border border-zinc-700/50 flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {event._count?.participations || 0} participants
-                    </span>
+
+                    {event.isActive && end >= now && (
+                      <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-background/90 backdrop-blur-md text-[10px] font-extrabold border border-border/60 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-amber-400" />
+                        <span className="text-foreground">
+                          {daysLeft > 0 ? `${daysLeft}j` : "Dernier jour"}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-base font-bold text-white group-hover:text-blue-400 transition-colors line-clamp-1">
-                        {event.title}
-                      </h3>
-                      {isParticipating && (
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                          isCompleted 
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                            : "bg-blue-500/10 text-blue-400 border-blue-500/30"
-                        }`}>
-                          {isCompleted ? "Terminé" : "En cours"}
-                        </span>
-                      )}
-                    </div>
+                  {/* CONTENU */}
+                  <div className="p-5 space-y-3">
+                    <h3 className="text-lg font-extrabold leading-tight group-hover:opacity-80 transition-opacity line-clamp-2 min-h-[2.75rem] text-foreground">
+                      {event.title}
+                    </h3>
+
                     {event.description && (
-                      <p className="text-zinc-400 text-xs line-clamp-2">{event.description}</p>
-                    )}
-                    {event.theme && (
-                      <p className="text-zinc-500 text-[10px] flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 text-purple-400" />
-                        Thème : {event.theme}
+                      <p className="text-muted-foreground text-xs line-clamp-2 leading-relaxed">
+                        {event.description}
                       </p>
                     )}
-                    <div className="flex items-center justify-between text-xs text-zinc-500">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <Coins className="w-3.5 h-3.5 text-amber-400" />
-                        <span className="text-amber-400 font-medium">{event.rewards?.length || 0} récompenses</span>
+
+                    {event.theme && (
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <Sparkles className="w-3 h-3 text-purple-400 shrink-0" />
+                        <span className="truncate">
+                          Thème :{" "}
+                          <span className="text-foreground font-medium">
+                            {event.theme}
+                          </span>
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="border-t border-border/40 pt-3 space-y-2.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {new Date(event.startDate).toLocaleDateString("fr-FR", {
+                            day: "2-digit",
+                            month: "short",
+                          })}{" "}
+                          -{" "}
+                          {new Date(event.endDate).toLocaleDateString("fr-FR", {
+                            day: "2-digit",
+                            month: "short",
+                          })}
+                        </span>
+
+                        <span className="flex items-center gap-1.5 text-muted-foreground">
+                          <Users className="w-3.5 h-3.5" />
+                          {event._count?.participations || 0}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Coins className="w-3.5 h-3.5 text-amber-400" />
+                          <span className="text-xs font-bold text-amber-400">
+                            {event.rewards?.length || 0} récompense
+                            {(event.rewards?.length || 0) !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 text-xs font-bold text-foreground/70 group-hover:text-foreground group-hover:gap-2 transition-all">
+                          <span>Voir</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-end">
-                      <span className="text-xs text-blue-400 group-hover:text-blue-300 transition-colors flex items-center gap-1">
-                        Voir détails <ChevronRight className="w-3.5 h-3.5" />
-                      </span>
-                    </div>
                   </div>
+
+                  <div
+                    className={`h-1 bg-gradient-to-r ${config.gradient} opacity-0 group-hover:opacity-100 transition-opacity`}
+                  />
                 </Link>
               );
             })}
