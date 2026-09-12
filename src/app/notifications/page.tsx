@@ -20,13 +20,28 @@ import {
   Sparkles,
   Users,
   BookOpen,
+  Heart,
+  MessageCircle,
+  BadgeCheck,
+  X,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
+type NotificationUser = {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  avatarColor: string | null;
+  isCertified: boolean;
+  badgeColor: string | null;
+};
+
 type Notification = {
   id: string;
   userId: string;
+  fromUserId: string | null;
+  fromUser: NotificationUser | null;
   type: string;
   title: string;
   body: string | null;
@@ -72,6 +87,12 @@ export default function NotificationsPage() {
     fetchNotifications();
   }, [router]);
 
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(""), 2500);
+    return () => clearTimeout(t);
+  }, [message]);
+
   const getFilteredNotifications = () => {
     if (filter === "unread") {
       return notifications.filter((n) => !n.isRead);
@@ -85,7 +106,7 @@ export default function NotificationsPage() {
 
     try {
       const res = await fetch(`${API_URL}/notifications/${notificationId}/read`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -94,9 +115,7 @@ export default function NotificationsPage() {
       if (!res.ok) throw new Error("Erreur");
 
       setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notificationId ? { ...n, isRead: true } : n
-        )
+        prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
       );
     } catch (err) {
       console.error("Erreur marquage comme lu:", err);
@@ -109,7 +128,7 @@ export default function NotificationsPage() {
 
     try {
       const res = await fetch(`${API_URL}/notifications/read-all`, {
-        method: "PUT",
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -117,16 +136,19 @@ export default function NotificationsPage() {
 
       if (!res.ok) throw new Error("Erreur");
 
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, isRead: true }))
-      );
-      setMessage("✅ Toutes les notifications ont été marquées comme lues");
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setMessage("Toutes les notifications ont été marquées comme lues");
     } catch (err) {
       console.error("Erreur marquage tout comme lu:", err);
     }
   };
 
-  const deleteNotification = async (notificationId: string) => {
+  const deleteNotification = async (
+    e: React.MouseEvent,
+    notificationId: string
+  ) => {
+    e.stopPropagation();
+
     const token = localStorage.getItem("token");
     if (!token) return;
 
@@ -142,10 +164,8 @@ export default function NotificationsPage() {
 
       if (!res.ok) throw new Error("Erreur");
 
-      setNotifications((prev) =>
-        prev.filter((n) => n.id !== notificationId)
-      );
-      setMessage("✅ Notification supprimée");
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      setMessage("Notification supprimée");
     } catch (err) {
       console.error("Erreur suppression:", err);
     } finally {
@@ -153,14 +173,25 @@ export default function NotificationsPage() {
     }
   };
 
-  const getIcon = (type: string) => {
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.isRead) {
+      markAsRead(notification.id);
+    }
+    if (notification.link) {
+      router.push(notification.link);
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
     switch (type) {
       case "NEW_CHAPTER":
         return BookOpen;
       case "NEW_COMMENT":
-        return Users;
+        return MessageCircle;
       case "NEW_SUBSCRIBER":
         return Users;
+      case "NEW_LIKE":
+        return Heart;
       case "EARNING":
         return Coins;
       case "CERTIFICATION":
@@ -172,35 +203,41 @@ export default function NotificationsPage() {
       case "EVENT_REWARD":
       case "EVENT_REMINDER":
         return Trophy;
+      case "REEL_MENTION":
+        return Sparkles;
       default:
         return Bell;
     }
   };
 
-  const getIconColor = (type: string) => {
+  const getTypeColor = (type: string) => {
     switch (type) {
       case "NEW_CHAPTER":
-        return "text-blue-400 bg-blue-950/30 border-blue-500/30";
+        return "bg-blue-500/15 text-blue-500 dark:text-blue-400 border-blue-500/30";
       case "NEW_COMMENT":
-        return "text-emerald-400 bg-emerald-950/30 border-emerald-500/30";
+        return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
       case "NEW_SUBSCRIBER":
-        return "text-purple-400 bg-purple-950/30 border-purple-500/30";
+        return "bg-purple-500/15 text-purple-500 dark:text-purple-400 border-purple-500/30";
+      case "NEW_LIKE":
+        return "bg-rose-500/15 text-rose-500 dark:text-rose-400 border-rose-500/30";
       case "EARNING":
-        return "text-amber-400 bg-amber-950/30 border-amber-500/30";
+        return "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30";
       case "CERTIFICATION":
-        return "text-rose-400 bg-rose-950/30 border-rose-500/30";
+        return "bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30";
       case "PREMIUM_EXPIRY":
-        return "text-orange-400 bg-orange-950/30 border-orange-500/30";
+        return "bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30";
       case "EVENT_STARTED":
-        return "text-emerald-400 bg-emerald-950/30 border-emerald-500/30";
+        return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
       case "EVENT_ENDED":
-        return "text-zinc-400 bg-zinc-950/30 border-zinc-500/30";
+        return "bg-muted text-muted-foreground border-border";
       case "EVENT_REWARD":
-        return "text-amber-400 bg-amber-950/30 border-amber-500/30";
+        return "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30";
       case "EVENT_REMINDER":
-        return "text-blue-400 bg-blue-950/30 border-blue-500/30";
+        return "bg-blue-500/15 text-blue-500 dark:text-blue-400 border-blue-500/30";
+      case "REEL_MENTION":
+        return "bg-violet-500/15 text-violet-500 dark:text-violet-400 border-violet-500/30";
       default:
-        return "text-zinc-400 bg-zinc-950/30 border-zinc-500/30";
+        return "bg-muted text-muted-foreground border-border";
     }
   };
 
@@ -215,12 +252,12 @@ export default function NotificationsPage() {
     if (minutes < 60) return `${minutes}m`;
     if (hours < 24) return `${hours}h`;
     if (days < 7) return `${days}j`;
-    return new Date(date).toLocaleDateString();
+    return new Date(date).toLocaleDateString("fr-FR");
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
+      <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader label="Chargement des notifications..." />
       </div>
     );
@@ -230,17 +267,18 @@ export default function NotificationsPage() {
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-white pb-24">
-      
-      {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+    <div className="flex flex-col min-h-screen bg-background text-foreground pb-24">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <Link href="/profile" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5 text-sm font-medium">
+          <Link
+            href="/profile"
+            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5 text-sm font-medium"
+          >
             <ArrowLeft className="w-4 h-4" />
             <span>Retour</span>
           </Link>
-          <span className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-            <Bell className="w-5 h-5 text-blue-400" />
+          <span className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
+            <Bell className="w-5 h-5 text-blue-500" />
             Notifications
             {unreadCount > 0 && (
               <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold">
@@ -253,23 +291,20 @@ export default function NotificationsPage() {
       </header>
 
       <main className="max-w-2xl mx-auto w-full px-4 md:px-8 py-6 flex flex-col gap-4">
-
-        {/* ALERTES */}
         {message && (
-          <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-sm flex items-center gap-2 shadow-lg">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-emerald-600 dark:text-emerald-300 text-sm flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span>{message}</span>
           </div>
         )}
 
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/40 text-rose-300 text-sm flex items-center gap-2 shadow-lg">
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-600 dark:text-rose-300 text-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* ACTIONS */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex gap-2">
             <button
@@ -277,7 +312,7 @@ export default function NotificationsPage() {
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 filter === "all"
                   ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-white border border-zinc-800/50"
+                  : "bg-card text-muted-foreground hover:text-foreground border border-border"
               }`}
             >
               Toutes
@@ -287,7 +322,7 @@ export default function NotificationsPage() {
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 filter === "unread"
                   ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                  : "bg-zinc-900/60 text-zinc-400 hover:text-white border border-zinc-800/50"
+                  : "bg-card text-muted-foreground hover:text-foreground border border-border"
               }`}
             >
               Non lues {unreadCount > 0 && `(${unreadCount})`}
@@ -297,7 +332,7 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <button
               onClick={markAllAsRead}
-              className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-sm font-medium transition-all flex items-center gap-2"
+              className="px-4 py-2 rounded-xl bg-card hover:bg-muted text-foreground text-sm font-medium transition-all border border-border flex items-center gap-2"
             >
               <Check className="w-4 h-4" />
               Tout lire
@@ -305,16 +340,15 @@ export default function NotificationsPage() {
           )}
         </div>
 
-        {/* LISTE DES NOTIFICATIONS */}
         {filteredNotifications.length === 0 ? (
-          <div className="text-center py-16 bg-zinc-900/30 rounded-2xl border border-zinc-800/40">
-            <Bell className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-            <p className="text-zinc-400 font-medium">
+          <div className="text-center py-16 bg-card/40 rounded-2xl border border-border/60">
+            <Bell className="w-16 h-16 text-muted-foreground/40 mx-auto mb-4" />
+            <p className="text-muted-foreground font-medium">
               {filter === "unread"
                 ? "Aucune notification non lue"
                 : "Aucune notification"}
             </p>
-            <p className="text-zinc-500 text-xs mt-1">
+            <p className="text-muted-foreground/70 text-xs mt-1">
               {filter === "unread"
                 ? "Vous avez lu toutes vos notifications"
                 : "Les notifications apparaîtront ici"}
@@ -323,40 +357,96 @@ export default function NotificationsPage() {
         ) : (
           <div className="space-y-2">
             {filteredNotifications.map((notification) => {
-              const Icon = getIcon(notification.type);
-              const iconColor = getIconColor(notification.type);
+              const TypeIcon = getTypeIcon(notification.type);
+              const typeColor = getTypeColor(notification.type);
               const isUnread = !notification.isRead;
+              const hasFromUser = !!notification.fromUser;
 
               return (
                 <div
                   key={notification.id}
-                  className={`relative bg-zinc-900/40 border rounded-2xl p-4 transition-all group hover:border-blue-500/30 ${
+                  onClick={() => handleNotificationClick(notification)}
+                  className={`relative cursor-pointer bg-card/60 border rounded-2xl p-4 transition-all group hover:border-blue-500/40 ${
                     isUnread
-                      ? "border-blue-500/40 bg-blue-950/10"
-                      : "border-zinc-800/60"
+                      ? "border-blue-500/40 bg-blue-500/5"
+                      : "border-border/60"
                   }`}
                 >
                   {isUnread && (
                     <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                   )}
 
+                  <button
+                    onClick={(e) => deleteNotification(e, notification.id)}
+                    disabled={deletingId === notification.id}
+                    className="absolute bottom-3 right-3 p-1.5 rounded-full opacity-0 group-hover:opacity-100 hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-all disabled:opacity-50"
+                    aria-label="Supprimer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+
                   <div className="flex items-start gap-3">
-                    <div
-                      className={`p-2 rounded-xl border ${iconColor} shrink-0`}
-                    >
-                      <Icon className="w-5 h-5" />
+                    <div className="relative shrink-0">
+                      {hasFromUser ? (
+                        <>
+                          {notification.fromUser?.avatarUrl ? (
+                            <img
+                              src={notification.fromUser.avatarUrl}
+                              alt={notification.fromUser.username}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                              style={{
+                                backgroundColor:
+                                  notification.fromUser?.avatarColor || "#8B5CF6",
+                              }}
+                            >
+                              {notification.fromUser?.username
+                                ?.charAt(0)
+                                .toUpperCase() || "?"}
+                            </div>
+                          )}
+                          <div
+                            className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-background flex items-center justify-center ${typeColor}`}
+                          >
+                            <TypeIcon className="w-2.5 h-2.5" />
+                          </div>
+                        </>
+                      ) : (
+                        <div
+                          className={`w-10 h-10 rounded-xl border flex items-center justify-center ${typeColor}`}
+                        >
+                          <TypeIcon className="w-5 h-5" />
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 pr-8">
                       <div className="flex items-start justify-between gap-2">
-                        <h3
-                          className={`text-sm font-semibold ${
-                            isUnread ? "text-white" : "text-zinc-400"
-                          }`}
-                        >
-                          {notification.title}
-                        </h3>
-                        <span className="text-[10px] text-zinc-500 whitespace-nowrap shrink-0">
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                          <h3
+                            className={`text-sm font-semibold ${
+                              isUnread ? "text-foreground" : "text-muted-foreground"
+                            }`}
+                          >
+                            {notification.title}
+                          </h3>
+                          {notification.fromUser?.isCertified && (
+                            <BadgeCheck
+                              className="w-3.5 h-3.5 shrink-0"
+                              fill={
+                                notification.fromUser.badgeColor ||
+                                notification.fromUser.avatarColor ||
+                                "#3B82F6"
+                              }
+                              color="black"
+                              strokeWidth={1.5}
+                            />
+                          )}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
                           {getTimeAgo(notification.createdAt)}
                         </span>
                       </div>
@@ -364,42 +454,14 @@ export default function NotificationsPage() {
                       {notification.body && (
                         <p
                           className={`text-sm mt-0.5 ${
-                            isUnread ? "text-zinc-300" : "text-zinc-500"
+                            isUnread
+                              ? "text-foreground/90"
+                              : "text-muted-foreground"
                           }`}
                         >
                           {notification.body}
                         </p>
                       )}
-
-                      <div className="flex flex-wrap items-center gap-2 mt-3">
-                        {notification.link && (
-                          <Link
-                            href={notification.link}
-                            className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
-                          >
-                            Voir détails
-                          </Link>
-                        )}
-
-                        {isUnread && (
-                          <button
-                            onClick={() => markAsRead(notification.id)}
-                            className="text-xs text-zinc-500 hover:text-white transition-colors flex items-center gap-1"
-                          >
-                            <Check className="w-3 h-3" />
-                            Marquer comme lu
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => deleteNotification(notification.id)}
-                          disabled={deletingId === notification.id}
-                          className="text-xs text-zinc-500 hover:text-rose-400 transition-colors flex items-center gap-1 disabled:opacity-50"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          Supprimer
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </div>
