@@ -17,6 +17,7 @@ import {
   Volume2,
   VolumeX,
   BadgeCheck,
+  CheckCircle2,
 } from "lucide-react";
 import { ReelComments } from "@/components/reels/ReelComments";
 
@@ -199,7 +200,7 @@ export function ReelGrid({ userId, isOwner = false, emptyHint }: Props) {
               key={reel.id}
               type="button"
               onClick={() => setActiveReel(reel)}
-              className="group relative block w-full aspect-[9/16] bg-muted rounded-lg overflow-hidden border border-border/60 hover:border-purple-500/50 hover:scale-[1.02] transition-all duration-200"
+              className="group relative block w-full aspect-[9/16] bg-black rounded-lg overflow-hidden border border-border/60 hover:border-purple-500/50 hover:scale-[1.02] transition-all duration-200"
             >
               <ReelThumbnail reel={reel} />
 
@@ -317,10 +318,16 @@ function ReelModal({
 
   const [muted, setMuted] = useState(true);
 
-  const [showComments, setShowComments] = useState(false);
+  // ✅ Animation fluide du bottom sheet
+  const [commentsMounted, setCommentsMounted] = useState(false);
+  const [commentsVisible, setCommentsVisible] = useState(false);
   const [commentsCount, setCommentsCount] = useState(reel.commentsCount || 0);
 
+  // ✅ Toast interne
+  const [toast, setToast] = useState<string | null>(null);
+
   const viewCountedRef = useRef(false);
+  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // ============================================
   // COMPTER LA VUE (une fois)
@@ -357,6 +364,44 @@ function ReelModal({
 
     countView();
   }, [reel.id, onReelUpdate]);
+
+  // ============================================
+  // TOAST auto-dismiss
+  // ============================================
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2200);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // ============================================
+  // OUVERTURE / FERMETURE FLUIDE DU BOTTOM SHEET
+  // ============================================
+  const openComments = () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setCommentsMounted(true);
+    // Double rAF pour laisser le DOM monter avant la transition
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setCommentsVisible(true));
+    });
+  };
+
+  const closeComments = () => {
+    setCommentsVisible(false);
+    closeTimerRef.current = setTimeout(() => {
+      setCommentsMounted(false);
+      closeTimerRef.current = null;
+    }, 320);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
 
   // ============================================
   // LIKE (optimistic)
@@ -410,7 +455,7 @@ function ReelModal({
     } else {
       try {
         await navigator.clipboard.writeText(shareUrl);
-        alert("Lien copié !");
+        setToast("Lien copié dans le presse-papier");
       } catch (e) {
         console.error("Erreur copie:", e);
       }
@@ -528,7 +573,7 @@ function ReelModal({
             )}
           </div>
 
-          {/* ACTIONS DROITE — STYLE app/reels/page.tsx */}
+          {/* ACTIONS DROITE */}
           <div className="absolute bottom-6 right-3 z-10 flex flex-col items-center gap-5">
             {/* LIKE */}
             <button
@@ -562,7 +607,7 @@ function ReelModal({
 
             {/* COMMENTAIRES */}
             <button
-              onClick={() => setShowComments(true)}
+              onClick={openComments}
               className="flex flex-col items-center gap-1 group"
             >
               <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
@@ -596,23 +641,43 @@ function ReelModal({
               </span>
             </button>
           </div>
+
+          {/* TOAST INTERNE */}
+          <div
+            className={`absolute left-1/2 -translate-x-1/2 bottom-28 z-30 transition-all duration-300 ${
+              toast
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-3 pointer-events-none"
+            }`}
+          >
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-black/80 backdrop-blur-md border border-white/20 text-white text-xs font-medium shadow-2xl">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>{toast}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* BOTTOM SHEET COMMENTAIRES — STYLE app/reels/page.tsx */}
-      {showComments && (
+      {/* BOTTOM SHEET COMMENTAIRES — ANIMATION FLUIDE */}
+      {commentsMounted && (
         <div
-          className="fixed inset-0 z-[110] flex flex-col justify-end bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowComments(false)}
+          className={`fixed inset-0 z-[110] flex flex-col justify-end transition-all duration-300 ease-out ${
+            commentsVisible
+              ? "bg-black/60 backdrop-blur-sm opacity-100"
+              : "bg-black/0 backdrop-blur-0 opacity-0"
+          }`}
+          onClick={closeComments}
         >
           <div
-            className="h-[75vh] rounded-t-3xl overflow-hidden border-t border-zinc-800"
+            className={`h-[75vh] rounded-t-3xl overflow-hidden border-t border-border shadow-2xl transition-transform duration-300 ease-out ${
+              commentsVisible ? "translate-y-0" : "translate-y-full"
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             <ReelComments
               reelId={reel.id}
               initialCount={commentsCount}
-              onClose={() => setShowComments(false)}
+              onClose={closeComments}
               onCommentAdded={(delta) => incrementCommentCount(delta)}
             />
           </div>
