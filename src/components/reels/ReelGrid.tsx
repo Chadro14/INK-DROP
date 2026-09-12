@@ -12,13 +12,27 @@ import {
   X,
   Loader2,
   AlertCircle,
-  Send,
   MessageCircle,
+  Share2,
   Volume2,
   VolumeX,
+  BadgeCheck,
 } from "lucide-react";
+import { ReelComments } from "@/components/reels/ReelComments";
 
 const API_URL = "https://ink-backend.vercel.app";
+
+const ACCENT_COLOR = "#8B5CF6";
+const ACCENT_GLOW = "rgba(139, 92, 246, 0.4)";
+
+type Author = {
+  id: string;
+  username: string;
+  avatarUrl?: string | null;
+  avatarColor?: string | null;
+  isCertified?: boolean;
+  badgeColor?: string | null;
+};
 
 type Reel = {
   id: string;
@@ -38,28 +52,7 @@ type Reel = {
   type?: string;
   ctaLabel?: string | null;
   isLiked?: boolean;
-  author?: {
-    id: string;
-    username: string;
-    avatarUrl?: string | null;
-    isCertified?: boolean;
-  };
-};
-
-type Comment = {
-  id: string;
-  content: string;
-  createdAt: string;
-  likesCount: number;
-  isLiked: boolean;
-  user: {
-    id: string;
-    username: string;
-    avatarUrl?: string | null;
-    isCertified?: boolean;
-  };
-  replies?: Comment[];
-  repliesCount?: number;
+  author?: Author;
 };
 
 type Props = {
@@ -67,6 +60,31 @@ type Props = {
   isOwner?: boolean;
   emptyHint?: string;
 };
+
+// ============================================
+// BADGE CERTIFIÉ
+// ============================================
+function CertifiedBadge({
+  author,
+  size = "sm",
+}: {
+  author?: Author;
+  size?: "sm" | "md";
+}) {
+  if (!author?.isCertified) return null;
+
+  const badgeColor = author.badgeColor || author.avatarColor || "#3B82F6";
+  const className = size === "sm" ? "w-4 h-4" : "w-5 h-5";
+
+  return (
+    <BadgeCheck
+      className={className}
+      fill={badgeColor}
+      color="black"
+      strokeWidth={1.5}
+    />
+  );
+}
 
 export function ReelGrid({ userId, isOwner = false, emptyHint }: Props) {
   const [reels, setReels] = useState<Reel[]>([]);
@@ -107,7 +125,7 @@ export function ReelGrid({ userId, isOwner = false, emptyHint }: Props) {
   }, [userId]);
 
   // ============================================
-  // ESC POUR FERMER LE MODAL
+  // ESC + SCROLL LOCK
   // ============================================
   useEffect(() => {
     if (!activeReel) return;
@@ -115,19 +133,9 @@ export function ReelGrid({ userId, isOwner = false, emptyHint }: Props) {
       if (e.key === "Escape") setActiveReel(null);
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [activeReel]);
-
-  // ============================================
-  // SCROLL LOCK QUAND MODAL OUVERT
-  // ============================================
-  useEffect(() => {
-    if (activeReel) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = "hidden";
     return () => {
+      window.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
   }, [activeReel]);
@@ -193,22 +201,7 @@ export function ReelGrid({ userId, isOwner = false, emptyHint }: Props) {
               onClick={() => setActiveReel(reel)}
               className="group relative block w-full aspect-[9/16] bg-muted rounded-lg overflow-hidden border border-border/60 hover:border-purple-500/50 hover:scale-[1.02] transition-all duration-200"
             >
-              {/* Miniature */}
-              {reel.thumbnailUrl ? (
-                <img
-                  src={reel.thumbnailUrl}
-                  alt={reel.title}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              ) : (
-                <video
-                  src={reel.videoUrl}
-                  muted
-                  playsInline
-                  preload="metadata"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              )}
+              <ReelThumbnail reel={reel} />
 
               {/* Overlay gradient + stats */}
               <div className="absolute inset-x-0 bottom-0 p-1.5 md:p-2 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex items-end justify-between">
@@ -259,9 +252,7 @@ export function ReelGrid({ userId, isOwner = false, emptyHint }: Props) {
         })}
       </div>
 
-      {/* ============================================
-          MODAL PLAYER TIKTOK STYLE
-      ============================================ */}
+      {/* MODAL */}
       {activeReel && (
         <ReelModal
           reel={activeReel}
@@ -279,7 +270,35 @@ export function ReelGrid({ userId, isOwner = false, emptyHint }: Props) {
 }
 
 // ============================================
-// MODAL TIKTOK STYLE
+// THUMBNAIL avec fallback vidéo
+// ============================================
+function ReelThumbnail({ reel }: { reel: Reel }) {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  if (reel.thumbnailUrl && !imgFailed) {
+    return (
+      <img
+        src={reel.thumbnailUrl}
+        alt={reel.title}
+        onError={() => setImgFailed(true)}
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+    );
+  }
+
+  return (
+    <video
+      src={`${reel.videoUrl}#t=0.1`}
+      muted
+      playsInline
+      preload="metadata"
+      className="absolute inset-0 w-full h-full object-cover"
+    />
+  );
+}
+
+// ============================================
+// MODAL STYLE TIKTOK
 // ============================================
 function ReelModal({
   reel,
@@ -294,17 +313,14 @@ function ReelModal({
   const [likesCount, setLikesCount] = useState(reel.likesCount || 0);
   const [viewsCount, setViewsCount] = useState(reel.viewsCount || 0);
   const [liking, setLiking] = useState(false);
+  const [likeAnim, setLikeAnim] = useState(false);
 
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(true);
 
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [commentsLoading, setCommentsLoading] = useState(true);
-  const [commentInput, setCommentInput] = useState("");
-  const [postingComment, setPostingComment] = useState(false);
-  const [commentsError, setCommentsError] = useState("");
+  const [showComments, setShowComments] = useState(false);
+  const [commentsCount, setCommentsCount] = useState(reel.commentsCount || 0);
 
   const viewCountedRef = useRef(false);
-  const commentsEndRef = useRef<HTMLDivElement>(null);
 
   // ============================================
   // COMPTER LA VUE (une fois)
@@ -343,46 +359,16 @@ function ReelModal({
   }, [reel.id, onReelUpdate]);
 
   // ============================================
-  // CHARGER LES COMMENTAIRES
-  // ============================================
-  useEffect(() => {
-    const fetchComments = async () => {
-      setCommentsLoading(true);
-      setCommentsError("");
-
-      try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API_URL}/reels/${reel.id}/comments?page=1&limit=20`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-
-        if (!res.ok) {
-          throw new Error("Impossible de charger les commentaires");
-        }
-
-        const data = await res.json();
-        setComments(Array.isArray(data.data) ? data.data : []);
-      } catch (err: any) {
-        setCommentsError(err.message || "Erreur");
-      } finally {
-        setCommentsLoading(false);
-      }
-    };
-
-    fetchComments();
-  }, [reel.id]);
-
-  // ============================================
-  // TOGGLE LIKE
+  // LIKE (optimistic)
   // ============================================
   const handleLike = async () => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token || liking) return;
 
-    if (liking) return;
     setLiking(true);
+    setLikeAnim(true);
+    setTimeout(() => setLikeAnim(false), 400);
 
-    // Optimistic
     const prevLiked = liked;
     const prevCount = likesCount;
     setLiked(!prevLiked);
@@ -401,7 +387,6 @@ function ReelModal({
       setLikesCount(data.likesCount);
       onReelUpdate({ likesCount: data.likesCount, isLiked: data.liked });
     } catch (err) {
-      // Rollback
       setLiked(prevLiked);
       setLikesCount(prevCount);
     } finally {
@@ -410,131 +395,141 @@ function ReelModal({
   };
 
   // ============================================
-  // POSTER UN COMMENTAIRE
+  // SHARE
   // ============================================
-  const handlePostComment = async () => {
-    const token = localStorage.getItem("token");
-    if (!token || !commentInput.trim() || postingComment) return;
-
-    setPostingComment(true);
-    setCommentsError("");
-
-    try {
-      const res = await fetch(`${API_URL}/reels/${reel.id}/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ content: commentInput.trim() }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || "Erreur lors de l'envoi");
+  const handleShare = async () => {
+    const shareUrl = `${window.location.origin}/reels/${reel.id}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: reel.title,
+          text: reel.description || "Regarde ce reel sur INKDROP !",
+          url: shareUrl,
+        });
+      } catch (e) {}
+    } else {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        alert("Lien copié !");
+      } catch (e) {
+        console.error("Erreur copie:", e);
       }
-
-      const data = await res.json();
-      if (data.data) {
-        setComments((prev) => [data.data, ...prev]);
-        setCommentInput("");
-        onReelUpdate({ commentsCount: (reel.commentsCount || 0) + 1 });
-        setTimeout(() => {
-          commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }, 100);
-      }
-    } catch (err: any) {
-      setCommentsError(err.message);
-    } finally {
-      setPostingComment(false);
     }
   };
 
-  const formatDate = (date: string) => {
-    const d = new Date(date);
-    const now = new Date();
-    const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
-    if (diff < 60) return "à l'instant";
-    if (diff < 3600) return `il y a ${Math.floor(diff / 60)} min`;
-    if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
-    if (diff < 604800) return `il y a ${Math.floor(diff / 86400)} j`;
-    return d.toLocaleDateString("fr-FR");
+  // ============================================
+  // COMMENTAIRES
+  // ============================================
+  const incrementCommentCount = (delta: number) => {
+    setCommentsCount((prev) => Math.max(0, prev + delta));
+    onReelUpdate({ commentsCount: Math.max(0, commentsCount + delta) });
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-sm flex items-center justify-center"
-      onClick={onClose}
-    >
+    <>
       <div
-        className="relative w-full h-full md:max-w-md md:h-[90vh] md:rounded-2xl bg-background md:border md:border-border/80 overflow-hidden flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+        onClick={onClose}
       >
-        {/* ============================================
-            HEADER
-        ============================================ */}
-        <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/80 to-transparent">
-          <div className="flex items-center gap-2 min-w-0">
-            {reel.author?.avatarUrl ? (
-              <img
-                src={reel.author.avatarUrl}
-                alt={reel.author.username}
-                className="w-8 h-8 rounded-full border border-white/20 object-cover shrink-0"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                {reel.author?.username?.charAt(0).toUpperCase() || "?"}
-              </div>
-            )}
-            <div className="min-w-0">
-              {reel.author?.username && (
-                <Link
-                  href={`/creator/${reel.author.username}`}
-                  className="text-sm font-bold text-white truncate hover:underline block"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  @{reel.author.username}
-                </Link>
-              )}
-              <p className="text-[10px] text-white/70">{formatDate(reel.createdAt)}</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-all shrink-0"
-            aria-label="Fermer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* ============================================
-            VIDÉO
-        ============================================ */}
-        <div className="flex-1 relative bg-black overflow-hidden">
+        <div
+          className="relative w-full h-full md:max-w-md md:h-[90vh] md:rounded-2xl overflow-hidden bg-black"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* VIDÉO */}
           <video
             src={reel.videoUrl}
-            controls
+            className="absolute inset-0 w-full h-full object-contain"
             autoPlay
-            playsInline
             loop
+            playsInline
             muted={muted}
-            className="w-full h-full object-contain"
           />
 
-          {/* Bouton mute flottant */}
+          {/* OVERLAY GRADIENT HAUT */}
+          <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/70 to-transparent pointer-events-none z-10" />
+
+          {/* HEADER */}
+          <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2 min-w-0">
+              {reel.author?.avatarUrl ? (
+                <img
+                  src={reel.author.avatarUrl}
+                  alt={reel.author.username}
+                  className="w-8 h-8 rounded-full border border-white/20 object-cover shrink-0"
+                />
+              ) : (
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+                  style={{
+                    backgroundColor: reel.author?.avatarColor || ACCENT_COLOR,
+                  }}
+                >
+                  {reel.author?.username?.charAt(0).toUpperCase() || "?"}
+                </div>
+              )}
+              <div className="min-w-0">
+                {reel.author?.username && (
+                  <Link
+                    href={`/creator/${reel.author.username}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-sm font-bold text-white truncate hover:opacity-80 transition-opacity flex items-center gap-1.5"
+                  >
+                    @{reel.author.username}
+                    <CertifiedBadge author={reel.author} size="sm" />
+                  </Link>
+                )}
+                <p className="text-[10px] text-white/70">
+                  {formatRelativeDate(reel.createdAt)}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-all shrink-0"
+              aria-label="Fermer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* BOUTON MUTE */}
           <button
             onClick={() => setMuted(!muted)}
-            className="absolute top-16 right-3 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white transition-all z-20"
+            className="absolute top-16 right-4 z-20 w-11 h-11 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-black/70 active:scale-95 transition-all shadow-lg"
             aria-label={muted ? "Activer le son" : "Couper le son"}
           >
-            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            {muted ? (
+              <VolumeX className="w-5 h-5" />
+            ) : (
+              <Volume2 className="w-5 h-5" />
+            )}
           </button>
 
-          {/* ============================================
-              ACTIONS FLOTTANTES (côté droit)
-          ============================================ */}
-          <div className="absolute right-3 bottom-24 z-20 flex flex-col items-center gap-4">
+          {/* INFO BAS GAUCHE */}
+          <div className="absolute bottom-6 left-4 right-20 z-10">
+            <h2 className="text-white font-bold text-base leading-tight mb-1">
+              {reel.title}
+            </h2>
+            {reel.description && (
+              <p className="text-white/80 text-sm line-clamp-2 mb-2">
+                {reel.description}
+              </p>
+            )}
+            {reel.ctaLabel && (
+              <span
+                className="inline-block px-3 py-1.5 rounded-full text-white text-xs font-bold shadow-lg"
+                style={{
+                  backgroundColor: ACCENT_COLOR,
+                  boxShadow: `0 8px 24px ${ACCENT_GLOW}`,
+                }}
+              >
+                {reel.ctaLabel}
+              </span>
+            )}
+          </div>
+
+          {/* ACTIONS DROITE — STYLE app/reels/page.tsx */}
+          <div className="absolute bottom-6 right-3 z-10 flex flex-col items-center gap-5">
             {/* LIKE */}
             <button
               onClick={handleLike}
@@ -542,194 +537,106 @@ function ReelModal({
               className="flex flex-col items-center gap-1 group"
             >
               <div
-                className={`w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-sm transition-all ${
+                className={`p-3 rounded-full transition-all duration-200 ${
+                  likeAnim ? "scale-125" : "scale-100"
+                } ${liked ? "" : "bg-white/10 hover:bg-white/20 text-white"}`}
+                style={
                   liked
-                    ? "bg-rose-500/90 text-white"
-                    : "bg-black/40 hover:bg-black/60 text-white"
-                }`}
+                    ? {
+                        backgroundColor: "rgba(244, 63, 94, 0.3)",
+                        color: "#F43F5E",
+                      }
+                    : {}
+                }
               >
                 <Heart
-                  className={`w-5 h-5 transition-transform group-active:scale-90 ${
-                    liked ? "fill-white" : ""
+                  className={`w-6 h-6 transition-all ${
+                    liked ? "fill-rose-500 scale-110" : "scale-100"
                   }`}
                 />
               </div>
-              <span className="text-white text-xs font-bold drop-shadow">
+              <span className="text-white/80 text-xs font-medium">
                 {likesCount}
               </span>
             </button>
 
-            {/* COMMENTAIRES (scroll vers section) */}
+            {/* COMMENTAIRES */}
             <button
-              onClick={() => {
-                commentsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-              }}
+              onClick={() => setShowComments(true)}
               className="flex flex-col items-center gap-1 group"
             >
-              <div className="w-11 h-11 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur-sm flex items-center justify-center text-white transition-all">
-                <MessageCircle className="w-5 h-5" />
+              <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
+                <MessageCircle className="w-6 h-6" />
               </div>
-              <span className="text-white text-xs font-bold drop-shadow">
-                {reel.commentsCount || 0}
+              <span className="text-white/80 text-xs font-medium">
+                {commentsCount}
               </span>
             </button>
 
             {/* VUES */}
             <div className="flex flex-col items-center gap-1">
-              <div className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white">
-                <Eye className="w-5 h-5" />
+              <div className="p-3 rounded-full bg-white/10 text-white">
+                <Eye className="w-6 h-6" />
               </div>
-              <span className="text-white text-xs font-bold drop-shadow">
+              <span className="text-white/80 text-xs font-medium">
                 {viewsCount}
               </span>
             </div>
-          </div>
 
-          {/* ============================================
-              INFO EN BAS (titre + description)
-          ============================================ */}
-          <div className="absolute bottom-0 left-0 right-16 z-10 p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
-            {reel.title && (
-              <p className="text-white text-sm font-bold mb-1 line-clamp-1">
-                {reel.title}
-              </p>
-            )}
-            {reel.description && (
-              <p className="text-white/80 text-xs line-clamp-2 mb-2">
-                {reel.description}
-              </p>
-            )}
-            {reel.ctaLabel && (
-              <span className="inline-block px-2.5 py-1 rounded-full bg-purple-600/90 text-white text-[10px] font-bold">
-                {reel.ctaLabel}
+            {/* SHARE */}
+            <button
+              onClick={handleShare}
+              className="flex flex-col items-center gap-1 group"
+            >
+              <div className="p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all">
+                <Share2 className="w-6 h-6" />
+              </div>
+              <span className="text-white/80 text-xs font-medium">
+                Partager
               </span>
-            )}
-          </div>
-        </div>
-
-        {/* ============================================
-            SECTION COMMENTAIRES
-        ============================================ */}
-        <div className="bg-background border-t border-border max-h-[45vh] flex flex-col">
-          <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between shrink-0">
-            <p className="text-sm font-bold text-foreground flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-purple-500" />
-              Commentaires ({reel.commentsCount || 0})
-            </p>
-          </div>
-
-          {/* Liste */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-            {commentsLoading ? (
-              <div className="flex items-center justify-center py-6 text-muted-foreground text-xs">
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                Chargement des commentaires...
-              </div>
-            ) : commentsError ? (
-              <div className="flex items-center gap-2 py-4 text-rose-500 dark:text-rose-400 text-xs">
-                <AlertCircle className="w-4 h-4" />
-                <span>{commentsError}</span>
-              </div>
-            ) : comments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <MessageCircle className="w-8 h-8 text-muted-foreground/50 mb-2" />
-                <p className="text-muted-foreground text-xs">
-                  Aucun commentaire pour l'instant
-                </p>
-                <p className="text-muted-foreground/70 text-[10px] mt-1">
-                  Sois le premier à commenter
-                </p>
-              </div>
-            ) : (
-              <>
-                {comments.map((comment) => (
-                  <CommentItem key={comment.id} comment={comment} formatDate={formatDate} />
-                ))}
-                <div ref={commentsEndRef} />
-              </>
-            )}
-          </div>
-
-          {/* Input */}
-          <div className="px-4 py-3 border-t border-border/60 bg-card/40 shrink-0">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={commentInput}
-                onChange={(e) => setCommentInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handlePostComment();
-                  }
-                }}
-                placeholder="Ajouter un commentaire..."
-                maxLength={500}
-                className="flex-1 px-3 py-2 rounded-full bg-background border border-border text-foreground placeholder-muted-foreground text-sm focus:border-purple-500 outline-none transition-all"
-              />
-              <button
-                onClick={handlePostComment}
-                disabled={postingComment || !commentInput.trim()}
-                className="p-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                aria-label="Envoyer"
-              >
-                {postingComment ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-              </button>
-            </div>
+            </button>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
 
-// ============================================
-// COMMENTAIRE ITEM
-// ============================================
-function CommentItem({
-  comment,
-  formatDate,
-}: {
-  comment: Comment;
-  formatDate: (d: string) => string;
-}) {
-  return (
-    <div className="flex items-start gap-2.5">
-      {comment.user?.avatarUrl ? (
-        <img
-          src={comment.user.avatarUrl}
-          alt={comment.user.username}
-          className="w-8 h-8 rounded-full object-cover shrink-0"
-        />
-      ) : (
-        <div className="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-          {comment.user?.username?.charAt(0).toUpperCase() || "?"}
+      {/* BOTTOM SHEET COMMENTAIRES — STYLE app/reels/page.tsx */}
+      {showComments && (
+        <div
+          className="fixed inset-0 z-[110] flex flex-col justify-end bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowComments(false)}
+        >
+          <div
+            className="h-[75vh] rounded-t-3xl overflow-hidden border-t border-zinc-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ReelComments
+              reelId={reel.id}
+              initialCount={commentsCount}
+              onClose={() => setShowComments(false)}
+              onCommentAdded={(delta) => incrementCommentCount(delta)}
+            />
+          </div>
         </div>
       )}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs font-bold text-foreground truncate">
-            @{comment.user?.username || "utilisateur"}
-          </span>
-          <span className="text-[10px] text-muted-foreground">
-            {formatDate(comment.createdAt)}
-          </span>
-        </div>
-        <p className="text-sm text-foreground/90 mt-0.5 break-words">
-          {comment.content}
-        </p>
-      </div>
-    </div>
+    </>
   );
 }
 
 // ============================================
-// SESSION ID (pour compter les vues anonymes)
+// HELPERS
 // ============================================
+function formatRelativeDate(date: string): string {
+  const d = new Date(date);
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+
+  if (diff < 60) return "à l'instant";
+  if (diff < 3600) return `il y a ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
+  if (diff < 604800) return `il y a ${Math.floor(diff / 86400)} j`;
+  return d.toLocaleDateString("fr-FR");
+}
+
 function getOrCreateSessionId(): string {
   if (typeof window === "undefined") return "";
   const key = "inkdrop_session_id";
