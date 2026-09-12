@@ -44,8 +44,14 @@ interface Props {
   onCommentAdded?: (delta: number) => void;
 }
 
-// ✅ COMPOSANT BADGE CERTIFIÉ
-function CertifiedBadge({ user, size = "xs" }: { user: CommentUser; size?: "xs" | "sm" }) {
+// ✅ BADGE CERTIFIÉ
+function CertifiedBadge({
+  user,
+  size = "xs",
+}: {
+  user: CommentUser;
+  size?: "xs" | "sm";
+}) {
   if (!user?.isCertified) return null;
 
   const badgeColor = user.badgeColor || user.avatarColor || "#3B82F6";
@@ -304,16 +310,18 @@ export function ReelComments({
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-            <span className="text-white text-xs font-semibold">
+            <span className="text-foreground text-xs font-semibold">
               @{comment.user.username}
             </span>
             <CertifiedBadge user={comment.user} size="xs" />
-            <span className="text-white/40 text-[10px]">
+            <span className="text-muted-foreground text-[10px]">
               {formatDate(comment.createdAt)}
             </span>
           </div>
 
-          <p className="text-white/90 text-sm break-words">{comment.content}</p>
+          <p className="text-foreground/90 text-sm break-words">
+            {comment.content}
+          </p>
 
           <div className="flex items-center gap-4 mt-1.5">
             <button
@@ -321,7 +329,7 @@ export function ReelComments({
               className={`flex items-center gap-1 text-xs transition-all ${
                 comment.isLiked
                   ? "text-rose-500"
-                  : "text-white/50 hover:text-white"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Heart
@@ -338,7 +346,7 @@ export function ReelComments({
                   setReplyTo(comment);
                   inputRef.current?.focus();
                 }}
-                className="text-xs text-white/50 hover:text-white transition-all"
+                className="text-xs text-muted-foreground hover:text-foreground transition-all"
               >
                 Répondre
               </button>
@@ -349,7 +357,7 @@ export function ReelComments({
                 onClick={() =>
                   handleDelete(comment.id, isReply, comment.parentId || undefined)
                 }
-                className="text-xs text-rose-400/60 hover:text-rose-400 transition-all"
+                className="text-xs text-rose-500/60 hover:text-rose-500 transition-all"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -361,16 +369,16 @@ export function ReelComments({
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800/60">
-        <h3 className="text-white font-bold text-sm flex items-center gap-2">
-          <MessageCircle className="w-4 h-4" />
+    <div className="flex flex-col h-full bg-background text-foreground">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <h3 className="text-foreground font-bold text-sm flex items-center gap-2">
+          <MessageCircle className="w-4 h-4 text-purple-500" />
           {totalComments} commentaire{totalComments !== 1 ? "s" : ""}
         </h3>
         {onClose && (
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-zinc-800 text-white/60 hover:text-white transition-all"
+            className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
           >
             <X className="w-4 h-4" />
           </button>
@@ -384,9 +392,9 @@ export function ReelComments({
           </div>
         ) : comments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <MessageCircle className="w-10 h-10 text-white/20 mb-3" />
-            <p className="text-white/50 text-sm">Aucun commentaire</p>
-            <p className="text-white/30 text-xs mt-1">
+            <MessageCircle className="w-10 h-10 text-muted-foreground/30 mb-3" />
+            <p className="text-muted-foreground text-sm">Aucun commentaire</p>
+            <p className="text-muted-foreground/70 text-xs mt-1">
               Soyez le premier à commenter
             </p>
           </div>
@@ -396,7 +404,7 @@ export function ReelComments({
               <div key={comment.id}>
                 {renderComment(comment)}
                 {comment.replies && comment.replies.length > 0 && (
-                  <div className="border-l border-zinc-800/40 ml-4">
+                  <div className="border-l border-border/60 ml-4">
                     {comment.replies.map((reply) => renderComment(reply, true))}
                   </div>
                 )}
@@ -410,7 +418,7 @@ export function ReelComments({
                   setPage(next);
                   fetchComments(next);
                 }}
-                className="w-full py-3 text-purple-400 hover:text-purple-300 text-xs font-medium transition-all"
+                className="w-full py-3 text-purple-500 hover:text-purple-400 text-xs font-medium transition-all"
               >
                 Voir plus de commentaires
               </button>
@@ -420,14 +428,14 @@ export function ReelComments({
       </div>
 
       {replyTo && (
-        <div className="px-4 py-2 bg-zinc-900/80 border-t border-zinc-800/60 flex items-center justify-between">
-          <span className="text-white/60 text-xs">
+        <div className="px-4 py-2 bg-card border-t border-border flex items-center justify-between">
+          <span className="text-muted-foreground text-xs">
             Répondre à{" "}
-            <span className="text-purple-400">@{replyTo.user.username}</span>
+            <span className="text-purple-500">@{replyTo.user.username}</span>
           </span>
           <button
             onClick={() => setReplyTo(null)}
-            className="text-white/40 hover:text-white"
+            className="text-muted-foreground hover:text-foreground"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -435,14 +443,14 @@ export function ReelComments({
       )}
 
       {error && (
-        <div className="px-4 py-2 bg-rose-950/40 border-t border-rose-500/30 text-rose-300 text-xs">
+        <div className="px-4 py-2 bg-rose-500/10 border-t border-rose-500/30 text-rose-600 dark:text-rose-300 text-xs">
           {error}
         </div>
       )}
 
       <form
         onSubmit={handleSubmit}
-        className="flex items-center gap-2 px-4 py-3 border-t border-zinc-800/60 bg-zinc-950"
+        className="flex items-center gap-2 px-4 py-3 border-t border-border bg-background"
       >
         <input
           ref={inputRef}
@@ -454,7 +462,7 @@ export function ReelComments({
               ? `Répondre à @${replyTo.user.username}...`
               : "Ajouter un commentaire..."
           }
-          className="flex-1 px-4 py-2.5 rounded-full bg-zinc-900 border border-zinc-800 text-white placeholder-white/40 focus:border-purple-500 outline-none text-sm"
+          className="flex-1 px-4 py-2.5 rounded-full bg-card border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none text-sm"
           maxLength={500}
         />
         <button
