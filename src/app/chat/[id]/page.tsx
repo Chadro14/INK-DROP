@@ -17,6 +17,7 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 const POLL_INTERVAL = 3000;
+const CHAT_BG = "https://files.catbox.moe/guzb7f.png";
 
 type ChatUser = {
   id: string;
@@ -65,7 +66,7 @@ export default function ChatPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // ============================================
-  // RÉCUPÉRER L'ID UTILISATEUR
+  // IDENTIFIER L'UTILISATEUR
   // ============================================
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -130,33 +131,23 @@ export default function ChatPage() {
       const data = await res.json();
       const newMessages: Message[] = data.data || [];
 
-      // Détection d'un nouveau message par ID
       const prevLastId = lastMessageIdRef.current;
       const newLastId = newMessages[newMessages.length - 1]?.id || null;
       const hasNew = newLastId && newLastId !== prevLastId;
 
       lastMessageIdRef.current = newLastId;
 
-      // Fusion intelligente : garder les messages optimistes en cours
       setMessages((prev) => {
-        // Filtrer les messages temporaires (préfixe "temp-")
         const temps = prev.filter((m) => m.id.startsWith("temp-"));
-
-        // Garder les temporaires qui ne sont pas encore confirmés
-        // (comparaison par contenu + timestamp proche)
-        const confirmed = newMessages;
-
         const stillPending = temps.filter(
           (t) =>
-            !confirmed.some(
+            !newMessages.some(
               (c) => c.content === t.content && c.senderId === t.senderId
             )
         );
-
-        return [...confirmed, ...stillPending];
+        return [...newMessages, ...stillPending];
       });
 
-      // Scroll auto si nouveau message
       if ((isInitial || hasNew) && scrollContainerRef.current) {
         setTimeout(() => {
           messagesEndRef.current?.scrollIntoView({
@@ -243,12 +234,10 @@ export default function ChatPage() {
         throw new Error(data.message || "Erreur d'envoi");
       }
 
-      // Récupérer le vrai message depuis le serveur
       const serverData = await res.json();
       const realMessage: Message | undefined = serverData.data;
 
       if (realMessage) {
-        // Remplacer le temporaire par le vrai
         setMessages((prev) =>
           prev.map((m) => (m.id === tempId ? realMessage : m))
         );
@@ -260,7 +249,6 @@ export default function ChatPage() {
       inputRef.current?.focus();
     } catch (err: any) {
       setError(err.message);
-      // Retirer le message optimiste en cas d'erreur
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setInput(content);
     } finally {
@@ -352,13 +340,31 @@ export default function ChatPage() {
   let lastSenderId = "";
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-background text-foreground">
-      {/* HEADER */}
-      <header className="shrink-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border/60 px-4 py-3">
+    <div className="flex flex-col h-[100dvh] text-foreground relative overflow-hidden">
+      {/* FOND IMAGE PLEIN ÉCRAN */}
+      <div
+        className="absolute inset-0 -z-10"
+        style={{
+          backgroundImage: `url('${CHAT_BG}')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      />
+
+      {/* HEADER — TRANSPARENT + BLUR */}
+      <header
+        className="shrink-0 z-40 border-b border-white/10 px-4 py-3"
+        style={{
+          backgroundColor: "rgba(0, 0, 0, 0.35)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
+      >
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
           <Link
             href="/collaborations"
-            className="p-2 rounded-full hover:bg-card text-muted-foreground hover:text-foreground transition-colors shrink-0"
+            className="p-2 rounded-full hover:bg-white/10 text-white transition-colors shrink-0"
             aria-label="Retour"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -373,7 +379,7 @@ export default function ChatPage() {
                   href={`/creator/${conversation.otherUser.username}`}
                   className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
                 >
-                  <span className="text-sm font-bold text-foreground truncate">
+                  <span className="text-sm font-bold text-white truncate">
                     @{conversation.otherUser.username}
                   </span>
                   {conversation.otherUser.isCertified && (
@@ -395,30 +401,21 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {/* MESSAGES — FOND IMAGE */}
+      {/* MESSAGES — sur le fond image, sans overlay */}
       <main
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-3 py-4"
-        style={{
-          backgroundImage: "url('https://files.catbox.moe/guzb7f.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
+        className="flex-1 overflow-y-auto px-3 py-4 relative"
       >
-        {/* Overlay pour lisibilité selon le thème */}
-        <div className="absolute inset-0 bg-background/70 dark:bg-background/80 pointer-events-none" />
-
-        <div className="relative max-w-3xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mb-3">
-                <MessageCircle className="w-8 h-8 text-blue-500" />
+              <div className="w-16 h-16 rounded-full bg-blue-500/20 backdrop-blur-md flex items-center justify-center mb-3 border border-white/20">
+                <MessageCircle className="w-8 h-8 text-white" />
               </div>
-              <p className="text-foreground font-medium text-sm">
+              <p className="text-white font-medium text-sm drop-shadow">
                 Aucun message pour l'instant
               </p>
-              <p className="text-muted-foreground/70 text-xs mt-1">
+              <p className="text-white/70 text-xs mt-1 drop-shadow">
                 Commencez la conversation
               </p>
             </div>
@@ -432,10 +429,10 @@ export default function ChatPage() {
                 lastSenderId = msg.senderId;
 
                 return (
-                  <div key={msg.id}>
+                  <div key={msg.id} className="animate-message-in">
                     {showDay && (
                       <div className="flex items-center justify-center my-4">
-                        <span className="px-3 py-1 rounded-full bg-card/90 backdrop-blur-sm border border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white uppercase tracking-wider">
                           {formatDay(msg.createdAt)}
                         </span>
                       </div>
@@ -453,10 +450,10 @@ export default function ChatPage() {
                       )}
 
                       <div
-                        className={`max-w-[75%] px-3.5 py-2 shadow-sm ${
+                        className={`max-w-[75%] px-3.5 py-2 shadow-lg ${
                           isMine
                             ? "bg-blue-600 text-white rounded-2xl rounded-br-sm"
-                            : "bg-card text-card-foreground border border-border rounded-2xl rounded-bl-sm"
+                            : "bg-black/70 backdrop-blur-md text-white border border-white/10 rounded-2xl rounded-bl-sm"
                         }`}
                       >
                         <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
@@ -469,9 +466,7 @@ export default function ChatPage() {
                         >
                           <span
                             className={`text-[9px] ${
-                              isMine
-                                ? "text-white/70"
-                                : "text-muted-foreground"
+                              isMine ? "text-white/70" : "text-white/60"
                             }`}
                           >
                             {formatTime(msg.createdAt)}
@@ -497,11 +492,16 @@ export default function ChatPage() {
         </div>
       </main>
 
-      {/* INPUT */}
+      {/* INPUT — TRANSPARENT + BLUR */}
       <form
         onSubmit={handleSend}
-        className="shrink-0 bg-background border-t border-border px-3 py-3"
-        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        className="shrink-0 z-40 border-t border-white/10 px-3 py-3"
+        style={{
+          backgroundColor: "rgba(0, 0, 0, 0.35)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+        }}
       >
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <input
@@ -511,12 +511,12 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Écrire un message..."
             maxLength={2000}
-            className="flex-1 px-4 py-2.5 rounded-full bg-card border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none text-sm transition-all"
+            className="flex-1 px-4 py-2.5 rounded-full bg-white/10 border border-white/20 text-white placeholder-white/60 focus:border-blue-400 focus:bg-white/15 outline-none text-sm transition-all backdrop-blur-md"
           />
           <button
             type="submit"
             disabled={!input.trim() || sending}
-            className="p-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            className="p-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-lg shadow-blue-600/30"
             aria-label="Envoyer"
           >
             {sending ? (
@@ -527,6 +527,22 @@ export default function ChatPage() {
           </button>
         </div>
       </form>
+
+      <style jsx>{`
+        @keyframes message-in {
+          from {
+            opacity: 0;
+            transform: translateY(8px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        .animate-message-in {
+          animation: message-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+      `}</style>
     </div>
   );
 }
