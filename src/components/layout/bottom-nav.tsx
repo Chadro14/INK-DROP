@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Search, User, Trophy } from "lucide-react";
-import { useTheme } from "@/components/providers/ThemeProvider";
+
+const API_URL = "https://ink-backend.vercel.app";
+
+// ============================================
+// CACHE MÉMOIRE (évite les fetchs redondants)
+// ============================================
+let eventsCache: { count: number; at: number } | null = null;
+const CACHE_TTL_MS = 30_000; // 30 secondes
 
 // ============================================
 // 🎬 SVG REELS — STYLE INSTAGRAM
@@ -22,7 +29,6 @@ const ReelIcon = ({
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Carré avec coins arrondis */}
     <rect
       x="2.5"
       y="2.5"
@@ -34,8 +40,6 @@ const ReelIcon = ({
       fill={active ? "currentColor" : "none"}
       fillOpacity={active ? "0.12" : "0"}
     />
-
-    {/* Triangle de lecture (play) */}
     <polygon
       points="9.5,7.5 16.5,12 9.5,16.5"
       fill="currentColor"
@@ -54,22 +58,56 @@ export function BottomNav({
   accentColor = "#8B5CF6",
 }: BottomNavProps) {
   const pathname = usePathname();
-  const { resolvedTheme } = useTheme();
   const [token, setToken] = useState<string | null>(null);
+  const [activeEventsCount, setActiveEventsCount] = useState(0);
 
   useEffect(() => {
     setToken(localStorage.getItem("token"));
   }, []);
 
+  // ============================================
+  // COMPTE DES ÉVÉNEMENTS ACTIFS
+  // ============================================
+  useEffect(() => {
+    const fetchActiveEvents = async () => {
+      // Cache valide ? On l'utilise
+      if (eventsCache && Date.now() - eventsCache.at < CACHE_TTL_MS) {
+        setActiveEventsCount(eventsCache.count);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem("token");
+        const headers: HeadersInit = token
+          ? { Authorization: `Bearer ${token}` }
+          : {};
+
+        const res = await fetch(`${API_URL}/events?isActive=true`, { headers });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const list = data.data || data || [];
+        const count = Array.isArray(list) ? list.length : 0;
+
+        eventsCache = { count, at: Date.now() };
+        setActiveEventsCount(count);
+      } catch (err) {
+        console.error("Erreur comptage événements:", err);
+      }
+    };
+
+    fetchActiveEvents();
+  }, []);
+
   const isActive = (path: string) => pathname === path;
 
-  // ============================================
-  // STYLE ACTIF avec couleur personnalisée
-  // ============================================
   const activeStyle = (color: string) => ({
     color: color,
     filter: `drop-shadow(0 0 10px ${color}60)`,
   });
+
+  const eventsIsActive =
+    isActive("/events") || pathname?.startsWith("/events/");
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border/60 px-4 py-2 transition-all duration-300">
@@ -91,7 +129,9 @@ export function BottomNav({
         <Link
           href="/discover"
           className={`flex flex-col items-center gap-1 transition-all duration-200 ${
-            isActive("/discover") ? "" : "text-muted-foreground hover:text-foreground"
+            isActive("/discover")
+              ? ""
+              : "text-muted-foreground hover:text-foreground"
           }`}
           style={isActive("/discover") ? activeStyle(primaryColor) : {}}
         >
@@ -99,7 +139,7 @@ export function BottomNav({
           <span className="text-[10px] font-medium">Découvrir</span>
         </Link>
 
-        {/* ===== REELS — STYLE INSTAGRAM ===== */}
+        {/* ===== REELS ===== */}
         <Link
           href="/reels"
           className={`flex flex-col items-center gap-1 transition-all duration-200 ${
@@ -123,18 +163,20 @@ export function BottomNav({
         {/* ===== ÉVÉNEMENTS ===== */}
         <Link
           href="/events"
-          className={`flex flex-col items-center gap-1 transition-all duration-200 ${
-            isActive("/events") || pathname?.startsWith("/events/")
-              ? ""
-              : "text-muted-foreground hover:text-foreground"
+          className={`relative flex flex-col items-center gap-1 transition-all duration-200 ${
+            eventsIsActive ? "" : "text-muted-foreground hover:text-foreground"
           }`}
-          style={
-            isActive("/events") || pathname?.startsWith("/events/")
-              ? activeStyle("#F59E0B")
-              : {}
-          }
+          style={eventsIsActive ? activeStyle("#F59E0B") : {}}
         >
-          <Trophy className="w-5 h-5" />
+          <div className="relative">
+            <Trophy className="w-5 h-5" />
+
+            {activeEventsCount > 0 && (
+              <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center shadow-md border border-background">
+                {activeEventsCount > 9 ? "9+" : activeEventsCount}
+              </span>
+            )}
+          </div>
           <span className="text-[10px] font-medium">Événements</span>
         </Link>
 
