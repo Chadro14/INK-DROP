@@ -28,6 +28,7 @@ import {
   Crown,
   Bookmark,
   Bell,
+  MessageCircle,
   DollarSign,
   TrendingUp,
   QrCode,
@@ -92,6 +93,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"mangas" | "reels" | "stats" | "menu">("mangas");
   const [ticketBalance, setTicketBalance] = useState<TicketBalance | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [collabBadge, setCollabBadge] = useState(0);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [hasRejectedRequest, setHasRejectedRequest] = useState(false);
 
@@ -222,8 +224,26 @@ export default function ProfilePage() {
     }
   };
 
+  const fetchCollabBadge = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_URL}/collaborations/badge-count`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCollabBadge(data.data?.total || 0);
+      }
+    } catch (error) {
+      console.error("Erreur chargement badge collaborations:", error);
+    }
+  };
+
   useEffect(() => {
     fetchUnreadCount();
+    fetchCollabBadge();
   }, []);
 
   const handleDeleteManga = async () => {
@@ -459,6 +479,21 @@ export default function ProfilePage() {
                 <QrCode className="w-5 h-5" />
                 <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
               </Link>
+
+              {/* ✅ MESSAGES (collaborations) */}
+              <Link
+                href="/collaborations"
+                className="relative p-2 rounded-full hover:bg-card hover:text-foreground transition-all"
+                title="Collaborations"
+              >
+                <MessageCircle className="w-5 h-5" />
+                {collabBadge > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-purple-600 text-white text-[9px] font-bold flex items-center justify-center">
+                    {collabBadge > 9 ? "9+" : collabBadge}
+                  </span>
+                )}
+              </Link>
+
               <Link
                 href="/notifications"
                 className="relative p-2 rounded-full hover:bg-card hover:text-foreground transition-all"
