@@ -29,6 +29,8 @@ import {
   Send,
   ShoppingCart,
   Film,
+  MessageCircle,
+  X,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -69,7 +71,11 @@ export default function CreatorProfilePage() {
   const [activeTab, setActiveTab] = useState<"mangas" | "reels" | "about">("mangas");
   const [userManasBalance, setUserManasBalance] = useState(0);
 
-  const [collaborating, setCollaborating] = useState(false);
+  const [showCollabModal, setShowCollabModal] = useState(false);
+  const [collabMessage, setCollabMessage] = useState("");
+  const [sendingRequest, setSendingRequest] = useState(false);
+  const [toast, setToast] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const [showSendManas, setShowSendManas] = useState(false);
   const [sendManasAmount, setSendManasAmount] = useState("");
   const [sendingManas, setSendingManas] = useState(false);
@@ -146,6 +152,12 @@ export default function CreatorProfilePage() {
     }
   }, [username]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   const handleFollow = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -188,7 +200,7 @@ export default function CreatorProfilePage() {
     }
   };
 
-  const handleCollaborate = async () => {
+  const handleCollabRequest = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/login");
@@ -197,39 +209,43 @@ export default function CreatorProfilePage() {
 
     if (!profile) return;
 
-    if (!confirm(`Envoyer 250 MANAS en collaboration avec ${profile.username} ?`)) {
-      return;
-    }
-
-    setCollaborating(true);
-    setError("");
+    setSendingRequest(true);
 
     try {
-      const res = await fetch(`${API_URL}/manas/collaborate`, {
+      const res = await fetch(`${API_URL}/collaborations/request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          creatorId: profile.id,
-          amountInManas: 250,
+          receiverId: profile.id,
+          message: collabMessage.trim() || undefined,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur lors de la collaboration");
+        throw new Error(data.message || "Erreur lors de l'envoi");
       }
 
-      alert(`Collaboration réussie : 250 MANAS envoyés à ${profile.username}.`);
-      setUserManasBalance(data.balance);
-      router.push("/profile");
+      setShowCollabModal(false);
+      setCollabMessage("");
+      setToast({ type: "success", text: "Demande de collaboration envoyée" });
+
+      // Rafraîchir le solde
+      const balRes = await fetch(`${API_URL}/manas/balance`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (balRes.ok) {
+        const balData = await balRes.json();
+        setUserManasBalance(balData.balance);
+      }
     } catch (err: any) {
-      setError(err.message);
+      setToast({ type: "error", text: err.message });
     } finally {
-      setCollaborating(false);
+      setSendingRequest(false);
     }
   };
 
@@ -244,17 +260,16 @@ export default function CreatorProfilePage() {
 
     const amount = parseInt(sendManasAmount);
     if (isNaN(amount) || amount < 1) {
-      setError("Veuillez entrer un montant valide");
+      setToast({ type: "error", text: "Veuillez entrer un montant valide" });
       return;
     }
 
     if (amount > userManasBalance) {
-      setError("Solde insuffisant");
+      setToast({ type: "error", text: "Solde insuffisant" });
       return;
     }
 
     setSendingManas(true);
-    setError("");
 
     try {
       const res = await fetch(`${API_URL}/manas/send`, {
@@ -275,12 +290,12 @@ export default function CreatorProfilePage() {
         throw new Error(data.message || "Erreur lors de l'envoi");
       }
 
-      alert(`Succès : ${amount} MANAS envoyés à ${profile.username}.`);
       setShowSendManas(false);
       setSendManasAmount("");
       setUserManasBalance(data.balance);
+      setToast({ type: "success", text: `${amount} MANAS envoyés à @${profile.username}` });
     } catch (err: any) {
-      setError(err.message);
+      setToast({ type: "error", text: err.message });
     } finally {
       setSendingManas(false);
     }
@@ -297,7 +312,7 @@ export default function CreatorProfilePage() {
       }).catch(() => {});
     } else {
       navigator.clipboard.writeText(shareUrl);
-      alert("Lien copié");
+      setToast({ type: "success", text: "Lien copié" });
     }
   };
 
@@ -590,32 +605,13 @@ export default function CreatorProfilePage() {
 
             {isCreator && (
               <button
-                onClick={handleCollaborate}
-                disabled={collaborating}
-                className={`px-4 py-2.5 rounded-full text-xs font-bold transition-all shadow-lg flex items-center gap-2 ${
-                  userManasBalance >= 250
-                    ? "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 text-white shadow-purple-900/30"
-                    : "bg-muted text-muted-foreground cursor-not-allowed border border-border"
-                }`}
+                onClick={() => setShowCollabModal(true)}
+                className="px-4 py-2.5 rounded-full text-xs font-bold transition-all shadow-lg flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 text-white shadow-purple-900/30"
               >
-                {collaborating ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Collaborer (250 MANAS)
-                  </>
-                )}
+                <MessageCircle className="w-4 h-4" />
+                Demander une collaboration
               </button>
             )}
-          </div>
-        )}
-
-        {/* ALERTE SOLDE INSUFFISANT */}
-        {isCreator && userManasBalance < 250 && !isCurrentUser && (
-          <div className="flex items-center gap-2 p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-600 dark:text-amber-300 text-xs mb-4 max-w-md w-full">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>Solde insuffisant pour collaborer (250 MANAS requis).</span>
           </div>
         )}
 
@@ -783,6 +779,99 @@ export default function CreatorProfilePage() {
 
       <BottomNav />
 
+      {/* MODAL DEMANDE DE COLLABORATION */}
+      {showCollabModal && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => !sendingRequest && setShowCollabModal(false)}
+        >
+          <div
+            className="bg-background border border-border/80 rounded-2xl p-6 max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <MessageCircle className="w-5 h-5 text-purple-500" />
+                Demander une collaboration
+              </h3>
+              <button
+                onClick={() => !sendingRequest && setShowCollabModal(false)}
+                className="p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-sm text-muted-foreground mb-4">
+              À <span className="text-foreground font-bold">@{profile.username}</span>
+            </p>
+
+            <div className="space-y-4">
+              <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/30">
+                <p className="text-xs text-purple-600 dark:text-purple-300">
+                  <span className="font-bold">250 MANAS</span> seront bloqués jusqu'à la réponse.
+                  Si refus, remboursement automatique.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">
+                  Message d'accroche (optionnel)
+                </label>
+                <textarea
+                  value={collabMessage}
+                  onChange={(e) => setCollabMessage(e.target.value)}
+                  placeholder="Ex : Je souhaite collaborer sur un projet de manga..."
+                  maxLength={300}
+                  rows={3}
+                  className="w-full px-4 py-2.5 bg-card border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none transition-all text-sm resize-none"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1 text-right">
+                  {collabMessage.length}/300
+                </p>
+              </div>
+
+              <div className="text-xs text-muted-foreground">
+                Votre solde : <span className="font-bold text-foreground">{userManasBalance} MANAS</span>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCollabRequest}
+                  disabled={sendingRequest || userManasBalance < 250}
+                  className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {sendingRequest ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Envoyer
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowCollabModal(false);
+                    setCollabMessage("");
+                  }}
+                  disabled={sendingRequest}
+                  className="px-4 py-2.5 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-bold transition-all disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+              </div>
+
+              {userManasBalance < 250 && (
+                <p className="text-xs text-rose-500 dark:text-rose-400 text-center">
+                  Solde insuffisant (250 MANAS requis)
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL SEND MANAS */}
       {showSendManas && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -813,8 +902,6 @@ export default function CreatorProfilePage() {
                 </p>
               </div>
 
-              {error && <p className="text-xs text-rose-500 dark:text-rose-400">{error}</p>}
-
               <div className="flex gap-3">
                 <button
                   onClick={handleSendManas}
@@ -834,7 +921,6 @@ export default function CreatorProfilePage() {
                   onClick={() => {
                     setShowSendManas(false);
                     setSendManasAmount("");
-                    setError("");
                   }}
                   className="px-4 py-2.5 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-bold transition-all"
                 >
@@ -845,6 +931,42 @@ export default function CreatorProfilePage() {
           </div>
         </div>
       )}
+
+      {/* TOAST */}
+      {toast && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-28 z-[110] animate-slide-down">
+          <div
+            className={`flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-2xl backdrop-blur-xl ${
+              toast.type === "success"
+                ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-300"
+                : "bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-300"
+            }`}
+          >
+            {toast.type === "success" ? (
+              <Check className="w-4 h-4 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 shrink-0" />
+            )}
+            <span className="text-sm font-medium">{toast.text}</span>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes slide-down {
+          from {
+            opacity: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-slide-down {
+          animation: slide-down 0.25s ease-out both;
+        }
+      `}</style>
     </div>
   );
 }
