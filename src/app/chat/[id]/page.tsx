@@ -66,7 +66,7 @@ export default function ChatPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // ============================================
-  // IDENTIFIER L'UTILISATEUR
+  // RÉCUPÉRER L'ID UTILISATEUR
   // ============================================
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -340,31 +340,16 @@ export default function ChatPage() {
   let lastSenderId = "";
 
   return (
-    <div className="flex flex-col h-[100dvh] text-foreground relative overflow-hidden">
-      {/* FOND IMAGE PLEIN ÉCRAN */}
-      <div
-        className="absolute inset-0 -z-10"
-        style={{
-          backgroundImage: `url('${CHAT_BG}')`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        }}
-      />
-
+    <div
+      className="flex flex-col h-[100dvh] text-foreground bg-fixed bg-cover bg-center"
+      style={{ backgroundImage: `url('${CHAT_BG}')` }}
+    >
       {/* HEADER — TRANSPARENT + BLUR */}
-      <header
-        className="shrink-0 z-40 border-b border-white/10 px-4 py-3"
-        style={{
-          backgroundColor: "rgba(0, 0, 0, 0.35)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-        }}
-      >
+      <header className="shrink-0 z-40 bg-background/60 backdrop-blur-xl border-b border-border/40 px-4 py-3">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
           <Link
             href="/collaborations"
-            className="p-2 rounded-full hover:bg-white/10 text-white transition-colors shrink-0"
+            className="p-2 rounded-full hover:bg-background/40 text-foreground transition-colors shrink-0"
             aria-label="Retour"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -379,7 +364,7 @@ export default function ChatPage() {
                   href={`/creator/${conversation.otherUser.username}`}
                   className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
                 >
-                  <span className="text-sm font-bold text-white truncate">
+                  <span className="text-sm font-bold text-foreground truncate">
                     @{conversation.otherUser.username}
                   </span>
                   {conversation.otherUser.isCertified && (
@@ -401,10 +386,10 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {/* MESSAGES — sur le fond image, sans overlay */}
+      {/* MESSAGES — sur le fond image directement */}
       <main
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-3 py-4 relative"
+        className="flex-1 overflow-y-auto px-3 py-4"
       >
         <div className="max-w-3xl mx-auto">
           {messages.length === 0 ? (
@@ -412,10 +397,10 @@ export default function ChatPage() {
               <div className="w-16 h-16 rounded-full bg-blue-500/20 backdrop-blur-md flex items-center justify-center mb-3 border border-white/20">
                 <MessageCircle className="w-8 h-8 text-white" />
               </div>
-              <p className="text-white font-medium text-sm drop-shadow">
+              <p className="text-white font-medium text-sm drop-shadow-lg">
                 Aucun message pour l'instant
               </p>
-              <p className="text-white/70 text-xs mt-1 drop-shadow">
+              <p className="text-white/80 text-xs mt-1 drop-shadow-lg">
                 Commencez la conversation
               </p>
             </div>
@@ -432,7 +417,7 @@ export default function ChatPage() {
                   <div key={msg.id} className="animate-message-in">
                     {showDay && (
                       <div className="flex items-center justify-center my-4">
-                        <span className="px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white uppercase tracking-wider">
+                        <span className="px-3 py-1 rounded-full bg-background/70 backdrop-blur-md border border-border/40 text-[10px] font-bold text-foreground uppercase tracking-wider">
                           {formatDay(msg.createdAt)}
                         </span>
                       </div>
@@ -450,10 +435,10 @@ export default function ChatPage() {
                       )}
 
                       <div
-                        className={`max-w-[75%] px-3.5 py-2 shadow-lg ${
+                        className={`max-w-[75%] px-3.5 py-2 shadow-md ${
                           isMine
                             ? "bg-blue-600 text-white rounded-2xl rounded-br-sm"
-                            : "bg-black/70 backdrop-blur-md text-white border border-white/10 rounded-2xl rounded-bl-sm"
+                            : "bg-background text-foreground border border-border rounded-2xl rounded-bl-sm"
                         }`}
                       >
                         <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
@@ -466,7 +451,9 @@ export default function ChatPage() {
                         >
                           <span
                             className={`text-[9px] ${
-                              isMine ? "text-white/70" : "text-white/60"
+                              isMine
+                                ? "text-white/70"
+                                : "text-muted-foreground"
                             }`}
                           >
                             {formatTime(msg.createdAt)}
@@ -495,13 +482,8 @@ export default function ChatPage() {
       {/* INPUT — TRANSPARENT + BLUR */}
       <form
         onSubmit={handleSend}
-        className="shrink-0 z-40 border-t border-white/10 px-3 py-3"
-        style={{
-          backgroundColor: "rgba(0, 0, 0, 0.35)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
-        }}
+        className="shrink-0 bg-background/60 backdrop-blur-xl border-t border-border/40 px-3 py-3"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <input
@@ -511,12 +493,12 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Écrire un message..."
             maxLength={2000}
-            className="flex-1 px-4 py-2.5 rounded-full bg-white/10 border border-white/20 text-white placeholder-white/60 focus:border-blue-400 focus:bg-white/15 outline-none text-sm transition-all backdrop-blur-md"
+            className="flex-1 px-4 py-2.5 rounded-full bg-background/80 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none text-sm transition-all"
           />
           <button
             type="submit"
             disabled={!input.trim() || sending}
-            className="p-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-lg shadow-blue-600/30"
+            className="p-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
             aria-label="Envoyer"
           >
             {sending ? (
@@ -532,15 +514,15 @@ export default function ChatPage() {
         @keyframes message-in {
           from {
             opacity: 0;
-            transform: translateY(8px) scale(0.98);
+            transform: translateY(6px);
           }
           to {
             opacity: 1;
-            transform: translateY(0) scale(1);
+            transform: translateY(0);
           }
         }
         .animate-message-in {
-          animation: message-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+          animation: message-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
       `}</style>
     </div>
