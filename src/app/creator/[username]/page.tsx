@@ -393,9 +393,9 @@ export default function CreatorProfilePage() {
       </header>
 
       {/* BANNIÈRE */}
-      <div className="h-20 md:h-28 w-full border-b border-border/40 relative overflow-hidden">
+      <div className="h-40 md:h-56 w-full border-b border-border/40 relative overflow-hidden">
         <img
-          src="https://files.catbox.moe/cs135g.png"
+          src="https://files.catbox.moe/deaven.png"
           alt="Couverture"
           className="absolute inset-0 w-full h-full object-cover object-bottom"
         />
