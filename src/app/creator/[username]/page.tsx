@@ -305,9 +305,6 @@ export default function CreatorProfilePage() {
     router.push("/acheter-manas?redirect=/creator/" + username);
   };
 
-  // ============================================
-  // ICÔNE GALAXY - Premium
-  // ============================================
   const GalaxyIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none">
       <defs>
@@ -396,10 +393,15 @@ export default function CreatorProfilePage() {
       </header>
 
       {/* BANNIÈRE */}
-      <div className="h-32 md:h-48 w-full bg-gradient-to-r from-background via-blue-950/40 to-background border-b border-border/40 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
+      <div className="h-20 md:h-28 w-full border-b border-border/40 relative overflow-hidden">
+        <img
+          src="https://files.catbox.moe/cs135g.png"
+          alt="Couverture"
+          className="absolute inset-0 w-full h-full object-cover object-bottom"
+        />
+        <div className="absolute inset-0 bg-black/20" />
         <div className="absolute inset-0 flex items-center justify-center opacity-5">
-          <span className="text-8xl font-black text-blue-500 select-none">
+          <span className="text-8xl font-black text-white select-none">
             {profile.username.charAt(0).toUpperCase()}
           </span>
         </div>
