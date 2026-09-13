@@ -7,21 +7,23 @@ import { BottomNav } from "@/components/layout/bottom-nav";
 import { Loader } from "@/components/ui/loader";
 import {
   ArrowLeft,
-  Coins,
   DollarSign,
   Wallet,
   TrendingUp,
   AlertCircle,
   CheckCircle2,
   Loader2,
-  ChevronRight,
   Smartphone,
-  Users,
-  Crown,
-  Shield
+  Ban,
+  Clock,
+  Check,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
+const RATE = 100; // 100 MANAS = 1 USD
+const MIN_WITHDRAWAL_MANAS = 1000; // 10 USD
+const WITHDRAWAL_FEE_USD = 2; // 2 USD fixes
+const MAX_DAILY_WITHDRAWAL_USD = 50; // 50 USD/jour
 
 type BalanceInfo = {
   balance: number;
@@ -32,13 +34,22 @@ type WithdrawalHistory = {
   id: string;
   amount: number;
   manasAmount: number;
+  fee: number;
+  grossAmount: number;
   status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
   mobileNumber: string;
   operator: string;
+  rejectionReason?: string | null;
   createdAt: string;
+  completedAt?: string | null;
 };
 
-const RATE = 100; // 100 MANAS = 1$
+const OPERATORS = [
+  { value: "orange", label: "Orange Money" },
+  { value: "mtn", label: "MTN Mobile Money" },
+  { value: "airtel", label: "Airtel Money" },
+  { value: "vodacom", label: "Vodacom M-Pesa" },
+];
 
 export default function CreatorBalancePage() {
   const router = useRouter();
@@ -49,10 +60,9 @@ export default function CreatorBalancePage() {
   const [history, setHistory] = useState<WithdrawalHistory[]>([]);
   const [amountManas, setAmountManas] = useState("");
   const [mobileNumber, setMobileNumber] = useState("");
-  const [operator, setOperator] = useState<"orange" | "mpesa">("orange");
+  const [operator, setOperator] = useState("orange");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [minWithdrawalManas] = useState(909); // 10$
   const maxWithdrawalManas = balanceInfo?.balance || 0;
 
   // ============================================
@@ -65,6 +75,7 @@ export default function CreatorBalancePage() {
       return;
     }
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchData = async () => {
@@ -79,7 +90,7 @@ export default function CreatorBalancePage() {
         fetch(`${API_URL}/manas/balance`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${API_URL}/manas/withdrawal-history`, {
+        fetch(`${API_URL}/manas/withdrawals`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -91,7 +102,7 @@ export default function CreatorBalancePage() {
 
       if (historyRes.ok) {
         const data = await historyRes.json();
-        setHistory(data.history || []);
+        setHistory(Array.isArray(data) ? data : data.history || []);
       }
     } catch (err: any) {
       setError(err.message);
@@ -105,9 +116,8 @@ export default function CreatorBalancePage() {
   // ============================================
   const manasAmount = parseInt(amountManas) || 0;
   const usdAmount = manasAmount / RATE;
-  const fee = usdAmount * 0.05; // 5% de frais
-  const netAmount = usdAmount - fee;
-  const isMinAmount = manasAmount >= minWithdrawalManas;
+  const netAmount = Math.max(0, usdAmount - WITHDRAWAL_FEE_USD);
+  const isMinAmount = manasAmount >= MIN_WITHDRAWAL_MANAS;
   const isMaxAmount = manasAmount <= maxWithdrawalManas;
   const isValidAmount = isMinAmount && isMaxAmount && manasAmount > 0;
 
@@ -122,7 +132,7 @@ export default function CreatorBalancePage() {
     }
 
     if (!isValidAmount) {
-      setError("Veuillez entrer un montant valide (min 909 MANAS)");
+      setError(`Veuillez entrer un montant valide (min ${MIN_WITHDRAWAL_MANAS} MANAS)`);
       return;
     }
 
@@ -136,16 +146,16 @@ export default function CreatorBalancePage() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch(`${API_URL}/manas/withdrawal`, {
+      const res = await fetch(`${API_URL}/manas/withdraw`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          manasAmount: manasAmount,
-          mobileNumber: mobileNumber,
-          operator: operator,
+          manasAmount,
+          mobileNumber,
+          operator,
         }),
       });
 
@@ -155,10 +165,10 @@ export default function CreatorBalancePage() {
         throw new Error(data.message || "Erreur lors de la demande");
       }
 
-      setSuccess(`✅ Demande de retrait de ${usdAmount.toFixed(2)}$ envoyée !`);
+      setSuccess(`Demande de retrait de ${netAmount.toFixed(2)} USD envoyée`);
       setAmountManas("");
       setMobileNumber("");
-      fetchData(); // Rafraîchir les données
+      fetchData();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -166,24 +176,46 @@ export default function CreatorBalancePage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      PENDING: "text-yellow-400 bg-yellow-500/20 border-yellow-500/30",
-      PROCESSING: "text-blue-400 bg-blue-500/20 border-blue-500/30",
-      COMPLETED: "text-emerald-400 bg-emerald-500/20 border-emerald-500/30",
-      FAILED: "text-rose-400 bg-rose-500/20 border-rose-500/30",
-    };
-    return colors[status] || "text-zinc-400 bg-zinc-500/20 border-zinc-500/30";
-  };
-
-  const getStatusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-      PENDING: "En attente",
-      PROCESSING: "En traitement",
-      COMPLETED: "Terminé",
-      FAILED: "Échoué",
-    };
-    return labels[status] || status;
+  // ============================================
+  // HELPERS
+  // ============================================
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "PENDING":
+        return {
+          label: "En attente",
+          icon: Clock,
+          className:
+            "text-amber-600 dark:text-amber-400 bg-amber-500/15 border-amber-500/30",
+        };
+      case "PROCESSING":
+        return {
+          label: "En traitement",
+          icon: Loader2,
+          className:
+            "text-blue-600 dark:text-blue-400 bg-blue-500/15 border-blue-500/30",
+        };
+      case "COMPLETED":
+        return {
+          label: "Terminé",
+          icon: Check,
+          className:
+            "text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 border-emerald-500/30",
+        };
+      case "FAILED":
+        return {
+          label: "Échoué",
+          icon: Ban,
+          className:
+            "text-rose-600 dark:text-rose-400 bg-rose-500/15 border-rose-500/30",
+        };
+      default:
+        return {
+          label: status,
+          icon: AlertCircle,
+          className: "text-muted-foreground bg-muted border-border",
+        };
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -196,83 +228,121 @@ export default function CreatorBalancePage() {
     });
   };
 
+  // ============================================
+  // MANA COIN (comme sur le profil)
+  // ============================================
+  const ManaCoin = ({ className = "w-5 h-5" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" fill="url(#manaGradient)" stroke="#FBBF24" strokeWidth="1.5" />
+      <circle cx="12" cy="12" r="8.5" fill="none" stroke="#D97706" strokeWidth="0.5" opacity="0.5" />
+      <text
+        x="12"
+        y="17"
+        textAnchor="middle"
+        fontSize="12"
+        fontWeight="800"
+        fill="#78350F"
+        fontFamily="Arial, sans-serif"
+      >
+        M
+      </text>
+      <defs>
+        <linearGradient id="manaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FCD34D" />
+          <stop offset="50%" stopColor="#FBBF24" />
+          <stop offset="100%" stopColor="#F59E0B" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+
+  // ============================================
+  // RENDER
+  // ============================================
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <Loader size={32} color="#3B82F6" />
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader label="Chargement de votre balance..." />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white">
-
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+    <div className="flex flex-col min-h-screen pb-24 bg-background text-foreground">
+      {/* HEADER */}
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
           <button
             onClick={() => router.back()}
-            className="text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-zinc-900 flex items-center gap-1.5"
+            className="text-muted-foreground hover:text-foreground transition-colors p-2 rounded-full hover:bg-card flex items-center gap-1.5"
           >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm font-medium hidden sm:inline">Retour</span>
           </button>
-          <span className="text-base font-bold tracking-tight text-white/90 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-emerald-400" />
+          <span className="text-base font-bold tracking-tight text-foreground/90 flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-emerald-500" />
             Balance
           </span>
           <Link
             href="/profile"
-            className="text-sm text-zinc-400 hover:text-white transition-colors"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             Profil
           </Link>
         </div>
       </header>
 
-      <div className="h-20 md:h-28 w-full bg-gradient-to-r from-zinc-950 via-emerald-950/30 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
+      {/* BANNIÈRE */}
+      <div className="h-20 md:h-28 w-full bg-gradient-to-r from-background via-emerald-950/30 to-background border-b border-border/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_50%)]" />
       </div>
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6 -mt-6">
 
         {/* ===== SOLDE ===== */}
-        <div className="bg-gradient-to-r from-emerald-950/30 to-teal-950/30 border border-emerald-500/20 rounded-2xl p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-zinc-400 font-medium">Votre solde</p>
-              <p className="text-3xl font-extrabold text-white flex items-center gap-2">
-                <Coins className="w-8 h-8 text-emerald-400" />
-                {balanceInfo?.balance || 0} MANAS
+        <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/30 rounded-2xl p-6 mb-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground font-medium">
+                Votre solde
               </p>
-              <p className="text-sm text-zinc-400 mt-1">
-                ≈ {(balanceInfo?.balance || 0) / RATE} USD
+              <p className="text-2xl md:text-3xl font-extrabold text-foreground flex items-center gap-2 mt-1">
+                <ManaCoin className="w-7 h-7 md:w-8 md:h-8 shrink-0" />
+                <span className="truncate">{balanceInfo?.balance || 0} MANAS</span>
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                ≈ {((balanceInfo?.balance || 0) / RATE).toFixed(2)} USD
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-zinc-400 font-medium">Taux</p>
-              <p className="text-sm font-bold text-emerald-400">100 MANAS = 1$</p>
-              <p className="text-xs text-zinc-500 mt-1">Frais : 5%</p>
+            <div className="text-right shrink-0">
+              <p className="text-xs text-muted-foreground font-medium">Taux</p>
+              <p className="text-sm font-bold text-emerald-500">
+                100 MANAS = 1 USD
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Frais : 2 USD fixes
+              </p>
             </div>
           </div>
         </div>
 
         {/* ===== FORMULAIRE DE RETRAIT ===== */}
-        <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl p-6 mb-6">
-          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <Wallet className="w-4 h-4 text-emerald-400" />
+        <div className="bg-card/60 border border-border/80 rounded-2xl p-6 mb-6">
+          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-emerald-500" />
             Retirer des MANAS
           </h3>
 
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-sm flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
+            <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-300 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="mb-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-sm flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" />
+            <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 text-sm flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{success}</span>
             </div>
           )}
@@ -280,42 +350,44 @@ export default function CreatorBalancePage() {
           <div className="space-y-4">
             {/* Montant en MANAS */}
             <div>
-              <label className="text-xs font-medium text-zinc-400 block mb-1">
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
                 Montant en MANAS
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">
-                  <Coins className="w-4 h-4" />
+                <span className="absolute left-4 top-1/2 -translate-y-1/2">
+                  <ManaCoin className="w-4 h-4" />
                 </span>
                 <input
                   type="number"
                   value={amountManas}
                   onChange={(e) => setAmountManas(e.target.value)}
-                  placeholder="909"
-                  className="w-full pl-10 pr-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:border-emerald-500 outline-none transition-all"
+                  placeholder="1000"
+                  className="w-full pl-12 pr-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-emerald-500 outline-none transition-all"
                 />
               </div>
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-[10px] text-zinc-500">
-                  Min : 909 MANAS (10$) • Max : {maxWithdrawalManas} MANAS
+              <div className="flex items-center justify-between mt-1 flex-wrap gap-1">
+                <p className="text-[10px] text-muted-foreground">
+                  Min : {MIN_WITHDRAWAL_MANAS} MANAS ({MIN_WITHDRAWAL_MANAS / RATE} USD) • Max : {maxWithdrawalManas} MANAS
                 </p>
-                <span className="text-[10px] text-zinc-500">
-                  ≈ {usdAmount.toFixed(2)}$ (frais inclus)
+                <span className="text-[10px] text-muted-foreground">
+                  ≈ {usdAmount.toFixed(2)} USD
                 </span>
               </div>
               {manasAmount > 0 && (
-                <div className="mt-2 p-2 bg-zinc-950/60 border border-zinc-800/60 rounded-lg text-xs">
-                  <div className="flex justify-between text-zinc-400">
+                <div className="mt-2 p-2 bg-background/60 border border-border/60 rounded-lg text-xs">
+                  <div className="flex justify-between text-muted-foreground">
                     <span>Montant brut</span>
-                    <span>{usdAmount.toFixed(2)}$</span>
+                    <span>{usdAmount.toFixed(2)} USD</span>
                   </div>
-                  <div className="flex justify-between text-zinc-500">
-                    <span>Frais (5%)</span>
-                    <span>-{fee.toFixed(2)}$</span>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Frais</span>
+                    <span>-{WITHDRAWAL_FEE_USD.toFixed(2)} USD</span>
                   </div>
-                  <div className="flex justify-between text-white font-bold border-t border-zinc-800/60 pt-1 mt-1">
-                    <span>Net</span>
-                    <span className="text-emerald-400">{netAmount.toFixed(2)}$</span>
+                  <div className="flex justify-between text-foreground font-bold border-t border-border/60 pt-1 mt-1">
+                    <span>Net à recevoir</span>
+                    <span className="text-emerald-500">
+                      {netAmount.toFixed(2)} USD
+                    </span>
                   </div>
                 </div>
               )}
@@ -323,11 +395,11 @@ export default function CreatorBalancePage() {
 
             {/* Numéro de téléphone */}
             <div>
-              <label className="text-xs font-medium text-zinc-400 block mb-1">
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
                 Numéro de téléphone
               </label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                   <Smartphone className="w-4 h-4" />
                 </span>
                 <input
@@ -335,45 +407,41 @@ export default function CreatorBalancePage() {
                   value={mobileNumber}
                   onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, ""))}
                   placeholder="812345678"
-                  className="w-full pl-10 pr-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl text-white placeholder-zinc-500 focus:border-emerald-500 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-card border border-border rounded-xl text-foreground placeholder-muted-foreground focus:border-emerald-500 outline-none transition-all"
                 />
               </div>
-              <p className="text-[10px] text-zinc-500 mt-1">Exemple: 812345678</p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                Exemple : 812345678
+              </p>
             </div>
 
             {/* Opérateur */}
             <div>
-              <label className="text-xs font-medium text-zinc-400 block mb-1">
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
                 Opérateur
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setOperator("orange")}
-                  className={`py-3 rounded-xl border text-sm font-medium transition-all ${
-                    operator === "orange"
-                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
-                      : "border-zinc-800 text-zinc-400 hover:border-zinc-700"
-                  }`}
-                >
-                  Orange Money
-                </button>
-                <button
-                  onClick={() => setOperator("mpesa")}
-                  className={`py-3 rounded-xl border text-sm font-medium transition-all ${
-                    operator === "mpesa"
-                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-400"
-                      : "border-zinc-800 text-zinc-400 hover:border-zinc-700"
-                  }`}
-                >
-                  M-Pesa
-                </button>
+              <div className="grid grid-cols-2 gap-2">
+                {OPERATORS.map((op) => (
+                  <button
+                    key={op.value}
+                    type="button"
+                    onClick={() => setOperator(op.value)}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-medium transition-all ${
+                      operator === op.value
+                        ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground bg-card"
+                    }`}
+                  >
+                    {op.label}
+                  </button>
+                ))}
               </div>
             </div>
 
             <button
               onClick={handleWithdrawal}
-              disabled={isSubmitting || !isValidAmount}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-900/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              disabled={isSubmitting || !isValidAmount || mobileNumber.length < 8}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold transition-all shadow-lg shadow-emerald-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
@@ -383,58 +451,93 @@ export default function CreatorBalancePage() {
               ) : (
                 <>
                   <DollarSign className="w-4 h-4" />
-                  Retirer {netAmount.toFixed(2)}$
+                  Retirer {netAmount.toFixed(2)} USD
                 </>
               )}
             </button>
 
-            {!isMinAmount && manasAmount > 0 && (
-              <p className="text-xs text-rose-400 text-center">
-                ⚠️ Le montant minimum est de 909 MANAS (10$)
+            {manasAmount > 0 && !isMinAmount && (
+              <p className="text-xs text-rose-500 dark:text-rose-400 text-center flex items-center justify-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Le montant minimum est de {MIN_WITHDRAWAL_MANAS} MANAS (10 USD)
+              </p>
+            )}
+            {manasAmount > maxWithdrawalManas && (
+              <p className="text-xs text-rose-500 dark:text-rose-400 text-center flex items-center justify-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5" />
+                Solde insuffisant
               </p>
             )}
           </div>
         </div>
 
         {/* ===== HISTORIQUE DES RETRAITS ===== */}
-        <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-2xl overflow-hidden">
-          <div className="p-4 border-b border-zinc-800/60 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
+        <div className="bg-card/40 border border-border/60 rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-border/60 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-500" />
               Historique des retraits
             </h3>
-            <span className="text-xs text-zinc-500">{history.length} retraits</span>
+            <span className="text-xs text-muted-foreground">
+              {history.length} retrait{history.length !== 1 ? "s" : ""}
+            </span>
           </div>
 
           {history.length === 0 ? (
-            <div className="p-8 text-center text-zinc-500 text-sm">
+            <div className="p-8 text-center text-muted-foreground text-sm">
               Aucun retrait effectué
             </div>
           ) : (
-            <div className="divide-y divide-zinc-800/40">
-              {history.map((item) => (
-                <div key={item.id} className="p-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-white">
-                      {item.manasAmount} MANAS → {item.amount.toFixed(2)}$
-                    </p>
-                    <p className="text-xs text-zinc-400">
-                      {item.operator === "orange" ? "Orange Money" : "M-Pesa"} • {item.mobileNumber}
-                    </p>
-                    <p className="text-[10px] text-zinc-500">{formatDate(item.createdAt)}</p>
+            <div className="divide-y divide-border/40">
+              {history.map((item) => {
+                const badge = getStatusBadge(item.status);
+                const BadgeIcon = badge.icon;
+                const displayAmount = item.amount ?? (item.manasAmount / RATE - WITHDRAWAL_FEE_USD);
+
+                return (
+                  <div key={item.id} className="p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                          <ManaCoin className="w-4 h-4 shrink-0" />
+                          <span className="truncate">
+                            {item.manasAmount} MANAS
+                            <span className="text-muted-foreground font-normal">
+                              {" "}→ {displayAmount.toFixed(2)} USD
+                            </span>
+                          </span>
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {OPERATORS.find((o) => o.value === item.operator)?.label || item.operator}
+                          {" • "}
+                          {item.mobileNumber}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {formatDate(item.createdAt)}
+                        </p>
+                        {item.status === "FAILED" && item.rejectionReason && (
+                          <p className="text-[10px] text-rose-500 dark:text-rose-400 mt-1">
+                            Raison : {item.rejectionReason}
+                          </p>
+                        )}
+                      </div>
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border flex items-center gap-1 shrink-0 ${badge.className}`}
+                      >
+                        <BadgeIcon className="w-2.5 h-2.5" />
+                        {badge.label}
+                      </span>
+                    </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold border ${getStatusColor(item.status)}`}>
-                    {getStatusLabel(item.status)}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-[10px] text-zinc-600">
-            ✦ Les retraits sont traités sous 24-48h ✦
+          <p className="text-[10px] text-muted-foreground">
+            Les retraits sont traités sous 24-48h
           </p>
         </div>
       </main>
