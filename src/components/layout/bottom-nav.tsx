@@ -6,12 +6,13 @@ import { usePathname } from "next/navigation";
 import { Home, Search, User, Trophy } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
+const LAST_SEEN_KEY = "inkdrop_events_last_seen";
 
 // ============================================
 // CACHE MÉMOIRE (évite les fetchs redondants)
 // ============================================
-let eventsCache: { count: number; at: number } | null = null;
-const CACHE_TTL_MS = 30_000; // 30 secondes
+let eventsCache: { data: any[]; at: number } | null = null;
+const CACHE_TTL_MS = 30_000;
 
 // ============================================
 // 🎬 SVG REELS — STYLE INSTAGRAM
@@ -66,38 +67,63 @@ export function BottomNav({
   }, []);
 
   // ============================================
-  // COMPTE DES ÉVÉNEMENTS ACTIFS
+  // COMPTE DES NOUVEAUX ÉVÉNEMENTS (depuis lastSeen)
   // ============================================
   useEffect(() => {
-    const fetchActiveEvents = async () => {
-      // Cache valide ? On l'utilise
-      if (eventsCache && Date.now() - eventsCache.at < CACHE_TTL_MS) {
-        setActiveEventsCount(eventsCache.count);
-        return;
-      }
-
+    const fetchNewEvents = async () => {
       try {
-        const token = localStorage.getItem("token");
-        const headers: HeadersInit = token
-          ? { Authorization: `Bearer ${token}` }
-          : {};
+        let events: any[] | null = null;
 
-        const res = await fetch(`${API_URL}/events?isActive=true`, { headers });
-        if (!res.ok) return;
+        // Cache valide ?
+        if (eventsCache && Date.now() - eventsCache.at < CACHE_TTL_MS) {
+          events = eventsCache.data;
+        } else {
+          const token = localStorage.getItem("token");
+          const headers: HeadersInit = token
+            ? { Authorization: `Bearer ${token}` }
+            : {};
 
-        const data = await res.json();
-        const list = data.data || data || [];
-        const count = Array.isArray(list) ? list.length : 0;
+          const res = await fetch(`${API_URL}/events?isActive=true`, {
+            headers,
+          });
+          if (!res.ok) return;
 
-        eventsCache = { count, at: Date.now() };
-        setActiveEventsCount(count);
+          const data = await res.json();
+          const list = data.data || data || [];
+          events = Array.isArray(list) ? list : [];
+          eventsCache = { data: events, at: Date.now() };
+        }
+
+        if (!events) return;
+
+        // Dernière visite de l'onglet Événements
+        const lastSeen = localStorage.getItem(LAST_SEEN_KEY);
+        const lastSeenTime = lastSeen ? new Date(lastSeen).getTime() : 0;
+
+        // Compter les événements créés après lastSeen
+        const newCount = events.filter((e) => {
+          if (!e.createdAt) return true;
+          return new Date(e.createdAt).getTime() > lastSeenTime;
+        }).length;
+
+        setActiveEventsCount(newCount);
       } catch (err) {
         console.error("Erreur comptage événements:", err);
       }
     };
 
-    fetchActiveEvents();
-  }, []);
+    fetchNewEvents();
+  }, [pathname]);
+
+  // ============================================
+  // MARQUER COMME VU quand on est sur /events
+  // ============================================
+  useEffect(() => {
+    if (pathname === "/events" || pathname?.startsWith("/events/")) {
+      localStorage.setItem(LAST_SEEN_KEY, new Date().toISOString());
+      setActiveEventsCount(0);
+    }
+  }, [pathname]);
 
   const isActive = (path: string) => pathname === path;
 
@@ -171,7 +197,7 @@ export function BottomNav({
           <div className="relative">
             <Trophy className="w-5 h-5" />
 
-            {activeEventsCount > 0 && (
+            {activeEventsCount > 0 && !eventsIsActive && (
               <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center shadow-md border border-background">
                 {activeEventsCount > 9 ? "9+" : activeEventsCount}
               </span>
