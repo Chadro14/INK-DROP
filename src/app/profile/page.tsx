@@ -43,6 +43,7 @@ import {
   AlertCircle,
   X,
   Loader2,
+  Wallet,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -94,6 +95,7 @@ export default function ProfilePage() {
   const [ticketBalance, setTicketBalance] = useState<TicketBalance | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [collabBadge, setCollabBadge] = useState(0);
+  const [pendingPayoutsCount, setPendingPayoutsCount] = useState(0);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [hasRejectedRequest, setHasRejectedRequest] = useState(false);
 
@@ -174,6 +176,11 @@ export default function ProfilePage() {
           mangas: mangasList,
           earnings: earningsData || { total: 0, pending: 0, paid: 0 },
         });
+
+        // Si admin → charger le nombre de retraits en attente
+        if (profileData.role === "ADMIN") {
+          fetchPendingPayoutsCount(token);
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -183,6 +190,23 @@ export default function ProfilePage() {
 
     fetchProfile();
   }, [router]);
+
+  const fetchPendingPayoutsCount = async (token?: string) => {
+    const t = token || localStorage.getItem("token");
+    if (!t) return;
+
+    try {
+      const res = await fetch(`${API_URL}/admin/payouts?status=PENDING&limit=1`, {
+        headers: { Authorization: `Bearer ${t}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPendingPayoutsCount(data.meta?.total || 0);
+      }
+    } catch (error) {
+      console.error("Erreur chargement retraits en attente:", error);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -480,7 +504,6 @@ export default function ProfilePage() {
                 <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
               </Link>
 
-              {/* ✅ MESSAGES (collaborations) */}
               <Link
                 href="/collaborations"
                 className="relative p-2 rounded-full hover:bg-card hover:text-foreground transition-all"
@@ -1044,6 +1067,25 @@ export default function ProfilePage() {
                   <span className="text-xs text-muted-foreground">
                     ≈ ${(profile.manas / 100).toFixed(2)}
                   </span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                </Link>
+              )}
+
+              {/* ✅ ADMIN — RETRAITS (PAYOUTS) */}
+              {isAdmin && (
+                <Link
+                  href="/admin/payouts"
+                  className="flex items-center gap-3 px-4 py-3.5 hover:bg-card/50 transition-colors border-b border-border/30"
+                >
+                  <Wallet className="w-5 h-5 text-emerald-400" />
+                  <span className="text-sm font-medium text-foreground flex-1">
+                    Gérer les retraits
+                  </span>
+                  {pendingPayoutsCount > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] font-bold border border-amber-500/30 flex items-center gap-1">
+                      {pendingPayoutsCount} en attente
+                    </span>
+                  )}
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </Link>
               )}
