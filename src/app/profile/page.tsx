@@ -481,11 +481,11 @@ export default function ProfilePage() {
         </header>
 
         {/* BANNIÈRE */}
-        <div className="h-32 md:h-48 w-full border-b border-border/40 relative overflow-hidden">
+        <div className="h-40 md:h-56 w-full border-b border-border/40 relative overflow-hidden">
           <img
             src="https://files.catbox.moe/2sw139.png"
             alt="Couverture"
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover object-bottom"
           />
           <div className="absolute inset-0 bg-black/20" />
           {isCreator && (
