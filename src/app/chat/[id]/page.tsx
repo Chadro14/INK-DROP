@@ -11,6 +11,8 @@ import {
   AlertCircle,
   BadgeCheck,
   MessageCircle,
+  Check,
+  CheckCheck,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -50,6 +52,7 @@ export default function ChatPage() {
   const [conversation, setConversation] = useState<ConversationInfo | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<ChatUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [input, setInput] = useState("");
@@ -75,6 +78,7 @@ export default function ChatPage() {
       if (stored) {
         const u = JSON.parse(stored);
         setCurrentUserId(u?.id || null);
+        setCurrentUser(u);
       }
     } catch (e) {
       console.error("Erreur parsing user:", e);
@@ -183,7 +187,7 @@ export default function ChatPage() {
       content,
       isRead: false,
       createdAt: new Date().toISOString(),
-      sender: {
+      sender: currentUser || {
         id: currentUserId || "",
         username: "Vous",
         avatarUrl: null,
@@ -217,8 +221,6 @@ export default function ChatPage() {
       }
 
       await fetchMessages(false);
-
-      // Garder le focus sur l'input pour écrire plusieurs messages à la suite
       inputRef.current?.focus();
     } catch (err: any) {
       setError(err.message);
@@ -230,7 +232,7 @@ export default function ChatPage() {
   };
 
   // ============================================
-  // FORMAT DATE
+  // FORMAT
   // ============================================
   const formatTime = (date: string) => {
     const d = new Date(date);
@@ -256,6 +258,27 @@ export default function ChatPage() {
       day: "numeric",
       month: "long",
     });
+  };
+
+  const renderAvatar = (user: ChatUser | null, size = "w-8 h-8") => {
+    if (!user) return null;
+    if (user.avatarUrl) {
+      return (
+        <img
+          src={user.avatarUrl}
+          alt={user.username}
+          className={`${size} rounded-full object-cover shrink-0 ring-2 ring-background`}
+        />
+      );
+    }
+    return (
+      <div
+        className={`${size} rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ring-2 ring-background`}
+        style={{ backgroundColor: user.avatarColor || "#8B5CF6" }}
+      >
+        {user.username?.charAt(0).toUpperCase() || "?"}
+      </div>
+    );
   };
 
   // ============================================
@@ -289,11 +312,12 @@ export default function ChatPage() {
   }
 
   let lastDay = "";
+  let lastSenderId = "";
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
       {/* HEADER */}
-      <header className="shrink-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border/60 px-4 py-3">
+      <header className="shrink-0 z-40 bg-background/95 backdrop-blur-xl border-b border-border/60 px-4 py-3">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
           <Link
             href="/collaborations"
@@ -305,24 +329,10 @@ export default function ChatPage() {
 
           {conversation && (
             <>
-              {conversation.otherUser.avatarUrl ? (
-                <img
-                  src={conversation.otherUser.avatarUrl}
-                  alt={conversation.otherUser.username}
-                  className="w-9 h-9 rounded-full object-cover shrink-0"
-                />
-              ) : (
-                <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-                  style={{
-                    backgroundColor:
-                      conversation.otherUser.avatarColor || "#8B5CF6",
-                  }}
-                >
-                  {conversation.otherUser.username?.charAt(0).toUpperCase() ||
-                    "?"}
-                </div>
-              )}
+              <div className="relative">
+                {renderAvatar(conversation.otherUser, "w-10 h-10")}
+                <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background" />
+              </div>
 
               <div className="flex-1 min-w-0">
                 <Link
@@ -345,8 +355,8 @@ export default function ChatPage() {
                     />
                   )}
                 </Link>
-                <p className="text-[10px] text-muted-foreground">
-                  Collaboration active
+                <p className="text-[10px] text-emerald-500 font-medium">
+                  En ligne
                 </p>
               </div>
             </>
@@ -355,12 +365,14 @@ export default function ChatPage() {
       </header>
 
       {/* MESSAGES */}
-      <main className="flex-1 overflow-y-auto px-4 py-4">
+      <main className="flex-1 overflow-y-auto px-3 py-4">
         <div className="max-w-3xl mx-auto">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <MessageCircle className="w-12 h-12 text-muted-foreground/40 mb-3" />
-              <p className="text-muted-foreground text-sm">
+              <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center mb-3">
+                <MessageCircle className="w-8 h-8 text-purple-500" />
+              </div>
+              <p className="text-foreground font-medium text-sm">
                 Aucun message pour l'instant
               </p>
               <p className="text-muted-foreground/70 text-xs mt-1">
@@ -368,50 +380,79 @@ export default function ChatPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {messages.map((msg) => {
                 const isMine = msg.senderId === currentUserId;
                 const showDay = formatDay(msg.createdAt) !== lastDay;
+                const showAvatar = !isMine && msg.senderId !== lastSenderId;
                 if (showDay) lastDay = formatDay(msg.createdAt);
+                lastSenderId = msg.senderId;
 
                 return (
                   <div key={msg.id}>
                     {showDay && (
-                      <div className="flex items-center justify-center my-4">
+                      <div className="flex items-center gap-3 my-5">
+                        <div className="flex-1 h-px bg-border/60" />
                         <span className="px-3 py-1 rounded-full bg-card border border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                           {formatDay(msg.createdAt)}
                         </span>
+                        <div className="flex-1 h-px bg-border/60" />
                       </div>
                     )}
 
                     <div
-                      className={`flex ${
-                        isMine ? "justify-end" : "justify-start"
-                      } mb-1`}
+                      className={`flex items-end gap-2 mb-1 ${
+                        isMine ? "flex-row-reverse" : "flex-row"
+                      }`}
                     >
+                      {/* Avatar (à gauche, seulement pour l'autre) */}
+                      {!isMine && (
+                        <div className="w-8 shrink-0">
+                          {showAvatar ? renderAvatar(msg.sender, "w-8 h-8") : null}
+                        </div>
+                      )}
+
+                      {/* Bulle */}
                       <div
-                        className={`max-w-[75%] px-3.5 py-2 rounded-2xl ${
+                        className={`max-w-[75%] px-3.5 py-2 shadow-sm ${
                           isMine
-                            ? "bg-purple-600 text-white rounded-br-sm"
-                            : "bg-card border border-border text-foreground rounded-bl-sm"
+                            ? "bg-gradient-to-br from-purple-600 to-purple-500 text-white rounded-2xl rounded-br-md"
+                            : "bg-card border border-border/80 text-foreground rounded-2xl rounded-bl-md"
                         }`}
                       >
-                        <p className="text-sm whitespace-pre-wrap break-words">
+                        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
                           {msg.content}
                         </p>
-                        <p
-                          className={`text-[9px] mt-1 ${
-                            isMine ? "text-white/70" : "text-muted-foreground"
-                          } text-right`}
+                        <div
+                          className={`flex items-center gap-1 mt-1 ${
+                            isMine ? "justify-end" : "justify-start"
+                          }`}
                         >
-                          {formatTime(msg.createdAt)}
-                        </p>
+                          <span
+                            className={`text-[9px] ${
+                              isMine
+                                ? "text-white/70"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {formatTime(msg.createdAt)}
+                          </span>
+                          {isMine && (
+                            <span className="text-white/70">
+                              {msg.isRead ? (
+                                <CheckCheck className="w-3 h-3" />
+                              ) : (
+                                <Check className="w-3 h-3" />
+                              )}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 );
               })}
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-2" />
             </div>
           )}
         </div>
@@ -420,10 +461,10 @@ export default function ChatPage() {
       {/* INPUT */}
       <form
         onSubmit={handleSend}
-        className="shrink-0 bg-background border-t border-border px-4 py-3"
+        className="shrink-0 bg-background/95 backdrop-blur-xl border-t border-border/60 px-3 py-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        <div className="max-w-3xl mx-auto flex items-center gap-2">
+        <div className="max-w-3xl mx-auto flex items-end gap-2">
           <input
             ref={inputRef}
             type="text"
@@ -431,12 +472,12 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Écrire un message..."
             maxLength={2000}
-            className="flex-1 px-4 py-2.5 rounded-full bg-card border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none text-sm transition-all"
+            className="flex-1 px-4 py-3 rounded-full bg-card border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none text-sm transition-all"
           />
           <button
             type="submit"
             disabled={!input.trim() || sending}
-            className="p-2.5 rounded-full bg-purple-600 hover:bg-purple-500 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            className="p-3 rounded-full bg-gradient-to-br from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-lg shadow-purple-600/20"
             aria-label="Envoyer"
           >
             {sending ? (
