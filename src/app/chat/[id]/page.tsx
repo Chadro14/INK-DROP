@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { BottomNav } from "@/components/layout/bottom-nav";
 import { Loader } from "@/components/ui/loader";
 import {
   ArrowLeft,
@@ -59,9 +58,10 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const lastMessageIdRef = useRef<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // ============================================
-  // RÉCUPÉRER L'ID UTILISATEUR (une fois)
+  // RÉCUPÉRER L'ID UTILISATEUR
   // ============================================
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -82,7 +82,7 @@ export default function ChatPage() {
   }, [router]);
 
   // ============================================
-  // CHARGER LA CONVERSATION (une fois)
+  // CHARGER LA CONVERSATION
   // ============================================
   useEffect(() => {
     const fetchConversation = async () => {
@@ -125,17 +125,17 @@ export default function ChatPage() {
       const data = await res.json();
       const newMessages: Message[] = data.data || [];
 
-      // Détecter un nouveau message
       const lastId = newMessages[newMessages.length - 1]?.id || null;
       const hasNew = lastId && lastId !== lastMessageIdRef.current;
       lastMessageIdRef.current = lastId;
 
       setMessages(newMessages);
 
-      // Scroll en bas seulement si nouveau message ou initial
       if (isInitial || hasNew) {
         setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: isInitial ? "auto" : "smooth" });
+          messagesEndRef.current?.scrollIntoView({
+            behavior: isInitial ? "auto" : "smooth",
+          });
         }, 50);
       }
     } catch (err: any) {
@@ -150,7 +150,6 @@ export default function ChatPage() {
 
     fetchMessages(true);
 
-    // Polling toutes les 3s
     pollingRef.current = setInterval(() => {
       fetchMessages(false);
     }, POLL_INTERVAL);
@@ -175,7 +174,6 @@ export default function ChatPage() {
     setInput("");
     setSending(true);
 
-    // Optimistic : ajouter un message temporaire
     const tempId = `temp-${Date.now()}`;
     const optimisticMessage: Message = {
       id: tempId,
@@ -195,7 +193,10 @@ export default function ChatPage() {
       },
     };
     setMessages((prev) => [...prev, optimisticMessage]);
-    setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    setTimeout(
+      () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }),
+      50
+    );
 
     try {
       const res = await fetch(
@@ -215,11 +216,12 @@ export default function ChatPage() {
         throw new Error(data.message || "Erreur d'envoi");
       }
 
-      // Recharger immédiatement pour avoir le vrai message
       await fetchMessages(false);
+
+      // Garder le focus sur l'input pour écrire plusieurs messages à la suite
+      inputRef.current?.focus();
     } catch (err: any) {
       setError(err.message);
-      // Retirer le message optimiste
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setInput(content);
     } finally {
@@ -242,7 +244,8 @@ export default function ChatPage() {
     const d = new Date(date);
     const now = new Date();
     const diff = Math.floor(
-      (new Date(now.toDateString()).getTime() - new Date(d.toDateString()).getTime()) /
+      (new Date(now.toDateString()).getTime() -
+        new Date(d.toDateString()).getTime()) /
         86400000
     );
 
@@ -285,13 +288,12 @@ export default function ChatPage() {
     );
   }
 
-  // Grouper les messages par jour
   let lastDay = "";
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
+    <div className="flex flex-col h-screen bg-background text-foreground">
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border/60 px-4 py-3">
+      <header className="shrink-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border/60 px-4 py-3">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
           <Link
             href="/collaborations"
@@ -312,9 +314,13 @@ export default function ChatPage() {
               ) : (
                 <div
                   className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
-                  style={{ backgroundColor: conversation.otherUser.avatarColor || "#8B5CF6" }}
+                  style={{
+                    backgroundColor:
+                      conversation.otherUser.avatarColor || "#8B5CF6",
+                  }}
                 >
-                  {conversation.otherUser.username?.charAt(0).toUpperCase() || "?"}
+                  {conversation.otherUser.username?.charAt(0).toUpperCase() ||
+                    "?"}
                 </div>
               )}
 
@@ -329,7 +335,11 @@ export default function ChatPage() {
                   {conversation.otherUser.isCertified && (
                     <BadgeCheck
                       className="w-4 h-4 shrink-0"
-                      fill={conversation.otherUser.badgeColor || conversation.otherUser.avatarColor || "#3B82F6"}
+                      fill={
+                        conversation.otherUser.badgeColor ||
+                        conversation.otherUser.avatarColor ||
+                        "#3B82F6"
+                      }
                       color="black"
                       strokeWidth={1.5}
                     />
@@ -345,71 +355,77 @@ export default function ChatPage() {
       </header>
 
       {/* MESSAGES */}
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-4 overflow-y-auto">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <MessageCircle className="w-12 h-12 text-muted-foreground/40 mb-3" />
-            <p className="text-muted-foreground text-sm">
-              Aucun message pour l'instant
-            </p>
-            <p className="text-muted-foreground/70 text-xs mt-1">
-              Commencez la conversation
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {messages.map((msg) => {
-              const isMine = msg.senderId === currentUserId;
-              const showDay = formatDay(msg.createdAt) !== lastDay;
-              if (showDay) lastDay = formatDay(msg.createdAt);
+      <main className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="max-w-3xl mx-auto">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <MessageCircle className="w-12 h-12 text-muted-foreground/40 mb-3" />
+              <p className="text-muted-foreground text-sm">
+                Aucun message pour l'instant
+              </p>
+              <p className="text-muted-foreground/70 text-xs mt-1">
+                Commencez la conversation
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {messages.map((msg) => {
+                const isMine = msg.senderId === currentUserId;
+                const showDay = formatDay(msg.createdAt) !== lastDay;
+                if (showDay) lastDay = formatDay(msg.createdAt);
 
-              return (
-                <div key={msg.id}>
-                  {showDay && (
-                    <div className="flex items-center justify-center my-4">
-                      <span className="px-3 py-1 rounded-full bg-card border border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                        {formatDay(msg.createdAt)}
-                      </span>
-                    </div>
-                  )}
+                return (
+                  <div key={msg.id}>
+                    {showDay && (
+                      <div className="flex items-center justify-center my-4">
+                        <span className="px-3 py-1 rounded-full bg-card border border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                          {formatDay(msg.createdAt)}
+                        </span>
+                      </div>
+                    )}
 
-                  <div
-                    className={`flex ${isMine ? "justify-end" : "justify-start"} mb-1`}
-                  >
                     <div
-                      className={`max-w-[75%] px-3.5 py-2 rounded-2xl ${
-                        isMine
-                          ? "bg-purple-600 text-white rounded-br-sm"
-                          : "bg-card border border-border text-foreground rounded-bl-sm"
-                      }`}
+                      className={`flex ${
+                        isMine ? "justify-end" : "justify-start"
+                      } mb-1`}
                     >
-                      <p className="text-sm whitespace-pre-wrap break-words">
-                        {msg.content}
-                      </p>
-                      <p
-                        className={`text-[9px] mt-1 ${
-                          isMine ? "text-white/70" : "text-muted-foreground"
-                        } text-right`}
+                      <div
+                        className={`max-w-[75%] px-3.5 py-2 rounded-2xl ${
+                          isMine
+                            ? "bg-purple-600 text-white rounded-br-sm"
+                            : "bg-card border border-border text-foreground rounded-bl-sm"
+                        }`}
                       >
-                        {formatTime(msg.createdAt)}
-                      </p>
+                        <p className="text-sm whitespace-pre-wrap break-words">
+                          {msg.content}
+                        </p>
+                        <p
+                          className={`text-[9px] mt-1 ${
+                            isMine ? "text-white/70" : "text-muted-foreground"
+                          } text-right`}
+                        >
+                          {formatTime(msg.createdAt)}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
       </main>
 
       {/* INPUT */}
       <form
         onSubmit={handleSend}
-        className="sticky bottom-0 bg-background border-t border-border px-4 py-3 pb-20 md:pb-3"
+        className="shrink-0 bg-background border-t border-border px-4 py-3"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         <div className="max-w-3xl mx-auto flex items-center gap-2">
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -431,8 +447,6 @@ export default function ChatPage() {
           </button>
         </div>
       </form>
-
-      <BottomNav />
     </div>
   );
 }
