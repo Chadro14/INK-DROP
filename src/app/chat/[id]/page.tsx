@@ -13,6 +13,10 @@ import {
   MessageCircle,
   Check,
   CheckCheck,
+  BookOpen,
+  Plus,
+  X,
+  Search,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -28,6 +32,13 @@ type ChatUser = {
   badgeColor: string | null;
 };
 
+type MangaPreview = {
+  id: string;
+  title: string;
+  slug: string | null;
+  coverUrl: string | null;
+};
+
 type Message = {
   id: string;
   senderId: string;
@@ -37,6 +48,7 @@ type Message = {
   isRead: boolean;
   createdAt: string;
   sender: ChatUser;
+  manga: MangaPreview | null;
 };
 
 type ConversationInfo = {
@@ -58,6 +70,13 @@ export default function ChatPage() {
   const [error, setError] = useState("");
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Manga partagé
+  const [attachedManga, setAttachedManga] = useState<MangaPreview | null>(null);
+  const [showMangaModal, setShowMangaModal] = useState(false);
+  const [myMangas, setMyMangas] = useState<MangaPreview[]>([]);
+  const [loadingMangas, setLoadingMangas] = useState(false);
+  const [mangaSearch, setMangaSearch] = useState("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -178,17 +197,58 @@ export default function ChatPage() {
   }, [conversationId]);
 
   // ============================================
+  // CHARGER MES MANGAS (pour le modal)
+  // ============================================
+  const loadMyMangas = async () => {
+    if (!currentUserId) return;
+    setLoadingMangas(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/mangas/creator/${currentUserId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const list = data.data || [];
+        setMyMangas(
+          list.map((m: any) => ({
+            id: m.id,
+            title: m.title,
+            slug: m.slug || null,
+            coverUrl: m.coverUrl || null,
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("Erreur chargement mangas:", err);
+    } finally {
+      setLoadingMangas(false);
+    }
+  };
+
+  const openMangaModal = () => {
+    setShowMangaModal(true);
+    if (myMangas.length === 0) {
+      loadMyMangas();
+    }
+  };
+
+  // ============================================
   // ENVOYER UN MESSAGE
   // ============================================
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || sending) return;
+    if ((!input.trim() && !attachedManga) || sending) return;
 
     const token = localStorage.getItem("token");
     if (!token) return;
 
     const content = input.trim();
+    const mangaToSend = attachedManga;
+
     setInput("");
+    setAttachedManga(null);
     setSending(true);
 
     const tempId = `temp-${Date.now()}`;
@@ -208,6 +268,7 @@ export default function ChatPage() {
         isCertified: false,
         badgeColor: null,
       },
+      manga: mangaToSend,
     };
 
     setMessages((prev) => [...prev, optimisticMessage]);
@@ -225,7 +286,10 @@ export default function ChatPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ content }),
+          body: JSON.stringify({
+            content,
+            mangaId: mangaToSend?.id || undefined,
+          }),
         }
       );
 
@@ -251,6 +315,7 @@ export default function ChatPage() {
       setError(err.message);
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setInput(content);
+      setAttachedManga(mangaToSend);
     } finally {
       setSending(false);
     }
@@ -306,6 +371,10 @@ export default function ChatPage() {
     );
   };
 
+  const filteredMangas = myMangas.filter((m) =>
+    m.title.toLowerCase().includes(mangaSearch.toLowerCase())
+  );
+
   // ============================================
   // RENDER
   // ============================================
@@ -344,7 +413,7 @@ export default function ChatPage() {
       className="flex flex-col h-[100dvh] text-foreground bg-fixed bg-cover bg-center"
       style={{ backgroundImage: `url('${CHAT_BG}')` }}
     >
-      {/* HEADER — TRANSPARENT + BLUR */}
+      {/* HEADER */}
       <header className="shrink-0 z-40 bg-background/60 backdrop-blur-xl border-b border-border/40 px-4 py-3">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
           <Link
@@ -357,7 +426,9 @@ export default function ChatPage() {
 
           {conversation && (
             <>
-              {renderAvatar(conversation.otherUser, "w-10 h-10")}
+              <Link href={`/creator/${conversation.otherUser.username}`}>
+                {renderAvatar(conversation.otherUser, "w-10 h-10")}
+              </Link>
 
               <div className="flex-1 min-w-0">
                 <Link
@@ -386,7 +457,7 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {/* MESSAGES — sur le fond image directement */}
+      {/* MESSAGES */}
       <main
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto px-3 py-4"
@@ -434,32 +505,71 @@ export default function ChatPage() {
                         </div>
                       )}
 
-                      <div
-                        className={`max-w-[75%] px-3.5 py-2 shadow-md ${
-                          isMine
-                            ? "bg-blue-600 text-white rounded-2xl rounded-br-sm"
-                            : "bg-background text-foreground border border-border rounded-2xl rounded-bl-sm"
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                          {msg.content}
-                        </p>
+                      <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? "items-end" : "items-start"}`}>
+                        {/* CARTE MANGA (si partagé) */}
+                        {msg.manga && (
+                          <Link
+                            href={`/manga/${msg.manga.slug || msg.manga.id}`}
+                            className={`w-56 rounded-2xl overflow-hidden border shadow-md hover:scale-[1.02] transition-transform ${
+                              isMine ? "border-blue-400/40" : "border-border"
+                            }`}
+                          >
+                            {msg.manga.coverUrl ? (
+                              <img
+                                src={msg.manga.coverUrl}
+                                alt={msg.manga.title}
+                                className="w-full h-32 object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-32 bg-muted flex items-center justify-center">
+                                <BookOpen className="w-8 h-8 text-muted-foreground/40" />
+                              </div>
+                            )}
+                            <div
+                              className={`px-3 py-2 ${
+                                isMine ? "bg-blue-600 text-white" : "bg-background text-foreground"
+                              }`}
+                            >
+                              <p className="text-xs font-bold truncate">
+                                {msg.manga.title}
+                              </p>
+                              <p
+                                className={`text-[10px] mt-0.5 ${
+                                  isMine ? "text-white/70" : "text-muted-foreground"
+                                }`}
+                              >
+                                Appuyez pour lire →
+                              </p>
+                            </div>
+                          </Link>
+                        )}
+
+                        {/* TEXTE (si présent) */}
+                        {msg.content && (
+                          <div
+                            className={`px-3.5 py-2 shadow-md ${
+                              isMine
+                                ? "bg-blue-600 text-white rounded-2xl rounded-br-sm"
+                                : "bg-background text-foreground border border-border rounded-2xl rounded-bl-sm"
+                            }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                              {msg.content}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* HEURE + STATUT */}
                         <div
-                          className={`flex items-center gap-1 mt-1 ${
+                          className={`flex items-center gap-1 px-1 ${
                             isMine ? "justify-end" : "justify-start"
                           }`}
                         >
-                          <span
-                            className={`text-[9px] ${
-                              isMine
-                                ? "text-white/70"
-                                : "text-muted-foreground"
-                            }`}
-                          >
+                          <span className="text-[9px] text-white/80 drop-shadow">
                             {formatTime(msg.createdAt)}
                           </span>
                           {isMine && (
-                            <span className="text-white/70">
+                            <span className="text-white/80 drop-shadow">
                               {msg.isRead ? (
                                 <CheckCheck className="w-3 h-3" />
                               ) : (
@@ -479,13 +589,54 @@ export default function ChatPage() {
         </div>
       </main>
 
-      {/* INPUT — TRANSPARENT + BLUR */}
+      {/* APERÇU MANGA ATTACHÉ */}
+      {attachedManga && (
+        <div className="shrink-0 bg-background/80 backdrop-blur-xl border-t border-border/40 px-3 pt-2">
+          <div className="max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-2 py-1.5 rounded-xl bg-blue-600/10 border border-blue-500/30">
+              {attachedManga.coverUrl ? (
+                <img
+                  src={attachedManga.coverUrl}
+                  alt={attachedManga.title}
+                  className="w-8 h-8 rounded object-cover shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded bg-muted flex items-center justify-center shrink-0">
+                  <BookOpen className="w-4 h-4 text-muted-foreground/60" />
+                </div>
+              )}
+              <span className="text-xs font-bold text-foreground truncate max-w-[200px]">
+                {attachedManga.title}
+              </span>
+              <button
+                type="button"
+                onClick={() => setAttachedManga(null)}
+                className="p-1 rounded-full hover:bg-background/60 text-muted-foreground hover:text-foreground transition-all shrink-0"
+                aria-label="Retirer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INPUT */}
       <form
         onSubmit={handleSend}
         className="shrink-0 bg-background/60 backdrop-blur-xl border-t border-border/40 px-3 py-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         <div className="max-w-3xl mx-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={openMangaModal}
+            className="p-2.5 rounded-full bg-background/80 border border-border text-muted-foreground hover:text-blue-500 hover:border-blue-500/40 transition-all shrink-0"
+            aria-label="Partager un manga"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+
           <input
             ref={inputRef}
             type="text"
@@ -495,9 +646,10 @@ export default function ChatPage() {
             maxLength={2000}
             className="flex-1 px-4 py-2.5 rounded-full bg-background/80 border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none text-sm transition-all"
           />
+
           <button
             type="submit"
-            disabled={!input.trim() || sending}
+            disabled={(!input.trim() && !attachedManga) || sending}
             className="p-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
             aria-label="Envoyer"
           >
@@ -509,6 +661,108 @@ export default function ChatPage() {
           </button>
         </div>
       </form>
+
+      {/* MODAL DE SÉLECTION DE MANGA */}
+      {showMangaModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4"
+          onClick={() => setShowMangaModal(false)}
+        >
+          <div
+            className="bg-background border-t md:border border-border/60 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[75vh] flex flex-col overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* HEADER MODAL */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border/60 shrink-0">
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-500" />
+                Partager un manga
+              </h3>
+              <button
+                onClick={() => setShowMangaModal(false)}
+                className="p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
+                aria-label="Fermer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* RECHERCHE */}
+            <div className="px-4 py-3 border-b border-border/60 shrink-0">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={mangaSearch}
+                  onChange={(e) => setMangaSearch(e.target.value)}
+                  placeholder="Rechercher..."
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-card border border-border text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none text-sm transition-all"
+                />
+              </div>
+            </div>
+
+            {/* LISTE */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {loadingMangas ? (
+                <div className="flex items-center justify-center py-10 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  <span className="text-sm">Chargement de vos mangas...</span>
+                </div>
+              ) : myMangas.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <BookOpen className="w-10 h-10 text-muted-foreground/40 mb-3" />
+                  <p className="text-muted-foreground text-sm font-medium">
+                    Aucun manga publié
+                  </p>
+                  <Link
+                    href="/creator/upload"
+                    className="mt-3 px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all"
+                  >
+                    Publier un manga
+                  </Link>
+                </div>
+              ) : filteredMangas.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  Aucun résultat pour "{mangaSearch}"
+                </div>
+              ) : (
+                filteredMangas.map((manga) => (
+                  <button
+                    key={manga.id}
+                    type="button"
+                    onClick={() => {
+                      setAttachedManga(manga);
+                      setShowMangaModal(false);
+                      setMangaSearch("");
+                    }}
+                    className="w-full flex items-center gap-3 p-2 rounded-xl bg-card hover:bg-muted border border-border/60 hover:border-blue-500/40 transition-all text-left"
+                  >
+                    {manga.coverUrl ? (
+                      <img
+                        src={manga.coverUrl}
+                        alt={manga.title}
+                        className="w-12 h-16 rounded-lg object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-12 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                        <BookOpen className="w-5 h-5 text-muted-foreground/40" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">
+                        {manga.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Appuyez pour attacher
+                      </p>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         @keyframes message-in {
