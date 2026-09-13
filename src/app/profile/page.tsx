@@ -483,7 +483,7 @@ export default function ProfilePage() {
         {/* BANNIÈRE */}
         <div className="h-40 md:h-56 w-full border-b border-border/40 relative overflow-hidden">
           <img
-            src="https://files.catbox.moe/2sw139.png"
+            src="https://files.catbox.moe/v76l5n.png"
             alt="Couverture"
             className="absolute inset-0 w-full h-full object-cover object-bottom"
           />
