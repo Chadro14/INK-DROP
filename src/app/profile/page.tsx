@@ -95,14 +95,10 @@ export default function ProfilePage() {
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [hasRejectedRequest, setHasRejectedRequest] = useState(false);
 
-  // Suppression de manga
   const [mangaToDelete, setMangaToDelete] = useState<any | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  // ============================================
-  // CHARGEMENT DU PROFIL
-  // ============================================
   useEffect(() => {
     const fetchProfile = async () => {
       const token = localStorage.getItem("token");
@@ -139,7 +135,6 @@ export default function ProfilePage() {
 
         const profileData = await profileRes.json();
 
-        // Charger les mangas du créateur
         let mangasList = profileData.mangas || [];
         if (profileData.role === "CREATOR" || profileData.role === "ADMIN") {
           try {
@@ -187,17 +182,11 @@ export default function ProfilePage() {
     fetchProfile();
   }, [router]);
 
-  // ============================================
-  // LOGOUT
-  // ============================================
   const handleLogout = () => {
     localStorage.removeItem("token");
     router.push("/login");
   };
 
-  // ============================================
-  // SHARE
-  // ============================================
   const handleShare = () => {
     const username = profile?.username || "utilisateur";
     const shareUrl = `https://ink-drop-one.vercel.app/creator/${username}`;
@@ -216,9 +205,6 @@ export default function ProfilePage() {
     }
   };
 
-  // ============================================
-  // UNREAD COUNT
-  // ============================================
   const fetchUnreadCount = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -240,9 +226,6 @@ export default function ProfilePage() {
     fetchUnreadCount();
   }, []);
 
-  // ============================================
-  // SUPPRIMER UN MANGA
-  // ============================================
   const handleDeleteManga = async () => {
     if (!mangaToDelete) return;
 
@@ -289,7 +272,6 @@ export default function ProfilePage() {
   const isAdmin = profile?.role === "ADMIN";
   const isSuspended = profile?.role === "SUSPENDED";
 
-  // ===== ICÔNES =====
   const ManaCoin = ({ className = "w-5 h-5" }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="10" fill="url(#manaGradient)" stroke="#FBBF24" strokeWidth="1.5" />
@@ -499,23 +481,28 @@ export default function ProfilePage() {
         </header>
 
         {/* BANNIÈRE */}
-        <div className="h-32 md:h-48 w-full bg-gradient-to-r from-background via-blue-950/40 to-background border-b border-border/40 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
+        <div className="h-32 md:h-48 w-full border-b border-border/40 relative overflow-hidden">
+          <img
+            src="https://files.catbox.moe/2sw139.png"
+            alt="Couverture"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/20" />
           {isCreator && (
-            <div className="absolute bottom-3 right-4 px-3 py-1 rounded-full bg-blue-600/20 border border-blue-500/30 text-blue-400 text-[10px] font-bold flex items-center gap-1.5">
-              <Star className="w-3 h-3 fill-blue-400" />
+            <div className="absolute bottom-3 right-4 px-3 py-1 rounded-full bg-blue-600/40 backdrop-blur-md border border-blue-400/50 text-white text-[10px] font-bold flex items-center gap-1.5 shadow-lg">
+              <Star className="w-3 h-3 fill-white" />
               Créateur
             </div>
           )}
           {profile.premiumActive && (
-            <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-violet-600/20 border border-violet-500/30 text-violet-400 text-[10px] font-bold flex items-center gap-1.5">
-              <Crown className="w-3 h-3 fill-violet-400" />
+            <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-violet-600/40 backdrop-blur-md border border-violet-400/50 text-white text-[10px] font-bold flex items-center gap-1.5 shadow-lg">
+              <Crown className="w-3 h-3 fill-white" />
               Premium
             </div>
           )}
           {profile.isPro && !profile.premiumActive && (
-            <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-cyan-600/20 border border-cyan-400/30 text-cyan-400 text-[10px] font-bold flex items-center gap-1.5">
-              <Star className="w-3 h-3 fill-cyan-400" />
+            <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-cyan-600/40 backdrop-blur-md border border-cyan-400/50 text-white text-[10px] font-bold flex items-center gap-1.5 shadow-lg">
+              <Star className="w-3 h-3 fill-white" />
               Pro
             </div>
           )}
@@ -1072,7 +1059,6 @@ export default function ProfilePage() {
       {mangaToDelete && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl overflow-hidden shadow-2xl">
-            {/* HEADER */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-rose-500/10 border border-rose-500/40 flex items-center justify-center">
@@ -1093,7 +1079,6 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            {/* BODY */}
             <div className="px-5 py-5 space-y-3">
               <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/60">
                 {mangaToDelete.coverUrl ? (
@@ -1132,7 +1117,6 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* ACTIONS */}
             <div className="flex gap-3 px-5 py-4 border-t border-border/60 bg-muted/20">
               <button
                 onClick={() => {
