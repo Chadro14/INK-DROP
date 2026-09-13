@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { CommentSection } from "@/components/comments/CommentSection";
 import { Loader } from "@/components/ui/loader";
-import { 
-  ArrowLeft, 
-  ChevronLeft, 
+import { ChapterPurchaseModal } from "@/components/chapter/ChapterPurchaseModal";
+import {
+  ArrowLeft,
+  ChevronLeft,
   ChevronRight,
   Lock,
   Eye,
@@ -20,24 +21,28 @@ import {
   Check,
   AlertCircle,
   FileText,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Clock,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 
+// ============================================
+// TYPES
+// ============================================
+
 type Chapter = {
   id: string;
   number: number;
-  title: string;
+  title: string | null;
   isFree: boolean;
-  price: number;
+  price: number | null;
   pageCount: number;
-  pdfUrl: string | null;
   summary: string | null;
   contentType: "PDF" | "IMAGES";
-  pages: Array<{ url: string; order: number; isFree: boolean }>;
+  pages: Array<{ url: string; order: number; isFree: boolean }> | null;
   pdfKey: string | null;
-  publishedAt: string;
+  publishedAt: string | null;
   manga: {
     id: string;
     title: string;
@@ -47,168 +52,187 @@ type Chapter = {
   };
 };
 
-type User = {
-  id: string;
-  premiumActive: boolean;
+type AccessMethod = "free" | "premium" | "manas" | "ticket" | "author" | null;
+
+type AccessInfo = {
+  hasAccess: boolean;
+  method: AccessMethod;
+  expiresAt?: string | null;
+  userBalance: {
+    manas: number;
+    tickets: number;
+  };
 };
+
+// ============================================
+// HELPERS
+// ============================================
+
+function formatRemaining(expiresAt: string): string {
+  const diff = new Date(expiresAt).getTime() - Date.now();
+  if (diff <= 0) return "expiré";
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours > 0) return `${hours}h${mins > 0 ? ` ${mins}min` : ""}`;
+  return `${mins}min`;
+}
+
+// ============================================
+// COMPOSANT
+// ============================================
 
 export default function ChapterReader() {
   const params = useParams();
-  const router = useRouter();
+  const mangaId = params?.id as string;
+  const chapterNumber = parseInt(params?.number as string, 10);
+
   const [chapter, setChapter] = useState<Chapter | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [access, setAccess] = useState<AccessInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [hasAccess, setHasAccess] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>("");
-
-  const mangaId = params.id as string;
-  const chapterNumber = parseInt(params.number as string);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   // ============================================
-  // RÉCUPÉRER LE CHAPITRE
+  // CHARGEMENT
   // ============================================
-  useEffect(() => {
-    const fetchChapter = async () => {
-      try {
-        console.log("🔍 1. Début du chargement");
-        console.log("📌 mangaId:", mangaId);
-        console.log("📌 chapterNumber:", chapterNumber);
 
-        const url = `${API_URL}/mangas/${mangaId}/chapters/number/${chapterNumber}`;
-        console.log("📡 2. Appel API:", url);
+  const loadChapterAndAccess = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
 
-        const res = await fetch(url);
-        console.log("📡 3. Statut HTTP:", res.status);
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("token")
+          : null;
 
-        if (!res.ok) {
-          throw new Error(`Chapitre non trouvé (${res.status})`);
-        }
+      // 1) Chapitre par numéro
+      const chapterRes = await fetch(
+        `${API_URL}/mangas/${mangaId}/chapters/number/${chapterNumber}`,
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        },
+      );
 
-        const data = await res.json();
-        console.log("📦 4. Données reçues:", data);
-
-        setChapter(data);
-        
-        if (data.contentType === "PDF" && data.pdfUrl) {
-          setPdfUrl(data.pdfUrl);
-          console.log("✅ PDF URL trouvé:", data.pdfUrl);
-        } else if (data.contentType === "PDF") {
-          console.warn("⚠️ Chapitre PDF mais pdfUrl est null");
-        } else if (data.contentType === "IMAGES") {
-          console.log("✅ Chapitre en images, pages:", data.pages?.length || 0);
-        }
-
-        const token = localStorage.getItem("token");
-        console.log("🔑 Token présent:", !!token);
-
-        if (token) {
-          const userRes = await fetch(`${API_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (userRes.ok) {
-            const userData = await userRes.json();
-            setUser(userData);
-            console.log("👤 Utilisateur:", userData.username);
-            if (data.isFree || userData.premiumActive) {
-              setHasAccess(true);
-              console.log("✅ Accès accordé (Premium ou gratuit)");
-            } else {
-              console.log("⛔ Accès refusé (pas premium et chapitre payant)");
-            }
-          }
-        } else if (data.isFree) {
-          setHasAccess(true);
-          console.log("✅ Accès accordé (Chapitre gratuit)");
-        }
-
-        console.log("✅ 5. Fin du chargement");
-      } catch (err: any) {
-        console.error("❌ ERREUR:", err);
-        console.error("📋 Message:", err.message);
-        console.error("📋 Stack:", err.stack);
-        setError(err.message);
-        setDebugInfo(JSON.stringify({ mangaId, chapterNumber, error: err.message }, null, 2));
-      } finally {
-        setLoading(false);
+      if (!chapterRes.ok) {
+        throw new Error(`Chapitre non trouvé (${chapterRes.status})`);
       }
-    };
 
-    fetchChapter();
+      const chapterJson = await chapterRes.json();
+      const chapterData: Chapter = chapterJson.data ?? chapterJson;
+      setChapter(chapterData);
+
+      // 2) Accès (si on a l'id du chapitre)
+      if (chapterData.id) {
+        try {
+          const accessRes = await fetch(
+            `${API_URL}/mangas/${mangaId}/chapters/${chapterData.id}/access`,
+            {
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+            },
+          );
+
+          if (accessRes.ok) {
+            const accessJson = await accessRes.json();
+            const accessData: AccessInfo = accessJson.data ?? accessJson;
+            setAccess(accessData);
+          } else {
+            setAccess({
+              hasAccess: false,
+              method: null,
+              userBalance: { manas: 0, tickets: 0 },
+            });
+          }
+        } catch {
+          setAccess({
+            hasAccess: false,
+            method: null,
+            userBalance: { manas: 0, tickets: 0 },
+          });
+        }
+      }
+
+      // 3) PDF : le backend ne renvoie que pdfKey, pas d'URL signée.
+      // On garde le comportement actuel (pas d'iframe tant qu'on n'a pas d'URL).
+      setPdfUrl(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Erreur de chargement";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   }, [mangaId, chapterNumber]);
 
-  // ============================================
-  // ACHETER LE CHAPITRE
-  // ============================================
-  const handleBuy = () => {
-    alert(`🔒 Paiement de ${chapter?.price || 0.50}$ pour le chapitre ${chapterNumber}`);
-  };
+  useEffect(() => {
+    if (mangaId && !Number.isNaN(chapterNumber)) {
+      loadChapterAndAccess();
+    }
+  }, [mangaId, chapterNumber, loadChapterAndAccess]);
 
   // ============================================
-  // BOOKMARK
+  // ACTIONS
   // ============================================
-  const handleBookmark = () => {
-    setIsBookmarked(!isBookmarked);
-  };
 
-  // ============================================
-  // LIKE
-  // ============================================
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-  };
+  const handleBookmark = () => setIsBookmarked((v) => !v);
+  const handleLike = () => setIsLiked((v) => !v);
 
-  // ============================================
-  // SHARE
-  // ============================================
-  const handleShare = () => {
-    const shareUrl = `https://ink-drop-one.vercel.app/manga/${mangaId}/chapter/${chapterNumber}`;
-    if (navigator.share) {
-      navigator.share({ title: chapter?.title || `Chapitre ${chapterNumber}`, url: shareUrl });
-    } else {
-      navigator.clipboard.writeText(shareUrl);
-      alert("🔗 Lien copié !");
+  const handleShare = async () => {
+    const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/manga/${mangaId}/chapter/${chapterNumber}`;
+    const title = chapter?.title || `Chapitre ${chapterNumber}`;
+
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title, url: shareUrl });
+        return;
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      alert("Lien copié !");
+    } catch {
+      /* ignore */
     }
   };
 
   // ============================================
-  // AFFICHAGE - CHARGEMENT
+  // ÉTATS DE RENDU
   // ============================================
+
   if (loading) {
     return <Loader message="Chargement du chapitre" />;
   }
 
-  // ============================================
-  // AFFICHAGE - ERREUR
-  // ============================================
   if (error || !chapter) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4">
-        <div className="w-16 h-16 rounded-full bg-rose-950/30 flex items-center justify-center mb-4">
-          <AlertCircle className="w-8 h-8 text-rose-400" />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background px-4">
+        <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mb-4">
+          <AlertCircle className="w-8 h-8 text-rose-500 dark:text-rose-400" />
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Erreur de chargement</h2>
-        <p className="text-zinc-400 text-center max-w-md">{error || "Chapitre non trouvé"}</p>
-        
-        {debugInfo && (
-          <div className="mt-4 p-4 bg-zinc-900/60 rounded-xl border border-zinc-800 text-xs text-zinc-500 max-w-md overflow-auto">
-            <p className="font-mono">{debugInfo}</p>
-          </div>
-        )}
-        
+        <h2 className="text-xl font-bold text-foreground mb-2">
+          Erreur de chargement
+        </h2>
+        <p className="text-muted-foreground text-center max-w-md">
+          {error || "Chapitre non trouvé"}
+        </p>
+
         <div className="flex gap-3 mt-6">
           <button
-            onClick={() => window.location.reload()}
-            className="px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all"
+            onClick={() => loadChapterAndAccess()}
+            className="px-6 py-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-semibold transition-all shadow-lg shadow-blue-600/20"
           >
             Réessayer
           </button>
           <Link
             href={`/manga/${mangaId}`}
-            className="px-6 py-2.5 rounded-full bg-zinc-800 hover:bg-zinc-700 text-white font-semibold transition-all"
+            className="px-6 py-2.5 rounded-full bg-card hover:bg-muted text-foreground font-semibold transition-all border border-border/60"
           >
             Retourner au manga
           </Link>
@@ -217,19 +241,31 @@ export default function ChapterReader() {
     );
   }
 
+  const hasAccess = access?.hasAccess === true;
+  const method = access?.method ?? null;
+  const expiresAt = access?.expiresAt ?? null;
+  const userBalance = access?.userBalance ?? { manas: 0, tickets: 0 };
+
   // ============================================
-  // AFFICHAGE - PAS D'ACCÈS → ACHAT
+  // PAS D'ACCÈS → MODALE
   // ============================================
+
   if (!hasAccess) {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
     return (
-      <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
-        <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+      <div className="flex flex-col min-h-screen bg-background text-foreground">
+        <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 py-3">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
-            <Link href={`/manga/${mangaId}`} className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5">
+            <Link
+              href={`/manga/${mangaId}`}
+              className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+            >
               <ArrowLeft className="w-5 h-5" />
               <span className="text-sm font-medium">Retour</span>
             </Link>
-            <span className="text-base font-bold tracking-tight text-white/90">
+            <span className="text-base font-bold tracking-tight text-foreground/90">
               Chap. {chapterNumber}
             </span>
             <div className="w-9" />
@@ -238,29 +274,71 @@ export default function ChapterReader() {
 
         <main className="flex-1 flex flex-col items-center justify-center px-4 text-center">
           <div className="w-24 h-24 rounded-full bg-amber-500/10 border-2 border-amber-500/30 flex items-center justify-center mb-6">
-            <Lock className="w-12 h-12 text-amber-400" />
+            <Lock className="w-12 h-12 text-amber-500 dark:text-amber-400" />
           </div>
-          <h2 className="text-2xl font-extrabold text-white mb-2">Chapitre payant</h2>
-          <p className="text-zinc-400 text-sm mb-1">
-            Chapitre {chapterNumber} — <span className="text-amber-400 font-semibold">{chapter.price || 0.50}$</span>
+          <h2 className="text-2xl font-extrabold text-foreground mb-2">
+            Chapitre payant
+          </h2>
+          <p className="text-muted-foreground text-sm mb-1">
+            Chapitre {chapterNumber} —{" "}
+            <span className="text-amber-600 dark:text-amber-400 font-semibold">
+              {chapter.price || 50} MANAS
+            </span>
           </p>
-          <p className="text-zinc-500 text-xs mb-6">
+          <p className="text-muted-foreground/70 text-xs mb-6">
             {chapter.pageCount || 0} pages
           </p>
-          <button
-            onClick={handleBuy}
-            className="px-8 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-bold transition-all shadow-lg shadow-amber-500/20"
-          >
-            Acheter le chapitre
-          </button>
-          <div className="mt-6 flex items-center gap-2 text-xs text-zinc-500">
-            <Crown className="w-4 h-4 text-amber-400" />
-            <span>Ou abonne-toi à INKDROP Premium pour un accès illimité</span>
+
+          {token ? (
+            <button
+              onClick={() => setShowPurchaseModal(true)}
+              className="px-8 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-bold transition-all shadow-lg shadow-amber-500/20"
+            >
+              Débloquer le chapitre
+            </button>
+          ) : (
+            <Link
+              href={`/login?redirect=/manga/${mangaId}/chapter/${chapterNumber}`}
+              className="px-8 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-bold transition-all shadow-lg shadow-amber-500/20"
+            >
+              Se connecter pour débloquer
+            </Link>
+          )}
+
+          <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
+            <Crown className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+            <span>
+              Ou abonne-toi à INKDROP Premium pour un accès illimité
+            </span>
           </div>
-          <Link href="/premium" className="mt-2 text-amber-400 hover:text-amber-300 text-sm font-medium transition-colors">
+          <Link
+            href="/premium"
+            className="mt-2 text-amber-600 dark:text-amber-400 hover:text-amber-500 text-sm font-medium transition-colors"
+          >
             Voir les offres Premium →
           </Link>
         </main>
+
+        {showPurchaseModal && (
+          <ChapterPurchaseModal
+            chapter={{
+              id: chapter.id,
+              number: chapter.number,
+              title: chapter.title,
+              price: chapter.price || 50,
+            }}
+            manga={{
+              id: mangaId,
+              title: chapter.manga?.title ?? "",
+            }}
+            userBalance={userBalance}
+            onClose={() => setShowPurchaseModal(false)}
+            onSuccess={() => {
+              setShowPurchaseModal(false);
+              loadChapterAndAccess();
+            }}
+          />
+        )}
 
         <BottomNav />
       </div>
@@ -268,37 +346,55 @@ export default function ChapterReader() {
   }
 
   // ============================================
-  // AFFICHAGE - LECTURE DU CHAPITRE
+  // ACCÈS ACCORDÉ → LECTURE
   // ============================================
-  return (
-    <div className="flex flex-col min-h-screen bg-zinc-950 text-white">
 
+  return (
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 py-3">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <Link href={`/manga/${mangaId}`} className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1.5">
+          <Link
+            href={`/manga/${mangaId}`}
+            className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1.5"
+          >
             <ArrowLeft className="w-5 h-5" />
             <span className="text-sm font-medium">Retour</span>
           </Link>
-          <span className="text-base font-bold tracking-tight text-white/90 truncate max-w-[150px]">
+          <span className="text-base font-bold tracking-tight text-foreground/90 truncate max-w-[150px]">
             Chap. {chapterNumber}
           </span>
           <div className="flex items-center gap-1">
             <button
               onClick={handleBookmark}
-              className={`p-2 rounded-full hover:bg-zinc-900 transition-colors ${isBookmarked ? "text-blue-400" : "text-zinc-400 hover:text-white"}`}
+              className={`p-2 rounded-full hover:bg-card transition-colors ${
+                isBookmarked
+                  ? "text-blue-500"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Enregistrer"
             >
-              {isBookmarked ? <Check className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
+              {isBookmarked ? (
+                <Check className="w-5 h-5" />
+              ) : (
+                <Bookmark className="w-5 h-5" />
+              )}
             </button>
             <button
               onClick={handleLike}
-              className={`p-2 rounded-full hover:bg-zinc-900 transition-colors ${isLiked ? "text-rose-500" : "text-zinc-400 hover:text-white"}`}
+              className={`p-2 rounded-full hover:bg-card transition-colors ${
+                isLiked
+                  ? "text-rose-500"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="J'aime"
             >
               <Heart className={`w-5 h-5 ${isLiked ? "fill-rose-500" : ""}`} />
             </button>
             <button
               onClick={handleShare}
-              className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-colors"
+              className="p-2 rounded-full hover:bg-card text-muted-foreground hover:text-foreground transition-colors"
+              title="Partager"
             >
               <Share2 className="w-5 h-5" />
             </button>
@@ -306,95 +402,124 @@ export default function ChapterReader() {
         </div>
       </header>
 
+      {/* BANDEAU TICKET */}
+      {method === "ticket" && expiresAt && (
+        <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2">
+          <div className="max-w-4xl mx-auto flex items-center justify-center gap-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+            <Clock className="w-3.5 h-3.5" />
+            <span>
+              Accès temporaire — expire dans{" "}
+              <strong>{formatRemaining(expiresAt)}</strong>
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* CONTENU */}
       <main className="flex-1 px-4 py-6 max-w-4xl mx-auto w-full">
-        
         {/* TITRE */}
         <div className="text-center mb-6">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-white">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">
             {chapter.title || `Chapitre ${chapterNumber}`}
           </h1>
-          <p className="text-zinc-400 text-sm mt-1">{chapter.manga.title}</p>
-          <div className="flex items-center justify-center gap-3 mt-2 text-xs text-zinc-500">
+          <p className="text-muted-foreground text-sm mt-1">
+            {chapter.manga.title}
+          </p>
+          <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Eye className="w-3.5 h-3.5" />
               {chapter.pageCount || 0} pages
             </span>
-            <span className="w-1 h-1 rounded-full bg-zinc-700" />
+            <span className="w-1 h-1 rounded-full bg-border" />
             <span className="flex items-center gap-1">
-              {chapter.contentType === "PDF" ? <FileText className="w-3.5 h-3.5" /> : <ImageIcon className="w-3.5 h-3.5" />}
+              {chapter.contentType === "PDF" ? (
+                <FileText className="w-3.5 h-3.5" />
+              ) : (
+                <ImageIcon className="w-3.5 h-3.5" />
+              )}
               {chapter.contentType === "PDF" ? "PDF" : "Images"}
             </span>
-            <span className="w-1 h-1 rounded-full bg-zinc-700" />
-            <span className={chapter.isFree ? "text-emerald-400" : "text-amber-400"}>
-              {chapter.isFree ? "Gratuit" : `${chapter.price || 0.50}$`}
+            <span className="w-1 h-1 rounded-full bg-border" />
+            <span
+              className={
+                chapter.isFree
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-amber-600 dark:text-amber-400"
+              }
+            >
+              {chapter.isFree ? "Gratuit" : `${chapter.price || 50} MANAS`}
             </span>
           </div>
         </div>
 
         {/* RÉSUMÉ */}
         {chapter.summary && (
-          <div className="bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border border-blue-500/30 rounded-xl p-4 mb-6">
+          <div className="bg-gradient-to-r from-blue-500/5 to-indigo-500/5 border border-blue-500/30 rounded-xl p-4 mb-6">
             <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-blue-400" />
-              <h3 className="text-sm font-bold text-blue-400">Résumé du chapitre</h3>
+              <Sparkles className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+              <h3 className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                Résumé du chapitre
+              </h3>
             </div>
-            <p className="text-zinc-300 text-sm leading-relaxed">{chapter.summary}</p>
+            <p className="text-foreground/80 text-sm leading-relaxed">
+              {chapter.summary}
+            </p>
           </div>
         )}
 
-        {/* ✅ MODE PDF */}
-        {chapter.contentType === "PDF" && (
-          pdfUrl ? (
-            <div className="bg-zinc-900/60 rounded-xl border border-zinc-800/80 overflow-hidden shadow-xl">
+        {/* MODE PDF */}
+        {chapter.contentType === "PDF" &&
+          (pdfUrl ? (
+            <div className="bg-card rounded-xl border border-border/80 overflow-hidden shadow-xl">
               <iframe
                 src={pdfUrl}
                 className="w-full h-[70vh] border-0"
                 title={`Chapitre ${chapterNumber}`}
                 sandbox="allow-scripts allow-same-origin"
-                onError={() => setError("Erreur de chargement du PDF")}
               />
             </div>
           ) : (
-            <div className="bg-zinc-900/40 rounded-xl border border-zinc-800/80 p-12 text-center">
-              <FileText className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
-              <p className="text-zinc-400">PDF non disponible</p>
-              <p className="text-zinc-500 text-xs mt-1">Le fichier PDF n'a pas pu être chargé</p>
-              <p className="text-zinc-600 text-[10px] mt-2 font-mono">
-                pdfKey: {chapter.pdfKey || "null"}
+            <div className="bg-card/40 rounded-xl border border-border/80 p-12 text-center">
+              <FileText className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-muted-foreground">PDF non disponible</p>
+              <p className="text-muted-foreground/70 text-xs mt-1">
+                Le fichier PDF n'a pas pu être chargé
               </p>
             </div>
-          )
-        )}
+          ))}
 
-        {/* ✅ MODE IMAGES */}
-        {chapter.contentType === "IMAGES" && chapter.pages && chapter.pages.length > 0 && (
-          <div className="space-y-4">
-            {chapter.pages.map((page: any, index: number) => (
-              <div key={index} className="bg-zinc-900/40 rounded-xl border border-zinc-800/60 overflow-hidden">
-                <img
-                  src={page.url}
-                  alt={`Page ${index + 1}`}
-                  className="w-full h-auto"
-                  loading="lazy"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = "/placeholder-page.png";
-                  }}
-                />
-                <div className="text-center text-xs text-zinc-500 py-2">
-                  Page {index + 1} / {chapter.pages.length}
+        {/* MODE IMAGES */}
+        {chapter.contentType === "IMAGES" &&
+          chapter.pages &&
+          chapter.pages.length > 0 && (
+            <div className="space-y-4">
+              {chapter.pages.map((page, index) => (
+                <div
+                  key={`${page.order}-${index}`}
+                  className="bg-card/40 rounded-xl border border-border/60 overflow-hidden"
+                >
+                  <img
+                    src={page.url}
+                    alt={`Page ${index + 1}`}
+                    className="w-full h-auto"
+                    loading="lazy"
+                  />
+                  <div className="text-center text-xs text-muted-foreground py-2">
+                    Page {index + 1} / {chapter.pages?.length ?? 0}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        {/* ✅ AUCUN CONTENU */}
+        {/* AUCUN CONTENU */}
         {!chapter.contentType && (
-          <div className="bg-zinc-900/40 rounded-xl border border-zinc-800/80 p-12 text-center">
-            <AlertCircle className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
-            <p className="text-zinc-400">Aucun contenu disponible</p>
-            <p className="text-zinc-500 text-xs mt-1">Ce chapitre n'a pas de contenu associé</p>
+          <div className="bg-card/40 rounded-xl border border-border/80 p-12 text-center">
+            <AlertCircle className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-muted-foreground">Aucun contenu disponible</p>
+            <p className="text-muted-foreground/70 text-xs mt-1">
+              Ce chapitre n'a pas de contenu associé
+            </p>
           </div>
         )}
 
@@ -409,8 +534,8 @@ export default function ChapterReader() {
             href={`/manga/${mangaId}/chapter/${chapterNumber - 1}`}
             className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 ${
               chapterNumber > 1
-                ? "bg-zinc-800/60 hover:bg-zinc-800 text-white border border-zinc-700/50"
-                : "bg-zinc-900/40 text-zinc-600 cursor-not-allowed pointer-events-none border border-zinc-800/30"
+                ? "bg-card hover:bg-muted text-foreground border border-border/60"
+                : "bg-card/40 text-muted-foreground/50 cursor-not-allowed pointer-events-none border border-border/30"
             }`}
           >
             <ChevronLeft className="w-4 h-4" />
@@ -418,7 +543,7 @@ export default function ChapterReader() {
           </Link>
           <Link
             href={`/manga/${mangaId}`}
-            className="px-4 py-2.5 rounded-xl text-sm font-medium bg-zinc-800/60 hover:bg-zinc-800 text-white border border-zinc-700/50 transition-all"
+            className="px-4 py-2.5 rounded-xl text-sm font-medium bg-card hover:bg-muted text-foreground border border-border/60 transition-all"
           >
             Tous les chapitres
           </Link>
