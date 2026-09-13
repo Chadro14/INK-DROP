@@ -85,25 +85,48 @@ export default function ChatPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // ============================================
-  // RÉCUPÉRER L'ID UTILISATEUR
+  // RÉCUPÉRER L'UTILISATEUR VIA /users/me
   // ============================================
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    try {
-      const stored = localStorage.getItem("user");
-      if (stored) {
-        const u = JSON.parse(stored);
-        setCurrentUserId(u?.id || null);
-        setCurrentUser(u);
+    const fetchMe = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/login");
+        return;
       }
-    } catch (e) {
-      console.error("Erreur parsing user:", e);
-    }
+
+      try {
+        const res = await fetch(`${API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) {
+          if (res.status === 401) {
+            localStorage.removeItem("token");
+            router.push("/login");
+            return;
+          }
+          throw new Error("Impossible de récupérer le profil");
+        }
+
+        const data = await res.json();
+        const user = data?.data || data;
+
+        setCurrentUserId(user?.id || null);
+        setCurrentUser({
+          id: user.id,
+          username: user.username,
+          avatarUrl: user.avatarUrl || null,
+          avatarColor: user.avatarColor || null,
+          isCertified: user.isCertified || false,
+          badgeColor: user.badgeColor || null,
+        });
+      } catch (err) {
+        console.error("Erreur fetchMe:", err);
+      }
+    };
+
+    fetchMe();
   }, [router]);
 
   // ============================================
@@ -197,17 +220,41 @@ export default function ChatPage() {
   }, [conversationId]);
 
   // ============================================
-  // CHARGER MES MANGAS (pour le modal)
+  // CHARGER MES MANGAS (via /users/me)
   // ============================================
   const loadMyMangas = async () => {
-    if (!currentUserId) return;
     setLoadingMangas(true);
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/mangas/creator/${currentUserId}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      if (!token) {
+        setLoadingMangas(false);
+        return;
+      }
+
+      let myUserId = currentUserId;
+
+      if (!myUserId) {
+        const meRes = await fetch(`${API_URL}/users/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!meRes.ok) {
+          throw new Error("Impossible de récupérer le profil");
+        }
+
+        const meData = await meRes.json();
+        const me = meData?.data || meData;
+        myUserId = me?.id || null;
+
+        if (!myUserId) throw new Error("ID utilisateur introuvable");
+        setCurrentUserId(myUserId);
+      }
+
+      const res = await fetch(`${API_URL}/mangas/creator/${myUserId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+
       if (res.ok) {
         const data = await res.json();
         const list = data.data || [];
@@ -219,6 +266,8 @@ export default function ChatPage() {
             coverUrl: m.coverUrl || null,
           }))
         );
+      } else {
+        console.error("Erreur chargement mangas:", res.status);
       }
     } catch (err) {
       console.error("Erreur chargement mangas:", err);
@@ -488,7 +537,7 @@ export default function ChatPage() {
                   <div key={msg.id} className="animate-message-in">
                     {showDay && (
                       <div className="flex items-center justify-center my-4">
-                        <span className="px-3 py-1 rounded-full bg-background/70 backdrop-blur-md border border-border/40 text-[10px] font-bold text-foreground uppercase tracking-wider">
+                        <span className="px-3 py-1 rounded-full bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-md border border-blue-500/30 text-[10px] font-bold text-foreground uppercase tracking-wider">
                           {formatDay(msg.createdAt)}
                         </span>
                       </div>
@@ -505,8 +554,12 @@ export default function ChatPage() {
                         </div>
                       )}
 
-                      <div className={`max-w-[75%] flex flex-col gap-1 ${isMine ? "items-end" : "items-start"}`}>
-                        {/* CARTE MANGA (si partagé) */}
+                      <div
+                        className={`max-w-[75%] flex flex-col gap-1 ${
+                          isMine ? "items-end" : "items-start"
+                        }`}
+                      >
+                        {/* CARTE MANGA */}
                         {msg.manga && (
                           <Link
                             href={`/manga/${msg.manga.slug || msg.manga.id}`}
@@ -527,7 +580,9 @@ export default function ChatPage() {
                             )}
                             <div
                               className={`px-3 py-2 ${
-                                isMine ? "bg-blue-600 text-white" : "bg-background text-foreground"
+                                isMine
+                                  ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                                  : "bg-background text-foreground"
                               }`}
                             >
                               <p className="text-xs font-bold truncate">
@@ -535,7 +590,9 @@ export default function ChatPage() {
                               </p>
                               <p
                                 className={`text-[10px] mt-0.5 ${
-                                  isMine ? "text-white/70" : "text-muted-foreground"
+                                  isMine
+                                    ? "text-white/70"
+                                    : "text-muted-foreground"
                                 }`}
                               >
                                 Appuyez pour lire →
@@ -544,13 +601,13 @@ export default function ChatPage() {
                           </Link>
                         )}
 
-                        {/* TEXTE (si présent) */}
+                        {/* TEXTE */}
                         {msg.content && (
                           <div
                             className={`px-3.5 py-2 shadow-md ${
                               isMine
-                                ? "bg-blue-600 text-white rounded-2xl rounded-br-sm"
-                                : "bg-background text-foreground border border-border rounded-2xl rounded-bl-sm"
+                                ? "bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-2xl rounded-br-sm"
+                                : "bg-background text-foreground border border-border border-l-2 border-l-purple-500/60 rounded-2xl rounded-bl-sm"
                             }`}
                           >
                             <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
@@ -591,9 +648,9 @@ export default function ChatPage() {
 
       {/* APERÇU MANGA ATTACHÉ */}
       {attachedManga && (
-        <div className="shrink-0 bg-background/80 backdrop-blur-xl border-t border-border/40 px-3 pt-2">
+        <div className="shrink-0 bg-background/80 backdrop-blur-xl border-t border-border/40 px-3 pt-2 animate-slide-up">
           <div className="max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-2 py-1.5 rounded-xl bg-blue-600/10 border border-blue-500/30">
+            <div className="inline-flex items-center gap-2 px-2 py-1.5 rounded-xl bg-gradient-to-r from-blue-600/10 to-purple-600/10 border border-blue-500/30">
               {attachedManga.coverUrl ? (
                 <img
                   src={attachedManga.coverUrl}
@@ -631,10 +688,14 @@ export default function ChatPage() {
           <button
             type="button"
             onClick={openMangaModal}
-            className="p-2.5 rounded-full bg-background/80 border border-border text-muted-foreground hover:text-blue-500 hover:border-blue-500/40 transition-all shrink-0"
+            className={`p-2.5 rounded-full border transition-all duration-300 shrink-0 group ${
+              showMangaModal
+                ? "bg-gradient-to-br from-blue-600 to-purple-600 border-blue-500 text-white rotate-45 scale-95 shadow-lg shadow-blue-600/30"
+                : "bg-background/80 border-border text-muted-foreground hover:text-blue-500 hover:border-blue-500/40 hover:scale-105 active:scale-95"
+            }`}
             aria-label="Partager un manga"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-5 h-5 transition-transform duration-300" />
           </button>
 
           <input
@@ -650,7 +711,7 @@ export default function ChatPage() {
           <button
             type="submit"
             disabled={(!input.trim() && !attachedManga) || sending}
-            className="p-2.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+            className="p-2.5 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-lg shadow-blue-600/20"
             aria-label="Envoyer"
           >
             {sending ? (
@@ -665,11 +726,11 @@ export default function ChatPage() {
       {/* MODAL DE SÉLECTION DE MANGA */}
       {showMangaModal && (
         <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4"
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4 animate-modal-backdrop"
           onClick={() => setShowMangaModal(false)}
         >
           <div
-            className="bg-background border-t md:border border-border/60 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[75vh] flex flex-col overflow-hidden shadow-2xl"
+            className="bg-background border-t md:border border-border/60 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[75vh] flex flex-col overflow-hidden shadow-2xl animate-modal-panel"
             onClick={(e) => e.stopPropagation()}
           >
             {/* HEADER MODAL */}
@@ -735,7 +796,7 @@ export default function ChatPage() {
                       setShowMangaModal(false);
                       setMangaSearch("");
                     }}
-                    className="w-full flex items-center gap-3 p-2 rounded-xl bg-card hover:bg-muted border border-border/60 hover:border-blue-500/40 transition-all text-left"
+                    className="w-full flex items-center gap-3 p-2 rounded-xl bg-card hover:bg-muted border border-border/60 hover:border-blue-500/40 transition-all text-left hover:scale-[1.01]"
                   >
                     {manga.coverUrl ? (
                       <img
@@ -777,6 +838,59 @@ export default function ChatPage() {
         }
         .animate-message-in {
           animation: message-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @keyframes slide-up {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-slide-up {
+          animation: slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @keyframes modal-backdrop {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        .animate-modal-backdrop {
+          animation: modal-backdrop 0.2s ease-out both;
+        }
+
+        @keyframes modal-panel {
+          from {
+            opacity: 0;
+            transform: translateY(30px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        .animate-modal-panel {
+          animation: modal-panel 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @media (max-width: 768px) {
+          @keyframes modal-panel {
+            from {
+              opacity: 0;
+              transform: translateY(100%);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
         }
       `}</style>
     </div>
