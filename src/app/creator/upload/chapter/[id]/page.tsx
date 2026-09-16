@@ -21,6 +21,9 @@ import {
 
 const API_URL = "https://ink-backend.vercel.app";
 
+// ✅ Prix fixe imposé par la plateforme
+const CHAPTER_PRICE_MANAS = 50;
+
 export default function ChapterUploadPage() {
   const router = useRouter();
   const params = useParams();
@@ -38,7 +41,6 @@ export default function ChapterUploadPage() {
   const [success, setSuccess] = useState(false);
 
   const [isPaidChapter, setIsPaidChapter] = useState(false);
-  const [price, setPrice] = useState<string>("50");
 
   const [mangaPosition, setMangaPosition] = useState<number | null>(null);
   const [canHavePaidChapters, setCanHavePaidChapters] = useState(true);
@@ -161,14 +163,8 @@ export default function ChapterUploadPage() {
       return;
     }
 
-    let numericPrice = 0;
-    if (isPaidChapter) {
-      numericPrice = parseInt(price, 10);
-      if (isNaN(numericPrice) || numericPrice < 1) {
-        setError("Veuillez entrer un prix valide (>= 1 MANAS).");
-        return;
-      }
-    }
+    // ✅ Prix fixe : 50 MANAS si payant, 0 si gratuit. Non modifiable.
+    const numericPrice = isPaidChapter ? CHAPTER_PRICE_MANAS : 0;
 
     try {
       setLoading(true);
@@ -377,7 +373,9 @@ export default function ChapterUploadPage() {
                       : "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30"
                   }`}
                 >
-                  {canHavePaidChapters ? "Payant autorisé" : "Gratuit obligatoire"}
+                  {canHavePaidChapters
+                    ? "Payant autorisé"
+                    : "Gratuit obligatoire"}
                 </span>
               </div>
               <p className="text-xs mt-1 opacity-80">{positionMessage}</p>
@@ -420,7 +418,8 @@ export default function ChapterUploadPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2 md:col-span-1">
               <label className="text-xs md:text-sm font-bold text-foreground/90">
-                N° <span className="text-blue-500 dark:text-blue-400">*</span>
+                N°{" "}
+                <span className="text-blue-500 dark:text-blue-400">*</span>
               </label>
               <input
                 type="number"
@@ -466,6 +465,7 @@ export default function ChapterUploadPage() {
             </p>
           </div>
 
+          {/* ✅ SECTION TARIFICATION — prix fixe 50 MANAS */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Lock className="w-4 h-4 text-amber-500 dark:text-amber-400" />
@@ -503,22 +503,17 @@ export default function ChapterUploadPage() {
                 </div>
 
                 {isPaidChapter && (
-                  <div className="space-y-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-                    <label className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                      Prix du chapitre (en MANAS)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                      placeholder="50"
-                      className="w-full px-4 py-2.5 bg-background/80 border border-amber-500/40 rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-amber-400 transition-all text-sm font-bold"
-                    />
-                    <p className="text-xs text-amber-600 dark:text-amber-400/80">
-                      Les lecteurs paieront {price || "?"} MANAS pour débloquer
-                      ce chapitre. Accès permanent.
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <span className="text-sm font-bold text-amber-600 dark:text-amber-400">
+                        {CHAPTER_PRICE_MANAS} MANAS
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400/80 mt-1">
+                      Les lecteurs paieront {CHAPTER_PRICE_MANAS} MANAS pour
+                      débloquer ce chapitre. Accès permanent. Prix fixé par la
+                      plateforme.
                     </p>
                   </div>
                 )}
@@ -539,7 +534,8 @@ export default function ChapterUploadPage() {
           <div className="space-y-3">
             <label className="text-xs md:text-sm font-bold text-foreground/90 flex items-center justify-between">
               <span>
-                Contenu <span className="text-blue-500 dark:text-blue-400">*</span>
+                Contenu{" "}
+                <span className="text-blue-500 dark:text-blue-400">*</span>
               </span>
               {mode === "images" && photoFiles.length > 0 && (
                 <span className="text-xs text-blue-500 dark:text-blue-400 font-semibold">
