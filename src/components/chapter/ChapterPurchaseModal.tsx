@@ -95,6 +95,7 @@ export function ChapterPurchaseModal({
 
   // ============================================
   // UTILISER UN TICKET
+  // ✅ Le chapterId est passé dans l'URL (route backend : /tickets/use/:chapterId)
   // ============================================
   const handleUseTicket = async () => {
     const token = localStorage.getItem("token");
@@ -108,21 +109,19 @@ export function ChapterPurchaseModal({
     setLoading("ticket");
 
     try {
-      const res = await fetch(`${API_URL}/tickets/use`, {
+      const res = await fetch(`${API_URL}/tickets/use/${chapter.id}`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          chapterId: chapter.id,
-        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || "Erreur lors de l'utilisation du ticket");
+        throw new Error(
+          data.message || "Erreur lors de l'utilisation du ticket",
+        );
       }
 
       setSuccess("Chapitre débloqué pendant 2 heures");
@@ -281,7 +280,8 @@ export function ChapterPurchaseModal({
           <div className="flex items-start gap-2 p-3 rounded-xl bg-muted/40 border border-border/60 text-[10px] text-muted-foreground">
             <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
             <span>
-              L'achat avec MANAS donne un accès <strong>permanent</strong>. Le ticket donne un accès de <strong>2 heures</strong>.
+              L'achat avec MANAS donne un accès <strong>permanent</strong>. Le
+              ticket donne un accès de <strong>2 heures</strong>.
             </span>
           </div>
 
