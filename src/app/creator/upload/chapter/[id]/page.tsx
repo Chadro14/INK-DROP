@@ -16,6 +16,7 @@ import {
   Plus,
   X,
   Lock,
+  Coins,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -37,14 +38,13 @@ export default function ChapterUploadPage() {
   const [success, setSuccess] = useState(false);
 
   const [isPaidChapter, setIsPaidChapter] = useState(false);
-  const [paidPages, setPaidPages] = useState<number[]>([]);
+  const [price, setPrice] = useState<string>("50");
 
   const [mangaPosition, setMangaPosition] = useState<number | null>(null);
   const [canHavePaidChapters, setCanHavePaidChapters] = useState(true);
   const [positionMessage, setPositionMessage] = useState("");
   const [loadingPosition, setLoadingPosition] = useState(true);
 
-  // ✅ État pour la couverture du chapitre (URL simple)
   const [coverUrl, setCoverUrl] = useState("");
 
   // RÉCUPÉRER LA POSITION DU MANGA
@@ -104,29 +104,21 @@ export default function ChapterUploadPage() {
     setPhotoFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const togglePagePaid = (index: number) => {
-    setPaidPages((prev) =>
-      prev.includes(index)
-        ? prev.filter((i) => i !== index)
-        : [...prev, index]
-    );
-  };
-
   const getMimeType = (file: File): string => {
     if (file.type && file.type !== "") {
       return file.type;
     }
-    const ext = file.name.split('.').pop()?.toLowerCase();
+    const ext = file.name.split(".").pop()?.toLowerCase();
     const mimeTypes: Record<string, string> = {
-      'jpg': 'image/jpeg',
-      'jpeg': 'image/jpeg',
-      'png': 'image/png',
-      'webp': 'image/webp',
-      'gif': 'image/gif',
-      'bmp': 'image/bmp',
-      'pdf': 'application/pdf',
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      webp: "image/webp",
+      gif: "image/gif",
+      bmp: "image/bmp",
+      pdf: "application/pdf",
     };
-    return mimeTypes[ext || ''] || 'application/octet-stream';
+    return mimeTypes[ext || ""] || "application/octet-stream";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -151,19 +143,31 @@ export default function ChapterUploadPage() {
       return;
     }
 
-    const filesToUpload = mode === "pdf" ? (pdfFile ? [pdfFile] : []) : photoFiles;
+    const filesToUpload =
+      mode === "pdf" ? (pdfFile ? [pdfFile] : []) : photoFiles;
     if (filesToUpload.length === 0) {
       setError(
         mode === "pdf"
           ? "Veuillez sélectionner un fichier PDF."
-          : "Veuillez sélectionner au moins une image."
+          : "Veuillez sélectionner au moins une image.",
       );
       return;
     }
 
     if (isPaidChapter && !canHavePaidChapters) {
-      setError("Ce manga est en position paire. Les chapitres doivent être gratuits.");
+      setError(
+        "Ce manga est en position paire. Les chapitres doivent être gratuits.",
+      );
       return;
+    }
+
+    let numericPrice = 0;
+    if (isPaidChapter) {
+      numericPrice = parseInt(price, 10);
+      if (isNaN(numericPrice) || numericPrice < 1) {
+        setError("Veuillez entrer un prix valide (>= 1 MANAS).");
+        return;
+      }
     }
 
     try {
@@ -172,18 +176,23 @@ export default function ChapterUploadPage() {
 
       const filenames = filesToUpload.map((file) => file.name);
 
-      const urlRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/upload-urls`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const urlRes = await fetch(
+        `${API_URL}/mangas/${mangaId}/chapters/upload-urls`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ filenames }),
         },
-        body: JSON.stringify({ filenames }),
-      });
+      );
 
       if (!urlRes.ok) {
         const errorData = await urlRes.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erreur lors de la préparation de l'upload.");
+        throw new Error(
+          errorData.message || "Erreur lors de la préparation de l'upload.",
+        );
       }
 
       const responseData = await urlRes.json();
@@ -195,10 +204,15 @@ export default function ChapterUploadPage() {
         uploadUrls = responseData.map((item: any) => item.uploadUrl || item);
         keys = responseData.map((item: any) => item.key || item);
       } else if (responseData.files && Array.isArray(responseData.files)) {
-        uploadUrls = responseData.files.map((file: any) => file.uploadUrl || file.signedUrl);
+        uploadUrls = responseData.files.map(
+          (file: any) => file.uploadUrl || file.signedUrl,
+        );
         keys = responseData.files.map((file: any) => file.key || file.path);
       } else {
-        uploadUrls = responseData.uploadUrls || responseData.urls || [responseData.uploadUrl];
+        uploadUrls =
+          responseData.uploadUrls ||
+          responseData.urls ||
+          [responseData.uploadUrl];
         keys = responseData.keys || responseData.fileKeys || [];
       }
 
@@ -206,7 +220,9 @@ export default function ChapterUploadPage() {
         const file = filesToUpload[i];
         const targetUrl = uploadUrls[i] || uploadUrls[0];
 
-        setProgress(`Upload (${i + 1}/${filesToUpload.length}) : ${file.name}`);
+        setProgress(
+          `Upload (${i + 1}/${filesToUpload.length}) : ${file.name}`,
+        );
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 120000);
@@ -222,12 +238,16 @@ export default function ChapterUploadPage() {
           clearTimeout(timeoutId);
 
           if (!uploadRes.ok) {
-            throw new Error(`Échec du transfert pour le fichier : ${file.name}`);
+            throw new Error(
+              `Échec du transfert pour le fichier : ${file.name}`,
+            );
           }
         } catch (err: any) {
           clearTimeout(timeoutId);
           if (err.name === "AbortError") {
-            throw new Error(`Le fichier ${file.name} a pris trop de temps (timeout)`);
+            throw new Error(
+              `Le fichier ${file.name} a pris trop de temps (timeout)`,
+            );
           }
           throw err;
         }
@@ -245,31 +265,30 @@ export default function ChapterUploadPage() {
         keys: keys,
         mode: mode === "images" ? "PHOTOS" : "PDF",
         isDraft: false,
+        price: numericPrice,
       };
 
-      // ✅ Ajouter la couverture si une URL est fournie
       if (coverUrl.trim()) {
         finalizeBody.coverUrl = coverUrl.trim();
       }
 
-      if (isPaidChapter && canHavePaidChapters && mode === "images" && paidPages.length > 0) {
-        finalizeBody.freePageIndexes = JSON.stringify(
-          keys.map((_, index) => !paidPages.includes(index))
-        );
-      }
-
-      const finalizeRes = await fetch(`${API_URL}/mangas/${mangaId}/chapters/finalize`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const finalizeRes = await fetch(
+        `${API_URL}/mangas/${mangaId}/chapters/finalize`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(finalizeBody),
         },
-        body: JSON.stringify(finalizeBody),
-      });
+      );
 
       if (!finalizeRes.ok) {
         const finalizeErr = await finalizeRes.json().catch(() => ({}));
-        throw new Error(finalizeErr.message || "Erreur lors de la création du chapitre.");
+        throw new Error(
+          finalizeErr.message || "Erreur lors de la création du chapitre.",
+        );
       }
 
       setSuccess(true);
@@ -277,9 +296,8 @@ export default function ChapterUploadPage() {
       setTimeout(() => {
         router.push(`/manga/${mangaId}`);
       }, 1200);
-
     } catch (err: any) {
-      console.error('❌ Erreur:', err);
+      console.error("❌ Erreur:", err);
       setError(err.message || "Une erreur est survenue lors de l'upload.");
     } finally {
       setLoading(false);
@@ -289,12 +307,14 @@ export default function ChapterUploadPage() {
 
   if (!mangaId) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-950 px-4 text-center">
-        <div className="w-20 h-20 rounded-full bg-amber-950/30 border border-amber-500/30 flex items-center justify-center mb-4">
-          <AlertCircle className="w-10 h-10 text-amber-400" />
+      <div className="flex flex-col items-center justify-center min-h-screen bg-background px-4 text-center">
+        <div className="w-20 h-20 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4">
+          <AlertCircle className="w-10 h-10 text-amber-600 dark:text-amber-400" />
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Aucun manga spécifié</h2>
-        <p className="text-zinc-400 max-w-md">
+        <h2 className="text-xl font-bold text-foreground mb-2">
+          Aucun manga spécifié
+        </h2>
+        <p className="text-muted-foreground max-w-md">
           Veuillez revenir à la page du manga et réessayer.
         </p>
         <Link
@@ -308,47 +328,55 @@ export default function ChapterUploadPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen pb-24 bg-zinc-950 text-white selection:bg-blue-500 selection:text-white">
-
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/60 px-4 md:px-8 py-3">
+    <div className="flex flex-col min-h-screen pb-24 bg-background text-foreground selection:bg-blue-500 selection:text-white">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border/60 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <button
             type="button"
             onClick={() => router.back()}
-            className="p-2 rounded-full hover:bg-zinc-900 text-zinc-400 hover:text-white transition-all flex items-center gap-2"
+            className="p-2 rounded-full hover:bg-card text-muted-foreground hover:text-foreground transition-all flex items-center gap-2"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-sm font-medium hidden sm:inline">Retour</span>
+            <span className="text-sm font-medium hidden sm:inline">
+              Retour
+            </span>
           </button>
-          <span className="text-base font-bold tracking-tight text-white/90">
+          <span className="text-base font-bold tracking-tight text-foreground/90">
             Nouveau Chapitre
           </span>
           <div className="w-9" />
         </div>
       </header>
 
-      <div className="h-24 md:h-32 w-full bg-gradient-to-r from-zinc-950 via-blue-950/30 to-zinc-950 border-b border-zinc-800/40 relative overflow-hidden">
+      <div className="h-24 md:h-32 w-full bg-gradient-to-r from-background via-blue-500/5 to-background border-b border-border/40 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_50%)]" />
       </div>
 
       <main className="max-w-2xl mx-auto w-full px-4 md:px-8 -mt-10 flex flex-col gap-6">
-
-        <form onSubmit={handleSubmit} className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-5 md:p-7 backdrop-blur-md shadow-xl space-y-6">
-
+        <form
+          onSubmit={handleSubmit}
+          className="bg-card/60 border border-border/80 rounded-2xl p-5 md:p-7 backdrop-blur-md shadow-xl space-y-6"
+        >
           {!loadingPosition && mangaPosition !== null && (
-            <div className={`p-3 rounded-xl border ${
-              canHavePaidChapters 
-                ? "bg-emerald-950/30 border-emerald-500/30 text-emerald-300" 
-                : "bg-amber-950/30 border-amber-500/30 text-amber-300"
-            }`}>
+            <div
+              className={`p-3 rounded-xl border ${
+                canHavePaidChapters
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
+              }`}
+            >
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-bold">Position :</span>
-                <span className="text-sm font-black text-white">N°{mangaPosition}</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                  canHavePaidChapters 
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
-                    : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                }`}>
+                <span className="text-sm font-black text-foreground">
+                  N°{mangaPosition}
+                </span>
+                <span
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                    canHavePaidChapters
+                      ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                      : "bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                  }`}
+                >
                   {canHavePaidChapters ? "Payant autorisé" : "Gratuit obligatoire"}
                 </span>
               </div>
@@ -357,18 +385,18 @@ export default function ChapterUploadPage() {
           )}
 
           <div className="space-y-2">
-            <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-400" />
+            <label className="text-xs md:text-sm font-bold text-foreground/90 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-blue-500 dark:text-blue-400" />
               Format
             </label>
-            <div className="grid grid-cols-2 gap-2.5 p-1 bg-zinc-950/60 border border-zinc-800/80 rounded-xl">
+            <div className="grid grid-cols-2 gap-2.5 p-1 bg-muted/40 border border-border/80 rounded-xl">
               <button
                 type="button"
                 onClick={() => setMode("images")}
                 className={`py-2.5 px-4 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                   mode === "images"
                     ? "bg-blue-600 text-white shadow-md"
-                    : "text-zinc-400 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <ImageIcon className="w-4 h-4" />
@@ -380,7 +408,7 @@ export default function ChapterUploadPage() {
                 className={`py-2.5 px-4 rounded-lg text-xs md:text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                   mode === "pdf"
                     ? "bg-blue-600 text-white shadow-md"
-                    : "text-zinc-400 hover:text-white"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <FileText className="w-4 h-4" />
@@ -391,8 +419,8 @@ export default function ChapterUploadPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2 md:col-span-1">
-              <label className="text-xs md:text-sm font-bold text-zinc-300">
-                N° <span className="text-blue-400">*</span>
+              <label className="text-xs md:text-sm font-bold text-foreground/90">
+                N° <span className="text-blue-500 dark:text-blue-400">*</span>
               </label>
               <input
                 type="number"
@@ -401,27 +429,29 @@ export default function ChapterUploadPage() {
                 value={number}
                 onChange={(e) => setNumber(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 bg-zinc-950/80 border border-zinc-800/80 rounded-xl text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
+                className="w-full px-4 py-2.5 bg-background/80 border border-border/80 rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
               />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <label className="text-xs md:text-sm font-bold text-zinc-300">
-                Titre <span className="text-zinc-500 font-normal">(optionnel)</span>
+              <label className="text-xs md:text-sm font-bold text-foreground/90">
+                Titre{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optionnel)
+                </span>
               </label>
               <input
                 type="text"
                 placeholder="Titre du chapitre"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-4 py-2.5 bg-zinc-950/80 border border-zinc-800/80 rounded-xl text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
+                className="w-full px-4 py-2.5 bg-background/80 border border-border/80 rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-blue-500 transition-all text-sm font-medium"
               />
             </div>
           </div>
 
-          {/* ✅ COUVERTURE DU CHAPITRE - URL simple */}
           <div className="space-y-2">
-            <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center gap-2">
-              <ImageIcon className="w-4 h-4 text-blue-400" />
+            <label className="text-xs md:text-sm font-bold text-foreground/90 flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-blue-500 dark:text-blue-400" />
               Couverture du chapitre (URL)
             </label>
             <input
@@ -429,84 +459,90 @@ export default function ChapterUploadPage() {
               value={coverUrl}
               onChange={(e) => setCoverUrl(e.target.value)}
               placeholder="https://exemple.com/couverture-chapitre.jpg"
-              className="w-full px-4 py-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 text-white placeholder-zinc-500 focus:border-blue-500 outline-none transition-all text-sm"
+              className="w-full px-4 py-2.5 rounded-xl bg-background/80 border border-border/80 text-foreground placeholder-muted-foreground focus:border-blue-500 outline-none transition-all text-sm"
             />
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-muted-foreground">
               Entrez l'URL de la couverture du chapitre (optionnel)
             </p>
           </div>
 
-          {mode === "images" && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-amber-400" />
-                <label className="text-xs md:text-sm font-bold text-zinc-300">
-                  Pages payantes
-                </label>
-              </div>
-
-              {canHavePaidChapters ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl">
-                    <button
-                      type="button"
-                      onClick={() => setIsPaidChapter(!isPaidChapter)}
-                      className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                        isPaidChapter
-                          ? "bg-amber-600 text-white"
-                          : "bg-zinc-800 text-zinc-400 hover:text-white"
-                      }`}
-                    >
-                      {isPaidChapter ? "Payant" : "Gratuit"}
-                    </button>
-                    <span className="text-xs text-zinc-500">
-                      {isPaidChapter
-                        ? "50 MANAS par chapitre"
-                        : "Gratuit"}
-                    </span>
-                  </div>
-
-                  {isPaidChapter && photoFiles.length > 0 && (
-                    <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl">
-                      <p className="text-xs text-zinc-400 mb-2">Pages payantes :</p>
-                      <div className="flex flex-wrap gap-2">
-                        {photoFiles.map((_, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => togglePagePaid(index)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                              paidPages.includes(index)
-                                ? "bg-amber-600 text-white"
-                                : "bg-zinc-800 text-zinc-400 hover:text-white"
-                            }`}
-                          >
-                            Page {index + 1}
-                            {paidPages.includes(index) && " 🔒"}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-3 bg-amber-950/30 border border-amber-500/30 rounded-xl">
-                  <div className="flex items-center gap-2 text-amber-300">
-                    <AlertCircle className="w-4 h-4 text-amber-400" />
-                    <span className="text-sm font-medium">
-                      Position paire (N°{mangaPosition}) — Chapitres gratuits obligatoires
-                    </span>
-                  </div>
-                </div>
-              )}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+              <label className="text-xs md:text-sm font-bold text-foreground/90">
+                Tarification du chapitre
+              </label>
             </div>
-          )}
+
+            {canHavePaidChapters ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2 p-1 bg-muted/40 border border-border/80 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setIsPaidChapter(false)}
+                    className={`py-2.5 px-4 rounded-lg text-sm font-bold transition-all ${
+                      !isPaidChapter
+                        ? "bg-emerald-600 text-white shadow-md"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Gratuit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsPaidChapter(true)}
+                    className={`py-2.5 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                      isPaidChapter
+                        ? "bg-amber-600 text-white shadow-md"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Coins className="w-4 h-4" />
+                    Payant
+                  </button>
+                </div>
+
+                {isPaidChapter && (
+                  <div className="space-y-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                    <label className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                      Prix du chapitre (en MANAS)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      placeholder="50"
+                      className="w-full px-4 py-2.5 bg-background/80 border border-amber-500/40 rounded-xl text-foreground placeholder-muted-foreground focus:outline-none focus:border-amber-400 transition-all text-sm font-bold"
+                    />
+                    <p className="text-xs text-amber-600 dark:text-amber-400/80">
+                      Les lecteurs paieront {price || "?"} MANAS pour débloquer
+                      ce chapitre. Accès permanent.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    Position paire (N°{mangaPosition}) — Chapitres gratuits
+                    obligatoires
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="space-y-3">
-            <label className="text-xs md:text-sm font-bold text-zinc-300 flex items-center justify-between">
-              <span>Contenu <span className="text-blue-400">*</span></span>
+            <label className="text-xs md:text-sm font-bold text-foreground/90 flex items-center justify-between">
+              <span>
+                Contenu <span className="text-blue-500 dark:text-blue-400">*</span>
+              </span>
               {mode === "images" && photoFiles.length > 0 && (
-                <span className="text-xs text-blue-400 font-semibold">
+                <span className="text-xs text-blue-500 dark:text-blue-400 font-semibold">
                   {photoFiles.length} page(s)
                 </span>
               )}
@@ -514,12 +550,16 @@ export default function ChapterUploadPage() {
 
             {mode === "images" ? (
               <div className="space-y-4">
-                <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-800 hover:border-blue-500/50 rounded-2xl cursor-pointer bg-zinc-950/40 hover:bg-zinc-900/40 transition-all group">
-                  <div className="p-3 rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/30 text-blue-400 mb-2 transition-all">
+                <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border hover:border-blue-500/50 rounded-2xl cursor-pointer bg-card/40 hover:bg-muted/40 transition-all group">
+                  <div className="p-3 rounded-full bg-muted border border-border group-hover:border-blue-500/30 text-blue-500 dark:text-blue-400 mb-2 transition-all">
                     <Plus className="w-6 h-6" />
                   </div>
-                  <p className="text-xs md:text-sm font-bold text-white">Sélectionner les pages</p>
-                  <p className="text-[11px] text-zinc-500 mt-1">PNG, JPG, WEBP</p>
+                  <p className="text-xs md:text-sm font-bold text-foreground">
+                    Sélectionner les pages
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    PNG, JPG, WEBP
+                  </p>
                   <input
                     type="file"
                     accept="image/*"
@@ -530,22 +570,24 @@ export default function ChapterUploadPage() {
                 </label>
 
                 {photoFiles.length > 0 && (
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 bg-zinc-950/60 rounded-xl border border-zinc-800/60">
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 bg-muted/40 rounded-xl border border-border/60">
                     {photoFiles.map((file, idx) => (
-                      <div key={idx} className="relative aspect-[2/3] bg-zinc-900 rounded-lg overflow-hidden group border border-zinc-800">
+                      <div
+                        key={idx}
+                        className="relative aspect-[2/3] bg-muted rounded-lg overflow-hidden group border border-border"
+                      >
                         <img
                           src={URL.createObjectURL(file)}
                           alt={`Page ${idx + 1}`}
                           className="w-full h-full object-cover"
                         />
-                        <span className="absolute bottom-1 left-1 bg-black/80 px-1.5 py-0.5 rounded text-[9px] font-bold text-white">
+                        <span className="absolute bottom-1 left-1 bg-background/80 px-1.5 py-0.5 rounded text-[9px] font-bold text-foreground">
                           #{idx + 1}
-                          {isPaidChapter && paidPages.includes(idx) && " 🔒"}
                         </span>
                         <button
                           type="button"
                           onClick={() => removePhoto(idx)}
-                          className="absolute top-1 right-1 p-1 bg-red-600/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-md"
+                          className="absolute top-1 right-1 p-1 bg-rose-600 hover:bg-rose-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-md"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -556,14 +598,16 @@ export default function ChapterUploadPage() {
               </div>
             ) : (
               <div>
-                <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-800 hover:border-blue-500/50 rounded-2xl cursor-pointer bg-zinc-950/40 hover:bg-zinc-900/40 transition-all group">
-                  <div className="p-3 rounded-full bg-zinc-900 border border-zinc-800 group-hover:border-blue-500/30 text-blue-400 mb-2 transition-all">
+                <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border hover:border-blue-500/50 rounded-2xl cursor-pointer bg-card/40 hover:bg-muted/40 transition-all group">
+                  <div className="p-3 rounded-full bg-muted border border-border group-hover:border-blue-500/30 text-blue-500 dark:text-blue-400 mb-2 transition-all">
                     <FileText className="w-6 h-6" />
                   </div>
-                  <p className="text-xs md:text-sm font-bold text-white">
+                  <p className="text-xs md:text-sm font-bold text-foreground">
                     {pdfFile ? pdfFile.name : "Sélectionner un PDF"}
                   </p>
-                  <p className="text-[11px] text-zinc-500 mt-1">Fichier unique</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Fichier unique
+                  </p>
                   <input
                     type="file"
                     accept="application/pdf"
@@ -576,15 +620,15 @@ export default function ChapterUploadPage() {
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 p-3.5 bg-rose-950/40 border border-rose-500/30 rounded-xl text-rose-300 text-xs md:text-sm font-medium">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <div className="flex items-center gap-2 p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-600 dark:text-rose-400 text-xs md:text-sm font-medium">
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="flex items-center gap-2 p-3.5 bg-emerald-950/40 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs md:text-sm font-medium">
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+            <div className="flex items-center gap-2 p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-600 dark:text-emerald-400 text-xs md:text-sm font-medium">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>Chapitre créé ! Redirection...</span>
             </div>
           )}
