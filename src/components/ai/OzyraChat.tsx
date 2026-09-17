@@ -11,7 +11,6 @@ import {
   Loader2,
   AlertCircle,
   Sparkles,
-  Check,
   CheckCheck,
   Zap,
 } from "lucide-react";
@@ -111,7 +110,7 @@ export function OzyraChat() {
   }, [messages.length]);
 
   // ============================================
-  // VÉRIFIER SI L'USER PEUT UTILISER OZYRA
+  // VÉRIFIER L'ACCÈS
   // ============================================
   const canUseOzyra = (): boolean => {
     if (!user) return false;
@@ -138,7 +137,6 @@ export function OzyraChat() {
       createdAt: new Date().toISOString(),
     };
 
-    // Historique à envoyer (10 derniers messages)
     const history = messages
       .filter((m) => m.role === "user" || m.role === "assistant")
       .slice(-10)
@@ -183,7 +181,6 @@ export function OzyraChat() {
     } catch (err: any) {
       setError(err.message);
 
-      // Message d'erreur d'OZYRA
       setMessages((prev) => [
         ...prev,
         {
@@ -200,7 +197,7 @@ export function OzyraChat() {
   };
 
   // ============================================
-  // FORMAT HEURE
+  // FORMAT
   // ============================================
   const formatTime = (date: string) => {
     const d = new Date(date);
