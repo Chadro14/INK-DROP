@@ -5,7 +5,8 @@ import { Crown, Lock, ArrowRight, Sparkles } from "lucide-react";
 
 export function OzyraBlocked() {
   return (
-    <div className="w-full bg-background/80 backdrop-blur-xl border-t border-border/40 px-4 py-5"
+    <div
+      className="w-full bg-background/80 backdrop-blur-xl border-t border-border/40 px-4 py-5"
       style={{ paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
     >
       <div className="max-w-3xl mx-auto">
