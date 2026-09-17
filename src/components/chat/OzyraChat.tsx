@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader } from "@/components/ui/loader";
@@ -13,6 +13,10 @@ import {
   Sparkles,
   CheckCheck,
   Zap,
+  RefreshCw,
+  Copy,
+  Check,
+  ChevronDown,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -25,6 +29,7 @@ type Message = {
   content: string;
   createdAt: string;
   toolsUsed?: Array<{ name: string; success: boolean }>;
+  isWelcome?: boolean;
 };
 
 type UserInfo = {
@@ -36,6 +41,20 @@ type UserInfo = {
   premiumExpires: string | null;
 };
 
+// ============================================
+// MESSAGE D'ACCUEIL OZYRA OPLEX 2.5
+// ============================================
+const WELCOME_MESSAGE = `Bonjour ! 👋 Je suis **OZYRA OPLEX 2.5**, l'assistante intelligente d'INKDROP.
+
+✨ **Nouveautés de la mise à jour OPLEX 2.5 :**
+• 🔍 Je peux maintenant chercher de vrais mangas dans la base INKDROP
+• 📊 Je consulte vos vraies stats (MANAS, tickets, abonnements)
+• 🏆 Je connais le classement des meilleurs mangas et créateurs
+• 💡 Je vous conseille pour gagner de l'argent avec vos créations
+• ⚡ Réponses plus rapides et plus précises
+
+**Comment puis-je vous aider aujourd'hui ?**`;
+
 export function OzyraChat() {
   const router = useRouter();
 
@@ -45,10 +64,13 @@ export function OzyraChat() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [user, setUser] = useState<UserInfo | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isNearBottomRef = useRef(true);
 
   // ============================================
   // VÉRIFIER L'UTILISATEUR
@@ -86,6 +108,17 @@ export function OzyraChat() {
           premiumPlan: me.premiumPlan || null,
           premiumExpires: me.premiumExpires || null,
         });
+
+        // ✅ Message d'accueil automatique
+        setMessages([
+          {
+            id: "welcome",
+            role: "assistant",
+            content: WELCOME_MESSAGE,
+            createdAt: new Date().toISOString(),
+            isWelcome: true,
+          },
+        ]);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -97,34 +130,49 @@ export function OzyraChat() {
   }, [router]);
 
   // ============================================
-  // SCROLL AUTO
+  // SCROLL AUTO INTELLIGENT
   // ============================================
-  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior });
-    }, 50);
-  };
+  const scrollToBottom = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
+      }, 50);
+    },
+    [],
+  );
 
   useEffect(() => {
-    scrollToBottom("auto");
-  }, [messages.length]);
+    if (isNearBottomRef.current) {
+      scrollToBottom("smooth");
+    }
+  }, [messages.length, scrollToBottom]);
+
+  // Détecte si l'user est proche du bas
+  const handleScroll = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const distanceFromBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight;
+    const isNear = distanceFromBottom < 150;
+
+    isNearBottomRef.current = isNear;
+    setShowScrollButton(!isNear && messages.length > 3);
+  };
 
   // ============================================
-  // ✅ VÉRIFIER L'ACCÈS — Accepte tous les plans Premium
+  // VÉRIFIER L'ACCÈS
   // ============================================
   const canUseOzyra = (): boolean => {
     if (!user) return false;
     if (!user.premiumActive) return false;
 
-    // Vérifier que l'abonnement n'est pas expiré
     if (user.premiumExpires) {
       const expires = new Date(user.premiumExpires);
       if (expires < new Date()) return false;
     }
 
     const plan = (user.premiumPlan || "").toUpperCase();
-
-    // ✅ Tous les plans valides (anciens + nouveaux)
     return (
       plan === "STANDARD" ||
       plan === "PRO" ||
@@ -153,6 +201,7 @@ export function OzyraChat() {
     };
 
     const history = messages
+      .filter((m) => !m.isWelcome)
       .filter((m) => m.role === "user" || m.role === "assistant")
       .slice(-10)
       .map((m) => ({ role: m.role, content: m.content }));
@@ -161,6 +210,7 @@ export function OzyraChat() {
     setInput("");
     setSending(true);
     setError("");
+    isNearBottomRef.current = true;
     scrollToBottom();
 
     try {
@@ -209,6 +259,77 @@ export function OzyraChat() {
       setSending(false);
       inputRef.current?.focus();
     }
+  };
+
+  // ============================================
+  // NOUVELLE CONVERSATION
+  // ============================================
+  const handleNewConversation = () => {
+    if (confirm("Démarrer une nouvelle conversation ? L'historique sera effacé.")) {
+      setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
+          content: WELCOME_MESSAGE,
+          createdAt: new Date().toISOString(),
+          isWelcome: true,
+        },
+      ]);
+      setError("");
+      inputRef.current?.focus();
+    }
+  };
+
+  // ============================================
+  // COPIER UN MESSAGE
+  // ============================================
+  const handleCopy = async (msgId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(msgId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // ============================================
+  // RENDU MARKDOWN SIMPLIFIÉ
+  // ============================================
+  const renderContent = (content: string) => {
+    const lines = content.split("\n");
+
+    return lines.map((line, i) => {
+      // Titres avec ** **
+      const boldedLine = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+      // Puces
+      if (line.trim().startsWith("•")) {
+        return (
+          <div
+            key={i}
+            className="flex items-start gap-2 my-0.5 pl-1"
+            dangerouslySetInnerHTML={{
+              __html: `<span class="text-purple-500 shrink-0">•</span><span>${boldedLine.replace(/^•\s*/, "")}</span>`,
+            }}
+          />
+        );
+      }
+
+      // Ligne vide
+      if (line.trim() === "") {
+        return <div key={i} className="h-2" />;
+      }
+
+      // Ligne normale
+      return (
+        <p
+          key={i}
+          className="leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: boldedLine }}
+        />
+      );
+    });
   };
 
   // ============================================
@@ -283,7 +404,7 @@ export function OzyraChat() {
       style={{ backgroundImage: `url('${CHAT_BG}')` }}
     >
       {/* HEADER */}
-      <header className="shrink-0 z-40 bg-background/60 backdrop-blur-xl border-b border-border/40 px-4 py-3">
+      <header className="shrink-0 z-40 bg-background/70 backdrop-blur-xl border-b border-border/40 px-4 py-3">
         <div className="flex items-center gap-3 max-w-3xl mx-auto">
           <Link
             href="/collaborations"
@@ -299,7 +420,7 @@ export function OzyraChat() {
               alt="OZYRA"
               className="w-10 h-10 rounded-full object-cover border-2 border-purple-500/40"
             />
-            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background" />
+            <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-background animate-pulse" />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -314,134 +435,128 @@ export function OzyraChat() {
               Toujours disponible
             </p>
           </div>
+
+          {/* Bouton nouvelle conversation */}
+          {messages.length > 1 && (
+            <button
+              onClick={handleNewConversation}
+              className="p-2 rounded-full hover:bg-background/40 text-muted-foreground hover:text-foreground transition-all shrink-0"
+              title="Nouvelle conversation"
+              aria-label="Nouvelle conversation"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </header>
 
       {/* MESSAGES */}
       <main
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-3 py-4"
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-3 py-4 scroll-smooth"
       >
         <div className="max-w-3xl mx-auto">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="relative mb-4">
-                <img
-                  src={OZYRA_AVATAR}
-                  alt="OZYRA"
-                  className="w-20 h-20 rounded-full object-cover border-2 border-purple-500/40 shadow-xl shadow-purple-500/20"
-                />
-                <span className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center border-2 border-background">
-                  <Sparkles className="w-3 h-3 text-white" />
-                </span>
-              </div>
-              <h2 className="text-lg font-extrabold text-foreground mb-1">
-                OZYRA OPLEX 2.5
-              </h2>
-              <p className="text-xs text-muted-foreground max-w-xs mb-4">
-                Bonjour {user?.username}, je suis OZYRA. Je peux t'aider à
-                découvrir des mangas, comprendre INKDROP, ou te conseiller sur
-                ta création.
-              </p>
-              <div className="flex flex-wrap gap-2 justify-center max-w-md">
-                {[
-                  "Quel est le meilleur manga ?",
-                  "Comment gagner de l'argent avec mes mangas ?",
-                  "Combien j'ai de MANAS ?",
-                  "Cherche un manga d'aventure",
-                ].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    type="button"
-                    onClick={() => {
-                      setInput(suggestion);
-                      inputRef.current?.focus();
-                    }}
-                    disabled={!hasAccess}
-                    className="px-3 py-1.5 rounded-full bg-background/80 backdrop-blur-md border border-border text-[11px] font-medium text-foreground hover:border-purple-500/40 hover:bg-background transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {messages.map((msg) => {
-                const isMine = msg.role === "user";
-                const showDay = formatDay(msg.createdAt) !== lastDay;
-                if (showDay) lastDay = formatDay(msg.createdAt);
+          <div className="space-y-1">
+            {messages.map((msg) => {
+              const isMine = msg.role === "user";
+              const showDay = formatDay(msg.createdAt) !== lastDay;
+              if (showDay) lastDay = formatDay(msg.createdAt);
 
-                return (
-                  <div key={msg.id} className="animate-message-in">
-                    {showDay && (
-                      <div className="flex items-center justify-center my-4">
-                        <span className="px-3 py-1 rounded-full bg-gradient-to-r from-purple-600/20 to-amber-600/20 backdrop-blur-md border border-purple-500/30 text-[10px] font-bold text-foreground uppercase tracking-wider">
-                          {formatDay(msg.createdAt)}
-                        </span>
-                      </div>
+              return (
+                <div key={msg.id} className="animate-message-in">
+                  {showDay && (
+                    <div className="flex items-center justify-center my-4">
+                      <span className="px-3 py-1 rounded-full bg-background/60 backdrop-blur-md border border-border/60 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                        {formatDay(msg.createdAt)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div
+                    className={`flex items-end gap-2 mb-3 ${
+                      isMine ? "flex-row-reverse" : "flex-row"
+                    }`}
+                  >
+                    {!isMine && (
+                      <img
+                        src={OZYRA_AVATAR}
+                        alt="OZYRA"
+                        className="w-8 h-8 rounded-full object-cover shrink-0 border border-purple-500/30 shadow-md"
+                      />
                     )}
 
                     <div
-                      className={`flex items-end gap-2 mb-1 ${
-                        isMine ? "flex-row-reverse" : "flex-row"
+                      className={`max-w-[80%] flex flex-col gap-1 ${
+                        isMine ? "items-end" : "items-start"
                       }`}
                     >
-                      {!isMine && (
-                        <img
-                          src={OZYRA_AVATAR}
-                          alt="OZYRA"
-                          className="w-8 h-8 rounded-full object-cover shrink-0 border border-purple-500/30"
-                        />
+                      {msg.content && (
+                        <div
+                          className={`group relative px-4 py-3 shadow-md transition-all ${
+                            isMine
+                              ? "bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-2xl rounded-br-md"
+                              : "bg-background text-foreground border border-border rounded-2xl rounded-bl-md"
+                          }`}
+                        >
+                          {/* Bouton copier au survol (pour OZYRA uniquement) */}
+                          {!isMine && msg.content && (
+                            <button
+                              onClick={() => handleCopy(msg.id, msg.content)}
+                              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-full bg-background border border-border shadow-md hover:bg-muted transition-all"
+                              title="Copier"
+                              aria-label="Copier le message"
+                            >
+                              {copiedId === msg.id ? (
+                                <Check className="w-3 h-3 text-emerald-500" />
+                              ) : (
+                                <Copy className="w-3 h-3 text-muted-foreground" />
+                              )}
+                            </button>
+                          )}
+
+                          {/* Bordure décorative pour OZYRA */}
+                          {!isMine && !msg.isWelcome && (
+                            <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full" />
+                          )}
+
+                          <div className="text-sm whitespace-pre-wrap break-words">
+                            {renderContent(msg.content)}
+                          </div>
+                        </div>
                       )}
 
                       <div
-                        className={`max-w-[75%] flex flex-col gap-1 ${
-                          isMine ? "items-end" : "items-start"
+                        className={`flex items-center gap-1 px-2 ${
+                          isMine ? "justify-end" : "justify-start"
                         }`}
                       >
-                        {msg.content && (
-                          <div
-                            className={`px-3.5 py-2 shadow-md ${
-                              isMine
-                                ? "bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-2xl rounded-br-sm"
-                                : "bg-background text-foreground border border-border border-l-2 border-l-purple-500/60 rounded-2xl rounded-bl-sm"
-                            }`}
-                          >
-                            <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
-                              {msg.content}
-                            </p>
-                          </div>
+                        <span className="text-[9px] text-muted-foreground">
+                          {formatTime(msg.createdAt)}
+                        </span>
+                        {isMine && (
+                          <CheckCheck className="w-3 h-3 text-blue-500" />
                         )}
-
-                        <div
-                          className={`flex items-center gap-1 px-1 ${
-                            isMine ? "justify-end" : "justify-start"
-                          }`}
-                        >
-                          <span className="text-[9px] text-white/80 drop-shadow">
-                            {formatTime(msg.createdAt)}
-                          </span>
-                          {isMine && (
-                            <span className="text-white/80 drop-shadow">
-                              <CheckCheck className="w-3 h-3" />
-                            </span>
-                          )}
-                        </div>
                       </div>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
 
-              {sending && (
-                <div className="flex items-end gap-2 mb-1">
-                  <img
-                    src={OZYRA_AVATAR}
-                    alt="OZYRA"
-                    className="w-8 h-8 rounded-full object-cover shrink-0 border border-purple-500/30"
-                  />
-                  <div className="bg-background text-foreground border border-border rounded-2xl rounded-bl-sm px-4 py-3 shadow-md">
+            {/* Indicateur de frappe */}
+            {sending && (
+              <div className="flex items-end gap-2 mb-3 animate-message-in">
+                <img
+                  src={OZYRA_AVATAR}
+                  alt="OZYRA"
+                  className="w-8 h-8 rounded-full object-cover shrink-0 border border-purple-500/30 shadow-md"
+                />
+                <div className="bg-background text-foreground border border-border rounded-2xl rounded-bl-md px-4 py-3 shadow-md">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      OZYRA écrit
+                    </span>
                     <div className="flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce" />
                       <span
@@ -455,19 +570,33 @@ export function OzyraChat() {
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              <div ref={messagesEndRef} className="h-2" />
-            </div>
-          )}
+            <div ref={messagesEndRef} className="h-2" />
+          </div>
         </div>
       </main>
+
+      {/* BOUTON RETOUR EN BAS */}
+      {showScrollButton && (
+        <button
+          onClick={() => {
+            isNearBottomRef.current = true;
+            scrollToBottom("smooth");
+          }}
+          className="absolute bottom-32 right-4 z-30 p-2.5 rounded-full bg-background border border-border shadow-lg hover:bg-muted transition-all animate-fade-in"
+          aria-label="Descendre"
+        >
+          <ChevronDown className="w-5 h-5 text-foreground" />
+        </button>
+      )}
 
       {/* INPUT OU BLOCAGE */}
       {hasAccess ? (
         <form
           onSubmit={handleSend}
-          className="shrink-0 bg-background/60 backdrop-blur-xl border-t border-border/40 px-3 py-3"
+          className="shrink-0 bg-background/70 backdrop-blur-xl border-t border-border/40 px-3 py-3"
           style={{
             paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
           }}
@@ -481,13 +610,13 @@ export function OzyraChat() {
               placeholder="Écris à OZYRA..."
               maxLength={2000}
               disabled={sending}
-              className="flex-1 px-4 py-2.5 rounded-full bg-background/80 border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 outline-none text-sm transition-all disabled:opacity-50"
+              className="flex-1 px-4 py-3 rounded-full bg-background border border-border text-foreground placeholder-muted-foreground focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none text-sm transition-all disabled:opacity-50"
             />
 
             <button
               type="submit"
               disabled={!input.trim() || sending}
-              className="p-2.5 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-lg shadow-purple-600/20"
+              className="p-3 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shrink-0 shadow-lg shadow-purple-600/30 active:scale-95"
               aria-label="Envoyer"
             >
               {sending ? (
@@ -506,7 +635,7 @@ export function OzyraChat() {
         @keyframes message-in {
           from {
             opacity: 0;
-            transform: translateY(6px);
+            transform: translateY(8px);
           }
           to {
             opacity: 1;
@@ -514,7 +643,36 @@ export function OzyraChat() {
           }
         }
         .animate-message-in {
-          animation: message-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+          animation: message-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.25s ease-out both;
+        }
+
+        /* Scrollbar custom */
+        main::-webkit-scrollbar {
+          width: 6px;
+        }
+        main::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        main::-webkit-scrollbar-thumb {
+          background: rgba(139, 92, 246, 0.3);
+          border-radius: 3px;
+        }
+        main::-webkit-scrollbar-thumb:hover {
+          background: rgba(139, 92, 246, 0.5);
         }
       `}</style>
     </div>
