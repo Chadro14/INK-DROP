@@ -17,11 +17,22 @@ import {
   Copy,
   Check,
   ChevronDown,
+  X,
+  Search,
+  BarChart3,
+  Lightbulb,
+  Trophy,
+  MessageSquare,
+  Database,
+  PenTool,
+  Sparkle,
+  FileText,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
 const OZYRA_AVATAR = "https://files.catbox.moe/9xoes0.png";
 const CHAT_BG = "https://files.catbox.moe/guzb7f.png";
+const OPLEX_BANNER_KEY = "ozyra_oplex_banner_dismissed";
 
 type Message = {
   id: string;
@@ -29,7 +40,6 @@ type Message = {
   content: string;
   createdAt: string;
   toolsUsed?: Array<{ name: string; success: boolean }>;
-  isWelcome?: boolean;
 };
 
 type UserInfo = {
@@ -42,18 +52,99 @@ type UserInfo = {
 };
 
 // ============================================
-// MESSAGE D'ACCUEIL OZYRA OPLEX 2.5
+// ÉTAPES DE TRAITEMENT
+// ============================================
+type Step = {
+  icon: any;
+  label: string;
+  duration: number;
+};
+
+const GENERIC_STEPS: Step[] = [
+  { icon: FileText, label: "Traitement de votre message", duration: 400 },
+  { icon: Database, label: "Consultation de la base INKDROP", duration: 500 },
+  { icon: PenTool, label: "Rédaction de la réponse", duration: 400 },
+];
+
+// Étapes spécifiques selon le message
+function getCustomSteps(message: string): Step[] | null {
+  const lower = message.toLowerCase();
+
+  if (
+    lower.includes("manga") &&
+    (lower.includes("cherche") || lower.includes("trouve") || lower.includes("recherche"))
+  ) {
+    return [
+      { icon: FileText, label: "Traitement de votre recherche", duration: 400 },
+      { icon: Search, label: "Recherche dans la base INKDROP", duration: 600 },
+      { icon: Database, label: "Filtrage des résultats", duration: 500 },
+      { icon: PenTool, label: "Préparation des suggestions", duration: 400 },
+    ];
+  }
+
+  if (
+    lower.includes("meilleur") ||
+    lower.includes("top") ||
+    lower.includes("classement")
+  ) {
+    return [
+      { icon: FileText, label: "Traitement de votre demande", duration: 400 },
+      { icon: Trophy, label: "Analyse des classements INKDROP", duration: 600 },
+      { icon: BarChart3, label: "Calcul des statistiques", duration: 500 },
+      { icon: PenTool, label: "Préparation du classement", duration: 400 },
+    ];
+  }
+
+  if (
+    lower.includes("manas") ||
+    lower.includes("solde") ||
+    lower.includes("ticket") ||
+    lower.includes("premium")
+  ) {
+    return [
+      { icon: FileText, label: "Traitement de votre demande", duration: 400 },
+      { icon: Database, label: "Consultation de votre compte", duration: 500 },
+      { icon: BarChart3, label: "Analyse des données", duration: 400 },
+      { icon: PenTool, label: "Préparation de la réponse", duration: 400 },
+    ];
+  }
+
+  if (
+    lower.includes("argent") ||
+    lower.includes("gagner") ||
+    lower.includes("conseil") ||
+    lower.includes("stratégie") ||
+    lower.includes("créateur")
+  ) {
+    return [
+      { icon: FileText, label: "Traitement de votre demande", duration: 400 },
+      { icon: Lightbulb, label: "Analyse des stratégies créateur", duration: 600 },
+      { icon: MessageSquare, label: "Consultation de l'équipe INKDROP", duration: 500 },
+      { icon: PenTool, label: "Préparation des conseils", duration: 400 },
+    ];
+  }
+
+  if (
+    lower.includes("bonjour") ||
+    lower.includes("salut") ||
+    lower.includes("hey") ||
+    lower.includes("ça va")
+  ) {
+    return [
+      { icon: FileText, label: "Traitement de votre message", duration: 400 },
+      { icon: Sparkle, label: "Préparation de la réponse", duration: 400 },
+    ];
+  }
+
+  return null;
+}
+
+// ============================================
+// MESSAGE DE BIENVENUE
 // ============================================
 const WELCOME_MESSAGE = `Bonjour ! 👋 Je suis **OZYRA OPLEX 2.5**, l'assistante intelligente d'INKDROP.
 
-✨ **Nouveautés de la mise à jour OPLEX 2.5 :**
-• 🔍 Je peux maintenant chercher de vrais mangas dans la base INKDROP
-• 📊 Je consulte vos vraies stats (MANAS, tickets, abonnements)
-• 🏆 Je connais le classement des meilleurs mangas et créateurs
-• 💡 Je vous conseille pour gagner de l'argent avec vos créations
-• ⚡ Réponses plus rapides et plus précises
-
-**Comment puis-je vous aider aujourd'hui ?**`;
+Comment puis-je vous aider aujourd'hui ?`;
 
 export function OzyraChat() {
   const router = useRouter();
@@ -66,6 +157,9 @@ export function OzyraChat() {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [showOplexBanner, setShowOplexBanner] = useState(true);
+  const [currentStep, setCurrentStep] = useState<number>(-1);
+  const [activeSteps, setActiveSteps] = useState<Step[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -76,6 +170,12 @@ export function OzyraChat() {
   // VÉRIFIER L'UTILISATEUR
   // ============================================
   useEffect(() => {
+    // Vérifier si la bannière a déjà été fermée
+    const dismissed = localStorage.getItem(OPLEX_BANNER_KEY);
+    if (dismissed === "true") {
+      setShowOplexBanner(false);
+    }
+
     const fetchMe = async () => {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -109,14 +209,12 @@ export function OzyraChat() {
           premiumExpires: me.premiumExpires || null,
         });
 
-        // ✅ Message d'accueil automatique
         setMessages([
           {
             id: "welcome",
             role: "assistant",
             content: WELCOME_MESSAGE,
             createdAt: new Date().toISOString(),
-            isWelcome: true,
           },
         ]);
       } catch (err: any) {
@@ -130,7 +228,7 @@ export function OzyraChat() {
   }, [router]);
 
   // ============================================
-  // SCROLL AUTO INTELLIGENT
+  // SCROLL
   // ============================================
   const scrollToBottom = useCallback(
     (behavior: ScrollBehavior = "smooth") => {
@@ -145,9 +243,8 @@ export function OzyraChat() {
     if (isNearBottomRef.current) {
       scrollToBottom("smooth");
     }
-  }, [messages.length, scrollToBottom]);
+  }, [messages.length, currentStep, scrollToBottom]);
 
-  // Détecte si l'user est proche du bas
   const handleScroll = () => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -161,7 +258,7 @@ export function OzyraChat() {
   };
 
   // ============================================
-  // VÉRIFIER L'ACCÈS
+  // ACCÈS
   // ============================================
   const canUseOzyra = (): boolean => {
     if (!user) return false;
@@ -183,6 +280,14 @@ export function OzyraChat() {
   };
 
   // ============================================
+  // FERMER LA BANNIÈRE OPLEX
+  // ============================================
+  const dismissOplexBanner = () => {
+    setShowOplexBanner(false);
+    localStorage.setItem(OPLEX_BANNER_KEY, "true");
+  };
+
+  // ============================================
   // ENVOYER UN MESSAGE
   // ============================================
   const handleSend = async (e: React.FormEvent) => {
@@ -201,38 +306,73 @@ export function OzyraChat() {
     };
 
     const history = messages
-      .filter((m) => !m.isWelcome)
       .filter((m) => m.role === "user" || m.role === "assistant")
       .slice(-10)
       .map((m) => ({ role: m.role, content: m.content }));
 
     setMessages((prev) => [...prev, userMessage]);
+    const messageText = input.trim();
     setInput("");
     setSending(true);
     setError("");
     isNearBottomRef.current = true;
     scrollToBottom();
 
-    try {
-      const res = await fetch(`${API_URL}/ai/chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          message: userMessage.content,
-          history,
+    // ✅ Préparer les étapes
+    const customSteps = getCustomSteps(messageText);
+    const steps = customSteps || GENERIC_STEPS;
+    setActiveSteps(steps);
+    setCurrentStep(0);
+
+    // ✅ Lancer les étapes avec délai
+    const stepPromises = steps.map(
+      (step, index) =>
+        new Promise<void>((resolve) => {
+          setTimeout(() => {
+            setCurrentStep(index + 1);
+            resolve();
+          }, step.duration);
         }),
-      });
+    );
 
-      const data = await res.json();
+    // Envoyer la requête en parallèle des étapes
+    const requestPromise = (async () => {
+      try {
+        const res = await fetch(`${API_URL}/ai/chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            message: messageText,
+            history,
+          }),
+        });
 
-      if (!res.ok || data.success === false) {
-        throw new Error(
-          data.error || data.reply || "Erreur de communication avec OZYRA",
-        );
+        const data = await res.json();
+
+        if (!res.ok || data.success === false) {
+          throw new Error(
+            data.error || data.reply || "Erreur de communication avec OZYRA",
+          );
+        }
+
+        return data;
+      } catch (err: any) {
+        throw err;
       }
+    })();
+
+    try {
+      // Attendre que les étapes ET la requête soient terminées
+      const [data] = await Promise.all([
+        requestPromise,
+        Promise.all(stepPromises),
+      ]);
+
+      // Petit délai avant d'afficher la réponse
+      await new Promise((r) => setTimeout(r, 200));
 
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
@@ -257,6 +397,8 @@ export function OzyraChat() {
       ]);
     } finally {
       setSending(false);
+      setCurrentStep(-1);
+      setActiveSteps([]);
       inputRef.current?.focus();
     }
   };
@@ -272,16 +414,17 @@ export function OzyraChat() {
           role: "assistant",
           content: WELCOME_MESSAGE,
           createdAt: new Date().toISOString(),
-          isWelcome: true,
         },
       ]);
       setError("");
+      setCurrentStep(-1);
+      setActiveSteps([]);
       inputRef.current?.focus();
     }
   };
 
   // ============================================
-  // COPIER UN MESSAGE
+  // COPIER
   // ============================================
   const handleCopy = async (msgId: string, content: string) => {
     try {
@@ -294,16 +437,14 @@ export function OzyraChat() {
   };
 
   // ============================================
-  // RENDU MARKDOWN SIMPLIFIÉ
+  // RENDU MARKDOWN
   // ============================================
   const renderContent = (content: string) => {
     const lines = content.split("\n");
 
     return lines.map((line, i) => {
-      // Titres avec ** **
       const boldedLine = line.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 
-      // Puces
       if (line.trim().startsWith("•")) {
         return (
           <div
@@ -316,12 +457,10 @@ export function OzyraChat() {
         );
       }
 
-      // Ligne vide
       if (line.trim() === "") {
         return <div key={i} className="h-2" />;
       }
 
-      // Ligne normale
       return (
         <p
           key={i}
@@ -392,9 +531,6 @@ export function OzyraChat() {
     );
   }
 
-  // ============================================
-  // RENDER — CHAT
-  // ============================================
   const hasAccess = canUseOzyra();
   let lastDay = "";
 
@@ -436,7 +572,6 @@ export function OzyraChat() {
             </p>
           </div>
 
-          {/* Bouton nouvelle conversation */}
           {messages.length > 1 && (
             <button
               onClick={handleNewConversation}
@@ -457,6 +592,72 @@ export function OzyraChat() {
         className="flex-1 overflow-y-auto px-3 py-4 scroll-smooth"
       >
         <div className="max-w-3xl mx-auto">
+          {/* ✅ BANNIÈRE OPLEX 2.5 */}
+          {showOplexBanner && (
+            <div className="mb-4 animate-slide-down">
+              <div className="relative overflow-hidden rounded-2xl border-2 border-purple-500/40 bg-gradient-to-br from-purple-600/10 via-card/80 to-amber-500/10 backdrop-blur-md p-4 shadow-lg">
+                {/* Halos décoratifs */}
+                <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-purple-500/20 blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-12 -left-12 w-32 h-32 rounded-full bg-amber-500/20 blur-3xl pointer-events-none" />
+
+                {/* Bouton fermer */}
+                <button
+                  onClick={dismissOplexBanner}
+                  className="absolute top-2 right-2 p-1.5 rounded-full hover:bg-background/60 text-muted-foreground hover:text-foreground transition-all z-10"
+                  aria-label="Fermer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="relative">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-amber-500 flex items-center justify-center shrink-0 shadow-md">
+                      <Sparkles className="w-4 h-4 text-white" />
+                    </div>
+                    <div>
+                      <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                        Nouveau
+                      </span>
+                      <h3 className="text-sm font-extrabold text-foreground">
+                        OZYRA OPLEX 2.5
+                      </h3>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
+                    Profitez des nouvelles fonctionnalités d'OPLEX 2.5 sur
+                    OZYRA :
+                  </p>
+
+                  <div className="space-y-1.5 mb-3">
+                    {[
+                      "Recherche intelligente de mangas",
+                      "Analyse en temps réel de vos statistiques",
+                      "Conseils personnalisés pour créateurs",
+                      "Classements officiels INKDROP",
+                      "Réponses plus rapides et précises",
+                    ].map((feature) => (
+                      <div
+                        key={feature}
+                        className="flex items-start gap-2 text-xs text-foreground/90"
+                      >
+                        <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                        <span>{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={dismissOplexBanner}
+                    className="w-full py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-xs font-bold transition-all shadow-md active:scale-[0.98]"
+                  >
+                    Commencer à discuter
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1">
             {messages.map((msg) => {
               const isMine = msg.role === "user";
@@ -499,7 +700,6 @@ export function OzyraChat() {
                               : "bg-background text-foreground border border-border rounded-2xl rounded-bl-md"
                           }`}
                         >
-                          {/* Bouton copier au survol (pour OZYRA uniquement) */}
                           {!isMine && msg.content && (
                             <button
                               onClick={() => handleCopy(msg.id, msg.content)}
@@ -515,8 +715,7 @@ export function OzyraChat() {
                             </button>
                           )}
 
-                          {/* Bordure décorative pour OZYRA */}
-                          {!isMine && !msg.isWelcome && (
+                          {!isMine && (
                             <div className="absolute left-0 top-3 bottom-3 w-0.5 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full" />
                           )}
 
@@ -544,8 +743,72 @@ export function OzyraChat() {
               );
             })}
 
-            {/* Indicateur de frappe */}
-            {sending && (
+            {/* ✅ ÉTAPES DE TRAITEMENT (style Claude) */}
+            {sending && activeSteps.length > 0 && (
+              <div className="flex items-end gap-2 mb-3 animate-message-in">
+                <img
+                  src={OZYRA_AVATAR}
+                  alt="OZYRA"
+                  className="w-8 h-8 rounded-full object-cover shrink-0 border border-purple-500/30 shadow-md"
+                />
+                <div className="bg-background text-foreground border border-border rounded-2xl rounded-bl-md px-4 py-3 shadow-md min-w-[220px] max-w-[85%]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] text-purple-500 font-bold uppercase tracking-wider">
+                      OZYRA réfléchit
+                    </span>
+                    <div className="flex items-center gap-0.5">
+                      <span className="w-1 h-1 rounded-full bg-purple-500 animate-pulse" />
+                      <span
+                        className="w-1 h-1 rounded-full bg-purple-500 animate-pulse"
+                        style={{ animationDelay: "0.2s" }}
+                      />
+                      <span
+                        className="w-1 h-1 rounded-full bg-purple-500 animate-pulse"
+                        style={{ animationDelay: "0.4s" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {activeSteps.map((step, index) => {
+                      const StepIcon = step.icon;
+                      const isDone = index < currentStep;
+                      const isCurrent = index === currentStep;
+
+                      return (
+                        <div
+                          key={index}
+                          className={`flex items-center gap-2 text-xs transition-all duration-300 ${
+                            isDone
+                              ? "text-muted-foreground"
+                              : isCurrent
+                                ? "text-foreground"
+                                : "text-muted-foreground/40"
+                          }`}
+                        >
+                          {isDone ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          ) : isCurrent ? (
+                            <Loader2 className="w-3.5 h-3.5 text-purple-500 animate-spin shrink-0" />
+                          ) : (
+                            <StepIcon className="w-3.5 h-3.5 shrink-0" />
+                          )}
+                          <span
+                            className={isCurrent ? "font-medium" : ""}
+                          >
+                            {step.label}
+                            {isCurrent && "..."}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Fallback : indicateur simple si pas d'étapes */}
+            {sending && activeSteps.length === 0 && (
               <div className="flex items-end gap-2 mb-3 animate-message-in">
                 <img
                   src={OZYRA_AVATAR}
@@ -646,6 +909,20 @@ export function OzyraChat() {
           animation: message-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
+        @keyframes slide-down {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-slide-down {
+          animation: slide-down 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
         @keyframes fade-in {
           from {
             opacity: 0;
@@ -660,7 +937,6 @@ export function OzyraChat() {
           animation: fade-in 0.25s ease-out both;
         }
 
-        /* Scrollbar custom */
         main::-webkit-scrollbar {
           width: 6px;
         }
