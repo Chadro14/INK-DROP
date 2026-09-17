@@ -3,7 +3,6 @@
 import { Outfit } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
-import AiChatbot from '@/components/ai/AiChatbot';
 import { SocketProvider } from '@/providers/SocketProvider';
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
 
@@ -66,12 +65,11 @@ export default function RootLayout({
         />
       </head>
       <body className={`${outfit.variable} min-h-screen flex flex-col bg-background text-foreground`}>
-        <ThemeProvider>       {/* ← TON provider uniquement */}
-          <Providers>         {/* ← QueryClient uniquement */}
+        <ThemeProvider>
+          <Providers>
             <SocketProvider>
               {children}
             </SocketProvider>
-            <AiChatbot />
           </Providers>
         </ThemeProvider>
       </body>
