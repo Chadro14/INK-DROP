@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   XCircle,
   Lock,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 
 const API_URL = "https://ink-backend.vercel.app";
@@ -137,12 +139,17 @@ export default function CollaborationsPage() {
 
       setReceived((prev) =>
         prev.map((r) =>
-          r.id === id ? { ...r, status: "ACCEPTED", respondedAt: new Date().toISOString() } : r
+          r.id === id
+            ? {
+                ...r,
+                status: "ACCEPTED",
+                respondedAt: new Date().toISOString(),
+              }
+            : r
         )
       );
       setMessage("Collaboration acceptée");
 
-      // Recharger les conversations
       const convRes = await fetch(`${API_URL}/collaborations/conversations`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -173,7 +180,13 @@ export default function CollaborationsPage() {
 
       setReceived((prev) =>
         prev.map((r) =>
-          r.id === id ? { ...r, status: "REJECTED", respondedAt: new Date().toISOString() } : r
+          r.id === id
+            ? {
+                ...r,
+                status: "REJECTED",
+                respondedAt: new Date().toISOString(),
+              }
+            : r
         )
       );
       setMessage("Demande refusée — MANAS remboursés");
@@ -200,7 +213,13 @@ export default function CollaborationsPage() {
 
       setSent((prev) =>
         prev.map((r) =>
-          r.id === id ? { ...r, status: "CANCELLED", respondedAt: new Date().toISOString() } : r
+          r.id === id
+            ? {
+                ...r,
+                status: "CANCELLED",
+                respondedAt: new Date().toISOString(),
+              }
+            : r
         )
       );
       setMessage("Demande annulée — MANAS remboursés");
@@ -217,19 +236,22 @@ export default function CollaborationsPage() {
         return {
           label: "En attente",
           icon: Clock,
-          className: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+          className:
+            "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
         };
       case "ACCEPTED":
         return {
           label: "Acceptée",
           icon: CheckCircle2,
-          className: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+          className:
+            "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
         };
       case "REJECTED":
         return {
           label: "Refusée",
           icon: XCircle,
-          className: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
+          className:
+            "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
         };
       case "EXPIRED":
         return {
@@ -346,7 +368,7 @@ export default function CollaborationsPage() {
             }`}
           >
             <MessageCircle className="w-4 h-4" />
-            <span>Conversations ({conversations.length})</span>
+            <span>Conversations ({conversations.length + 1})</span>
           </button>
         </div>
 
@@ -378,7 +400,9 @@ export default function CollaborationsPage() {
                     return (
                       <div
                         key={req.id}
-                        style={{ animationDelay: `${Math.min(index * 40, 300)}ms` }}
+                        style={{
+                          animationDelay: `${Math.min(index * 40, 300)}ms`,
+                        }}
                         className={`bg-card/60 border rounded-2xl p-4 animate-notif-in ${
                           isPending
                             ? "border-purple-500/40 bg-purple-500/5"
@@ -395,7 +419,11 @@ export default function CollaborationsPage() {
                               {sender?.isCertified && (
                                 <BadgeCheck
                                   className="w-3.5 h-3.5"
-                                  fill={sender.badgeColor || sender.avatarColor || "#3B82F6"}
+                                  fill={
+                                    sender.badgeColor ||
+                                    sender.avatarColor ||
+                                    "#3B82F6"
+                                  }
                                   color="black"
                                   strokeWidth={1.5}
                                 />
@@ -489,8 +517,10 @@ export default function CollaborationsPage() {
                     return (
                       <div
                         key={req.id}
-                        style={{ animationDelay: `${Math.min(index * 40, 300)}ms` }}
-                        className={`bg-card/60 border border-border/60 rounded-2xl p-4 animate-notif-in`}
+                        style={{
+                          animationDelay: `${Math.min(index * 40, 300)}ms`,
+                        }}
+                        className="bg-card/60 border border-border/60 rounded-2xl p-4 animate-notif-in"
                       >
                         <div className="flex items-start gap-3">
                           {receiver && renderAvatar(receiver)}
@@ -502,7 +532,11 @@ export default function CollaborationsPage() {
                               {receiver?.isCertified && (
                                 <BadgeCheck
                                   className="w-3.5 h-3.5"
-                                  fill={receiver.badgeColor || receiver.avatarColor || "#3B82F6"}
+                                  fill={
+                                    receiver.badgeColor ||
+                                    receiver.avatarColor ||
+                                    "#3B82F6"
+                                  }
                                   color="black"
                                   strokeWidth={1.5}
                                 />
@@ -560,6 +594,42 @@ export default function CollaborationsPage() {
         {/* ===== ONGLET CONVERSATIONS ===== */}
         {activeTab === "conversations" && (
           <div>
+            {/* ✅ BLOC OZYRA — toujours en haut */}
+            <Link
+              href="/chat/ozyra"
+              className="block relative overflow-hidden bg-gradient-to-br from-purple-600/10 via-card/60 to-amber-500/10 border-2 border-purple-500/40 rounded-2xl p-4 hover:border-purple-500/70 hover:shadow-lg hover:shadow-purple-500/20 transition-all mb-3 animate-notif-in"
+            >
+              <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-purple-500/20 blur-2xl pointer-events-none" />
+              <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full bg-amber-500/20 blur-2xl pointer-events-none" />
+
+              <div className="relative flex items-center gap-3">
+                <div className="relative shrink-0">
+                  <img
+                    src="https://files.catbox.moe/9xoes0.png"
+                    alt="OZYRA"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-purple-500/50 shadow-lg shadow-purple-500/30"
+                  />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-background" />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-sm font-extrabold text-foreground">
+                      OZYRA OPLEX 2.5
+                    </span>
+                    <Sparkles className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                    <span className="ml-auto px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-500/20 to-amber-500/20 border border-purple-500/40 text-[9px] font-bold text-purple-600 dark:text-purple-300">
+                      IA
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5 flex items-center gap-1">
+                    <Zap className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
+                    Assistante IA INKDROP — Toujours disponible
+                  </p>
+                </div>
+              </div>
+            </Link>
+
             {conversations.length === 0 ? (
               <div className="text-center py-16 bg-card/40 rounded-2xl border border-border/60">
                 <MessageCircle className="w-16 h-16 text-muted-foreground/40 mx-auto mb-4" />
@@ -576,7 +646,9 @@ export default function CollaborationsPage() {
                   <Link
                     key={conv.id}
                     href={`/chat/${conv.id}`}
-                    style={{ animationDelay: `${Math.min(index * 40, 300)}ms` }}
+                    style={{
+                      animationDelay: `${Math.min(index * 40, 300)}ms`,
+                    }}
                     className="block bg-card/60 border border-border/60 rounded-2xl p-4 hover:border-purple-500/40 hover:bg-card transition-all animate-notif-in"
                   >
                     <div className="flex items-center gap-3">
@@ -589,7 +661,11 @@ export default function CollaborationsPage() {
                           {conv.otherUser.isCertified && (
                             <BadgeCheck
                               className="w-3.5 h-3.5 shrink-0"
-                              fill={conv.otherUser.badgeColor || conv.otherUser.avatarColor || "#3B82F6"}
+                              fill={
+                                conv.otherUser.badgeColor ||
+                                conv.otherUser.avatarColor ||
+                                "#3B82F6"
+                              }
                               color="black"
                               strokeWidth={1.5}
                             />
