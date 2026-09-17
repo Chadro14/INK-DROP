@@ -110,13 +110,28 @@ export function OzyraChat() {
   }, [messages.length]);
 
   // ============================================
-  // VÉRIFIER L'ACCÈS
+  // ✅ VÉRIFIER L'ACCÈS — Accepte tous les plans Premium
   // ============================================
   const canUseOzyra = (): boolean => {
     if (!user) return false;
     if (!user.premiumActive) return false;
+
+    // Vérifier que l'abonnement n'est pas expiré
+    if (user.premiumExpires) {
+      const expires = new Date(user.premiumExpires);
+      if (expires < new Date()) return false;
+    }
+
     const plan = (user.premiumPlan || "").toUpperCase();
-    return plan === "PRO" || plan === "PREMIUM";
+
+    // ✅ Tous les plans valides (anciens + nouveaux)
+    return (
+      plan === "STANDARD" ||
+      plan === "PRO" ||
+      plan === "PREMIUM" ||
+      plan === "MONTHLY" ||
+      plan === "YEARLY"
+    );
   };
 
   // ============================================
