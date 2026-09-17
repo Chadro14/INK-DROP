@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader } from "@/components/ui/loader";
+import { OzyraChat } from "@/components/chat/OzyraChat";
 import {
   ArrowLeft,
   Send,
@@ -62,11 +63,17 @@ export default function ChatPage() {
   const router = useRouter();
   const conversationId = params?.id as string;
 
-  const [conversation, setConversation] = useState<ConversationInfo | null>(null);
+  // ✅ DÉTECTION OZYRA — doit être AVANT tous les hooks
+  const isOzyra = conversationId === "ozyra" || conversationId === "ai";
+
+  // ⚠️ IMPORTANT : On déclare les hooks AVANT le return conditionnel
+  const [conversation, setConversation] = useState<ConversationInfo | null>(
+    null,
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<ChatUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!isOzyra);
   const [error, setError] = useState("");
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -88,6 +95,8 @@ export default function ChatPage() {
   // RÉCUPÉRER L'UTILISATEUR VIA /users/me
   // ============================================
   useEffect(() => {
+    if (isOzyra) return;
+
     const fetchMe = async () => {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -127,12 +136,14 @@ export default function ChatPage() {
     };
 
     fetchMe();
-  }, [router]);
+  }, [router, isOzyra]);
 
   // ============================================
   // CHARGER LA CONVERSATION
   // ============================================
   useEffect(() => {
+    if (isOzyra) return;
+
     const fetchConversation = async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
@@ -140,7 +151,7 @@ export default function ChatPage() {
       try {
         const res = await fetch(
           `${API_URL}/collaborations/conversations/${conversationId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` } },
         );
 
         if (!res.ok) throw new Error("Conversation introuvable");
@@ -153,19 +164,21 @@ export default function ChatPage() {
     };
 
     if (conversationId) fetchConversation();
-  }, [conversationId]);
+  }, [conversationId, isOzyra]);
 
   // ============================================
   // CHARGER LES MESSAGES
   // ============================================
   const fetchMessages = async (isInitial = false) => {
+    if (isOzyra) return;
+
     const token = localStorage.getItem("token");
     if (!token) return;
 
     try {
       const res = await fetch(
         `${API_URL}/messages/conversations/${conversationId}?page=1&limit=100`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       if (!res.ok) throw new Error("Erreur de chargement");
@@ -184,8 +197,8 @@ export default function ChatPage() {
         const stillPending = temps.filter(
           (t) =>
             !newMessages.some(
-              (c) => c.content === t.content && c.senderId === t.senderId
-            )
+              (c) => c.content === t.content && c.senderId === t.senderId,
+            ),
         );
         return [...newMessages, ...stillPending];
       });
@@ -205,7 +218,7 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
-    if (!conversationId) return;
+    if (!conversationId || isOzyra) return;
 
     fetchMessages(true);
 
@@ -217,10 +230,10 @@ export default function ChatPage() {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId]);
+  }, [conversationId, isOzyra]);
 
   // ============================================
-  // CHARGER MES MANGAS (via /users/me)
+  // CHARGER MES MANGAS
   // ============================================
   const loadMyMangas = async () => {
     setLoadingMangas(true);
@@ -264,10 +277,8 @@ export default function ChatPage() {
             title: m.title,
             slug: m.slug || null,
             coverUrl: m.coverUrl || null,
-          }))
+          })),
         );
-      } else {
-        console.error("Erreur chargement mangas:", res.status);
       }
     } catch (err) {
       console.error("Erreur chargement mangas:", err);
@@ -323,7 +334,7 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, optimisticMessage]);
     setTimeout(
       () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }),
-      50
+      50,
     );
 
     try {
@@ -339,7 +350,7 @@ export default function ChatPage() {
             content,
             mangaId: mangaToSend?.id || undefined,
           }),
-        }
+        },
       );
 
       if (!res.ok) {
@@ -352,7 +363,7 @@ export default function ChatPage() {
 
       if (realMessage) {
         setMessages((prev) =>
-          prev.map((m) => (m.id === tempId ? realMessage : m))
+          prev.map((m) => (m.id === tempId ? realMessage : m)),
         );
         lastMessageIdRef.current = realMessage.id;
       } else {
@@ -387,7 +398,7 @@ export default function ChatPage() {
     const diff = Math.floor(
       (new Date(now.toDateString()).getTime() -
         new Date(d.toDateString()).getTime()) /
-        86400000
+        86400000,
     );
 
     if (diff === 0) return "Aujourd'hui";
@@ -421,11 +432,19 @@ export default function ChatPage() {
   };
 
   const filteredMangas = myMangas.filter((m) =>
-    m.title.toLowerCase().includes(mangaSearch.toLowerCase())
+    m.title.toLowerCase().includes(mangaSearch.toLowerCase()),
   );
 
   // ============================================
-  // RENDER
+  // RENDER — OZYRA
+  // ✅ Placé APRÈS tous les hooks
+  // ============================================
+  if (isOzyra) {
+    return <OzyraChat />;
+  }
+
+  // ============================================
+  // RENDER — CHAT NORMAL
   // ============================================
   if (loading) {
     return (
@@ -550,7 +569,9 @@ export default function ChatPage() {
                     >
                       {!isMine && (
                         <div className="w-8 shrink-0">
-                          {showAvatar ? renderAvatar(msg.sender, "w-8 h-8") : null}
+                          {showAvatar
+                            ? renderAvatar(msg.sender, "w-8 h-8")
+                            : null}
                         </div>
                       )}
 
@@ -559,7 +580,6 @@ export default function ChatPage() {
                           isMine ? "items-end" : "items-start"
                         }`}
                       >
-                        {/* CARTE MANGA */}
                         {msg.manga && (
                           <Link
                             href={`/manga/${msg.manga.slug || msg.manga.id}`}
@@ -601,7 +621,6 @@ export default function ChatPage() {
                           </Link>
                         )}
 
-                        {/* TEXTE */}
                         {msg.content && (
                           <div
                             className={`px-3.5 py-2 shadow-md ${
@@ -616,7 +635,6 @@ export default function ChatPage() {
                           </div>
                         )}
 
-                        {/* HEURE + STATUT */}
                         <div
                           className={`flex items-center gap-1 px-1 ${
                             isMine ? "justify-end" : "justify-start"
@@ -733,7 +751,6 @@ export default function ChatPage() {
             className="bg-background border-t md:border border-border/60 rounded-t-3xl md:rounded-2xl w-full md:max-w-md max-h-[75vh] flex flex-col overflow-hidden shadow-2xl animate-modal-panel"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* HEADER MODAL */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border/60 shrink-0">
               <h3 className="text-base font-bold text-foreground flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-blue-500" />
@@ -748,7 +765,6 @@ export default function ChatPage() {
               </button>
             </div>
 
-            {/* RECHERCHE */}
             <div className="px-4 py-3 border-b border-border/60 shrink-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -762,7 +778,6 @@ export default function ChatPage() {
               </div>
             </div>
 
-            {/* LISTE */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {loadingMangas ? (
                 <div className="flex items-center justify-center py-10 text-muted-foreground">
